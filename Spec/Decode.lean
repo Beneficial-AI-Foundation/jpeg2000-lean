@@ -1,5 +1,6 @@
 import JPEG2000.Decode
 import Spec.Tier1Equiv
+import Spec.Tier2
 
 /-!
 # `Spec.decode`: the end-to-end specification decoder
@@ -15,8 +16,8 @@ stage that has one, composed in the order of the fast decoder `JPEG2000.decodeCo
 |---|---|
 | headers (Annex A) | the fast `Header.parse` — it *is* the header spec: its correctness story is the marker-segment round trips (`Spec.MarkerRoundTrip`, `Spec.TilePartRoundTrip`, C-level `parse ∘ serialise = id`); no second header parser is written |
 | output geometry, limits | `Decode.allocOutput` (B-12/B-14 rectangles and the S3 limit checks; no samples) |
-| Tier-2 (B.9–B.12) | **placeholder** `Tier2Spec` = the fast `Tier2.Headers.decodeWithStream` and the fast segment gathering; task 7.1b replaces the two definitions of `namespace Tier2Spec` by a spec over bit lists (the rest of this file only uses `Tier2Spec.decode` and `Tier2Spec.segments`) |
-| Tier-1 (Annex D) | `Spec.Tier1.decodeCodeBlock` (every code-block style, `Mode.ofStyle`) |
+| Tier-2 (B.9–B.12) | `Spec.Tier2.decodeWithStream` (task 7.1b: packet headers over un-stuffed bit lists, bodies over byte lists); its result `Spec.Tier2.TileOut` gives per code-block (`Spec.Tier2.BlockSt`) the rectangle, the zero bit-planes and the codeword segments as byte lists (task 7.1f) |
+| Tier-1 (Annex D) | `Spec.Tier1.decodeCodeBlock` (every code-block style, `Mode.ofStyle`) on the `BlockSt` (`decodeBlockSt`) |
 | dequantisation, ROI (E.1.1.2, H) | `Spec.Quant.dequantRev` / `dequantIrrev` (exact `Int` / `Rat`) |
 | sub-band grids | each code-block's dequantised coefficients at its band coordinates (`bandGrid`) |
 | inverse DWT (F.3.1) | `Spec.DWT53.srMulti` over `Int` (5/3), `Spec.DWT97.srMulti` over `Rat` (9/7) |
@@ -29,11 +30,14 @@ The composition is written as three **skeletons** — `codestreamWith`, `tileWit
 `tileCompWith` — which are the fast decoder's own control flow (`decodeCodestream`,
 `Assemble.decodeTile`, `Assemble.reconstructTileComp`, copied verbatim) with every stage
 call turned into a parameter. Instantiated with the fast stages they are *definitionally*
-the fast decoder (`Spec.Equiv.*_eq_with`, proved by `rfl`); instantiated with the spec stages
-below they are `Spec.decode`. So the two decoders iterate the same tiles, components,
-resolutions, precincts, bands and code-blocks in the same order and make the same limit and
-geometry checks; they differ exactly in the stages. That is what makes C9 a composition of
-one equivalence per stage (`Spec/Equiv.lean`).
+the fast decoder (`Spec.Equiv.*_eq_with`, proved by `rfl`). `Spec.decode` instantiates
+`codestreamWith` and `tileWith` with the spec stages; its tile-component reconstruction
+`tileComp` is the loop of `tileCompWith` written over the spec's Tier-2 result (lists of
+`Spec.Tier2.BandOut` / `BlockSt` instead of the fast `PrecinctOut` / `CodeBlock`). So the two
+decoders iterate the same tiles, components, resolutions, precincts, bands and code-blocks in
+the same order and make the same limit and geometry checks; they differ exactly in the
+stages. That is what makes C9 a composition of one equivalence per stage
+(`Spec/Equiv.lean`).
 
 ## Output
 
@@ -92,16 +96,17 @@ def tileCompWith {σ β O : Type} (init : Nat → Nat → Except Error σ)
             if !ok then sat := sat + 1
   fin (p.transform == .reversible53) plane rect nl' sat
 
-/-- **One tile** (`Assemble.decodeTile` with its stages as parameters): `recon` per
-tile-component (`tileCompWith`), `mctF` the inverse MCT on components 0–2, `dcPrep` /
+/-- **One tile** (`Assemble.decodeTile` with its stages as parameters): the Tier-2 result
+`tcb` of type `T` (`precsOf` gives a component's precincts), `recon` per tile-component
+(`tileCompWith`), `mctF` the inverse MCT on components 0–2, `dcPrep` /
 `dcApply` the DC shift and clamp, `mk` the result record. -/
-def tileWith {α β P D R : Type} (mk : Nat → Array (Rect × β) → Nat → R)
+def tileWith {α β P D R T : Type} (mk : Nat → Array (Rect × β) → Nat → R)
     (recon : TileCompGeom → Nat → Nat → Nat → P → Except Error (α × Nat))
-    (precsOf : TileCodeBlocks → Nat → P) (noPrecs : P) (z : α)
+    (precsOf : T → Nat → P) (noPrecs : P) (z : α)
     (mctF : Bool → Array α → Except Error (Array α))
     (dcPrep : Component → Bool → Nat → Except Error D) (dcApply : D → Bool → α → β)
     (L : Limits) (h : Header) (t : Nat) (reduce : Nat)
-    (tcb : Option TileCodeBlocks) : Except Error R := do
+    (tcb : Option T) : Except Error R := do
   let (g, coding) ← Progression.Layout.ofHeader h t
   let s := h.siz
   let mct := coding.mctApplies s
@@ -174,21 +179,23 @@ def codestreamWith {T TO ST R : Type}
     planes ← place info planes out
   return fin h info planes sat
 
-/-! ## Tier-2 (placeholder for task 7.1b) -/
+/-! ## Tier-2 -/
 
 namespace Tier2Spec
 
-/-- **Placeholder (task 7.1b replaces it).** The Tier-2 specification of one tile's packets:
-for now the fast `Tier2.Headers.decodeWithStream` itself. 7.1b defines a B.10 packet-header
-spec over bit lists (with `Spec.TagTree`) producing the same `TileCodeBlocks` and proves it
-equal to the fast decoder (hypothesis `Spec.Equiv.Tier2Equiv`). -/
+/-- **The Tier-2 specification of one tile's packets** (B.9–B.12, task 7.1b): the packet
+headers decoded over the un-stuffed bit list, the bodies over byte lists
+(`Spec.Tier2.decodeWithStream`). Its result gives every code-block's state
+(`Spec.Tier2.BlockSt`: rectangle, zero bit-planes, codeword segments as byte lists). -/
 abbrev decode : Limits → Header → ByteArray → TileParams → Option Tier2.Headers.HeaderStream →
-    Nat → Except Error TileCodeBlocks :=
-  Tier2.Headers.decodeWithStream
+    Nat → Except Error Spec.Tier2.TileOut :=
+  Spec.Tier2.decodeWithStream
 
-/-- **Placeholder (task 7.1b replaces it).** The codeword segments of a code-block (B.10.7,
-D.4) as a buffer and byte ranges in it: for now the fast gathering `Assemble.tier1Input`
-(the input itself when every segment is one range, else the segments concatenated). -/
+/-- The codeword segments of a **fast** code-block (B.10.7, D.4) as a buffer and byte ranges in
+it: the fast gathering `Assemble.tier1Input` (the input itself when every segment is one
+range, else the segments concatenated). Not used by `Spec.decode` (which reads the spec's
+byte lists); it states the Tier-1 hypothesis `Spec.Equiv.Tier1Equiv` on fast code-blocks
+(`decodeBlock`), which `Spec.Equiv.decodeBlock_eq_st` bridges to `decodeBlockSt`. -/
 abbrev segments : ByteArray → CodeBlock → ByteArray × Array Tier1.Seg :=
   Assemble.tier1Input
 
@@ -196,10 +203,28 @@ end Tier2Spec
 
 /-! ## Tier-1 -/
 
-/-- The spec code-block of a Tier-2 code-block of band `b` of resolution `r` (parameters
-`p`): size from its rectangle, orientation, style `Mode.ofStyle`, `Mb + roiShift` bit-planes
-(E-2, Annex H), the tag-tree zero bit-planes (0 if never included) and its codeword segments
-as byte lists. `malformed` when a segment range lies outside the buffer. -/
+/-- The spec code-block of a spec Tier-2 code-block `sb` of band `b` of resolution `r`
+(parameters `p`): size from its rectangle, orientation, style `Mode.ofStyle`,
+`Mb + roiShift` bit-planes (E-2, Annex H), the tag-tree zero bit-planes (0 if never included)
+and its codeword segments (byte lists, B.10.8, D.4). -/
+def blockStCodeBlock (p : CompParams) (r : Nat) (b : Band) (sb : Spec.Tier2.BlockSt) :
+    Spec.Tier1.CodeBlock :=
+  let rc := sb.geom.rect
+  { width := rc.width, height := rc.height, orient := Spec.Tier1Equiv.orientOf b,
+    mode := Spec.Tier1.Mode.ofStyle p.cbStyle.toNat,
+    numBitPlanes := bandMb p r b + p.roiShift,
+    zeroBitPlanes := if sb.included then sb.zbp else 0,
+    segments := sb.segs }
+
+/-- **Tier-1 of `Spec.decode`** (T.800 Annex D, every code-block style): the spec coefficient
+states, in raster order, of a spec Tier-2 code-block. -/
+def decodeBlockSt (p : CompParams) (r : Nat) (b : Band) (sb : Spec.Tier2.BlockSt) :
+    Except Error (Array Coeff) :=
+  Spec.Tier1.decodeCodeBlock (blockStCodeBlock p r b sb)
+
+/-- The spec code-block of a **fast** Tier-2 code-block (its segments read from the buffer of
+`Tier2Spec.segments`); `malformed` when a segment range lies outside the buffer. Used to state
+`Spec.Equiv.Tier1Equiv`. -/
 def specCodeBlock (data : ByteArray) (p : CompParams) (r : Nat) (b : Band) (cb : CodeBlock) :
     Except Error Spec.Tier1.CodeBlock := do
   let (buf, segs) := Tier2Spec.segments data cb
@@ -213,8 +238,10 @@ def specCodeBlock (data : ByteArray) (p : CompParams) (r : Nat) (b : Band) (cb :
            segments := segs.toList.map fun sg =>
              { data := Spec.MQEquiv.segment buf sg.start sg.stop, passes := sg.passes } }
 
-/-- Tier-1 (T.800 Annex D, every code-block style): the spec coefficient states of a
-code-block in raster order. -/
+/-- Tier-1 (T.800 Annex D, every code-block style) on a **fast** Tier-2 code-block: the spec
+coefficient states in raster order. The statement form of `Spec.Equiv.Tier1Equiv`; equal to
+`decodeBlockSt` of the code-block's spec image when its ranges lie in the input
+(`Spec.Equiv.decodeBlock_eq_st`). -/
 def decodeBlock (data : ByteArray) (p : CompParams) (r : Nat) (b : Band) (cb : CodeBlock) :
     Except Error (Array Coeff) := do
   Spec.Tier1.decodeCodeBlock (← specCodeBlock data p r b cb)
@@ -351,11 +378,37 @@ def initSpec (L : Limits) (w h : Nat) : Except Error (List Entry) := do
   L.check Assemble.loc .workSamples (w * h)
   return []
 
-/-- **Spec reconstruction of one tile-component** up to the inverse DWT: spec Tier-1,
-collection, `idwt`. -/
-def tileComp (L : Limits) (data : ByteArray) (tc : TileCompGeom) (depth F reduce : Nat)
-    (precs : Array (Array PrecinctOut)) : Except Error (CellPlane × Nat) :=
-  tileCompWith (initSpec L) (decodeBlock data) collect finSpec tc depth F reduce precs
+/-- The spec Tier-2 result of one tile-component: per resolution, per precinct, its bands
+(`Spec.Tier2.TileOut.comps` of a component). -/
+abbrev SpecPrecs := List (List (List Spec.Tier2.BandOut))
+
+/-- **Spec reconstruction of one tile-component** up to the inverse DWT: the loop of
+`tileCompWith` (resolutions `0 … NL − reduce`, precincts, bands, code-blocks with passes and a
+non-empty rectangle; the reduction check) over the spec Tier-2 result, with spec Tier-1
+(`decodeBlockSt`), collection and `idwt`. -/
+def tileComp (L : Limits) (tc : TileCompGeom) (depth F reduce : Nat) (precs : SpecPrecs) :
+    Except Error (CellPlane × Nat) := do
+  let p := tc.params
+  let nl := p.levels
+  if reduce > nl then
+    throw (.unsupported Assemble.loc
+      s!"resolution reduction {reduce} exceeds the {nl} decomposition levels of a tile-component")
+  let nl' := nl - reduce
+  let rect := Assemble.reduceRect tc.rect reduce
+  let mut plane ← initSpec L rect.width rect.height
+  let mut sat := 0
+  for r in [0:min (nl' + 1) precs.length] do
+    let ps := precs.getD r []
+    for prec in ps do
+      for bo in prec do
+        for cb in bo.blocks do
+          if cb.passes != 0 && !rectEmpty cb.geom.rect then
+            let o ← decodeBlockSt p r bo.band cb
+            let q := Spec.Quant.bandQuant p depth r bo.band
+            let (pl, ok) ← collect plane rect nl' r bo.band cb.geom.rect q F o
+            plane := pl
+            if !ok then sat := sat + 1
+  finSpec (p.transform == .reversible53) plane rect nl' sat
 
 /-- Inverse RCT (G.2) on three reversible cells. -/
 def rctCells (a b c : SpecCell) : SpecCell × SpecCell × SpecCell :=
@@ -456,11 +509,12 @@ structure TileOut where
   /-- Per component. -/
   comps : Array (Rect × SamplePlane)
 
-/-- **Spec reconstruction of tile `t`**: `tileComp` per component, `mctSpec`, G.1. -/
-def decodeTile (L : Limits) (h : Header) (data : ByteArray) (t reduce : Nat)
-    (tcb : Option TileCodeBlocks) : Except Error TileOut :=
+/-- **Spec reconstruction of tile `t`** from its spec Tier-2 result: `tileComp` per component,
+`mctSpec`, G.1. -/
+def decodeTile (L : Limits) (h : Header) (t reduce : Nat)
+    (tcb : Option Spec.Tier2.TileOut) : Except Error TileOut :=
   tileWith (fun t comps _ => ({ tile := t, comps } : TileOut))
-    (fun tc d F r p => tileComp L data tc d F r p) (fun x c => x.comps.getD c #[]) #[]
+    (fun tc d F r p => tileComp L tc d F r p) (fun (x : Spec.Tier2.TileOut) c => x.comps.getD c []) []
     CellPlane.empty mctSpec (fun comp _ _ => pure (comp.signed, comp.depth.toNat)) dcSpec
     L h t reduce tcb
 
@@ -527,7 +581,7 @@ def initPlanes (ps : Array Plane) : Array SamplePlane :=
 /-- **`Spec.decode`**: the codestream decoded with the specification of every stage (module
 doc), in the fast decoder's order. -/
 def decode (L : Limits) (data : ByteArray) (reduce : Nat := 0) : Except Error SpecImage :=
-  codestreamWith Tier2Spec.decode (·.passes) (fun h t tcb => decodeTile L h data t reduce tcb)
+  codestreamWith Tier2Spec.decode (·.passes) (fun h t tcb => decodeTile L h t reduce tcb)
     (fun _ => 0) initPlanes place
     (fun h info planes _ =>
       { header := h, comps := info.zipWith (fun m p => { info := m, samples := p.samples }) planes })

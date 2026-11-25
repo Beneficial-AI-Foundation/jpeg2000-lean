@@ -1,11 +1,12 @@
 import Spec.Decode
+import Spec.Tier2Equiv.Tile
 
 /-!
 # C9 composed from per-stage equivalences
 
 Plan.md §4 (C9: "implementation = spec: end to end, `decode = Spec.decode` (exact for
 reversible paths; within C8's bound for irreversible ones)"; C3, C7, C8), §5.1 (one
-equivalence theorem per stage, composed into C9); T.800 Annexes B, D, E, F, G, H. Task 7.1a.
+equivalence theorem per stage, composed into C9); T.800 Annexes B, D, E, F, G, H. Tasks 7.1a, 7.1f (real Tier-2 spec wired in).
 
 ## The statement
 
@@ -39,7 +40,10 @@ fast decoder saturates to `Int32` by design (Decisions 5.1, 5.5), and the exact 
 `Spec.Decode` writes the three levels of the fast decoder (`decodeCodestream`,
 `Assemble.decodeTile`, `Assemble.reconstructTileComp`) as skeletons with the stages as
 parameters; the fast decoder is the skeleton instantiated with the fast stages **by `rfl`**
-(`decodeCodestream_eq_with`, `decodeTile_eq_with`, `reconstructTileComp_eq_with`). Both
+(`decodeCodestream_eq_with`, `decodeTile_eq_with`, `reconstructTileComp_eq_with`). The spec's
+tile-component loop runs over the spec Tier-2 result (`Spec.Tier2.TileOut`); under `Tier2Equiv`
+it is the image of the fast one, and `tileComp_image` turns the spec loop over the image into
+`tileCompWith` over the fast result. Both
 decoders therefore run the same loops and the same geometry/limit checks, and C9 is proved
 by relational reasoning through the shared control flow (`ERel.bind`, `ERel.forIn_range`,
 `ERel.forIn_range_idx`) with one relation per pipeline point:
@@ -51,19 +55,21 @@ by relational reasoning through the shared control flow (`ERel.bind`, `ERel.forI
 
 | obligation | status |
 |---|---|
-| `Tier2Equiv` (fast Tier-2 = spec) | holds for the placeholder `Tier2Spec` (`tier2Equiv_placeholder`); OPEN: 7.1b (real B.10 spec) |
-| `Tier2WF` (band labels / code-block rectangles of Tier-2 output) | OPEN: 7.1b |
+| `Tier2Equiv` (fast Tier-2 = the B.10 spec `Spec.Tier2.decodeWithStream`, spec result = `Spec.Tier2Equiv.image` of the fast one, for non-zero sub-sampling) | **proved**: `Spec.Tier2Wire.tier2Equiv` (from `Spec.Tier2Equiv.tier2_equiv_of_siz`, 7.1b/7.1f); the sub-sampling premise comes from `SIZ` parsing (`parse_dxdy`) |
+| spec Tier-2 result in the tile-component loop | **proved**: `tileComp_image` (the spec loop over the image is `tileCompWith` with `decodeBlockSt ∘ blockOf`), `decodeBlock_eq_st` (Tier-1 on a fast code-block = on its image, for in-range segments), `tileCompWith_congr` |
+| `Tier2WF` (band labels / code-block rectangles of Tier-2 output; segment ranges inside the input) | OPEN: 7.1g |
 | `Tier1Equiv` (all code-block styles) | plain mode: C3 = `Spec.Tier1Equiv.c3_plain`, but the glue from `Assemble.decodeBlock` (`tier1Input`, `decodeCodeBlockSegs`, segment-structure validation) to `c3_plain` is not done; OPEN: 7.1c (modes) + glue |
-| `DequantLoopEquiv` (Mallat placement of dequantised code-blocks) | kernels proved (`Quant.revCoeff_eq`, `Quant.irrevCoeff_bound`); OPEN: 7.1d (block loop, `toDec`, reduced-resolution band identity B-15) |
-| `DWT53PlaneEquiv` | 1-D kernel proved (`DWT53.lift1d_eq_sr1d`); OPEN: 7.1d (plane passes, level composition, band locality of `srMulti`) |
-| `DWT97PlaneErr` | model bound proved (`DWT97.qsrMulti_err`); OPEN: 7.1d (fast loops = `qsrMulti`, exact fallback, locality) |
+| `DequantLoopEquiv` (Mallat placement of dequantised code-blocks) | **proved**: `Spec.QuantBlock.dequantLoopEquiv` (7.1d) |
+| `DWT53PlaneEquiv` | **proved**: `Spec.DWTPlane.dwt53PlaneEquiv` (7.1d) |
+| `DWT97PlaneErr` | **proved**: `Spec.DWTPlane.dwt97PlaneErr` (7.1d) |
 | `HeaderWF` (mantissas `< 2^11`; equal transforms on components 0–2 under MCT) | OPEN: 7.1e (header validation of tasks 1.3/1.5) |
 | inverse MCT (RCT/ICT, plane loops) | **proved**: `mct_step` (from `MCT.rctSample_eq`, `MCT.ictSample_eq`, `MCT.ict_c8`, `MCT.map3_get`) |
 | DC shift, clamp, rounding | **proved**: `dc_step` (from `MCT.DcShift.rev_eq`/`irrev_eq`, `MCT.reconIrrev_sat`, `MCT.map1_get`, `Spec.MCT.roundFix_err`) |
 | placement of tiles (`Decode.place`, `Assemble.blit`) | **proved**: `placeEquiv` |
 | header parsing, output geometry, limits, tile iteration, `PPM` chunks, header streams | shared code (definitionally equal on both sides) |
 
-Task 7.1e states C9 unconditionally by discharging the OPEN hypotheses.
+`Spec.Tier2Wire.c9_of_open` is `c9_of_stages` with the proved hypotheses supplied. Task 7.1e
+states C9 unconditionally by discharging the OPEN hypotheses.
 -/
 
 namespace JPEG2000.Spec.Equiv
@@ -71,6 +77,7 @@ namespace JPEG2000.Spec.Equiv
 open JPEG2000 JPEG2000.Bytes JPEG2000.Header JPEG2000.Tier2.Geometry JPEG2000.Tier2.Packet
 open JPEG2000.Spec.Decode
 open JPEG2000.Spec.Tier1 (Coeff)
+open JPEG2000.Spec.Tier2Equiv (blockOf segOf bytesFrom image imageBand bind_ok)
 
 /-- The error is `unsupported`: a valid feature or size the fast decoder deliberately refuses (an
 implementation limit, e.g. more than 31 coded bit-planes, components wider than `Int32`). -/
@@ -208,10 +215,12 @@ theorem decodeTile_eq_with (L : Limits) (h : Header) (data : ByteArray) (t reduc
     (tcb : Option TileCodeBlocks) :
     Assemble.decodeTile L h data t reduce tcb =
       tileWith (fun t comps sat => ({ tile := t, comps, saturated := sat } : Assemble.TileOut))
-        (fun tc d F r p => Assemble.reconstructTileComp L data tc d F r p) (fun x c => x.comps.getD c #[]) #[]
+        (fun tc d F r p => Assemble.reconstructTileComp L data tc d F r p)
+        (fun (x : TileCodeBlocks) c => x.comps.getD c #[]) #[]
         (Plane.zero 0 0) Assemble.inverseMct (fun comp _ F => MCT.DcShift.make comp.signed comp.depth.toNat F)
         (fun dc rev pl => if rev then MCT.dcShiftClampRev dc pl else MCT.dcShiftClampIrrev dc pl)
-        L h t reduce tcb := rfl
+        L h t reduce tcb := by
+  cases tcb <;> rfl
 
 /-- The fast `decodeCodestream` *is* the skeleton `codestreamWith` with the fast stages
 (definitional). -/
@@ -223,6 +232,314 @@ theorem decodeCodestream_eq_with (L : Limits) (data : ByteArray) (reduce : Nat) 
           { header := h, reduce := reduce, comps := info.zipWith (fun m p => { m with plane := p }) planes,
             saturatedBlocks := sat })
         L data reduce := rfl
+
+/-! ## The spec Tier-2 result in the tile-component loop (task 7.1f)
+
+`Spec.decode` reads the spec Tier-2 result (`Spec.Tier2.TileOut`: code-blocks as
+`Spec.Tier2.BlockSt`, segments as byte lists); the fast decoder reads `TileCodeBlocks` (segments
+as byte ranges in the input). Under the Tier-2 equivalence the spec result is the image of the
+fast one (`Spec.Tier2Equiv.image`: per code-block `blockOf`, each segment the bytes of its
+ranges). Here: the spec tile-component loop over the image is `tileCompWith` with
+`decodeBlockSt ∘ blockOf` (`tileComp_image`), and on a code-block whose ranges lie in the input,
+Tier-1 on the fast code-block (`Decode.decodeBlock`, the form of `Tier1Equiv`) is Tier-1 on its
+image (`decodeBlock_eq_st`). -/
+
+/-- Every segment range of a fast code-block lies in `data`. -/
+def segsIn (data : ByteArray) (cb : CodeBlock) : Bool :=
+  cb.segments.all fun s => s.ranges.all fun rg => rg.offset + rg.length ≤ data.size
+
+/-- Bytes of a range inside `a` are unchanged by appending to `a`. -/
+theorem segment_append (a b : ByteArray) (st sp : Nat) (h : sp ≤ a.size) :
+    Spec.MQEquiv.segment (a ++ b) st sp = Spec.MQEquiv.segment a st sp := by
+  have ha : a.size = a.data.toList.length := by rw [Array.length_toList]; rfl
+  simp only [Spec.MQEquiv.segment, ByteArray.data_append, Array.toList_append]
+  by_cases hs : st ≤ a.size
+  · rw [List.drop_append_of_le_length (by omega), List.take_append_of_le_length]
+    simp only [List.length_drop]; omega
+  · simp [show sp - st = 0 by omega]
+
+/-- The bytes appended last, read back at their offset. -/
+theorem segment_new (a b : ByteArray) :
+    Spec.MQEquiv.segment (a ++ b) a.size (a.size + b.size) = b.data.toList := by
+  have ha : a.size = a.data.toList.length := by rw [Array.length_toList]; rfl
+  have hb : b.size = b.data.toList.length := by rw [Array.length_toList]; rfl
+  simp only [Spec.MQEquiv.segment, ByteArray.data_append, Array.toList_append]
+  rw [ha, List.drop_left, Nat.add_sub_cancel_left, hb, List.take_length]
+
+/-- A Tier-1 range segment's bytes in `buf`, as a spec segment. -/
+def segAt (buf : ByteArray) (sg : Tier1.Seg) : Spec.Tier1.Segment :=
+  { data := Spec.MQEquiv.segment buf sg.start sg.stop, passes := sg.passes }
+
+/-- One step of the concatenating fold of `tier1Input`. -/
+def concatStep (data : ByteArray) (acc : ByteArray × Array Tier1.Seg) (s : Segment) :
+    ByteArray × Array Tier1.Seg :=
+  let bs := s.bytes data
+  let off := acc.1.size
+  (acc.1 ++ bs, acc.2.push { start := off, stop := off + bs.size, passes := s.passes })
+
+/-- The invariant of the concatenating fold of `tier1Input`. -/
+theorem foldl_concat (data : ByteArray) : ∀ (l : List Segment) (acc : ByteArray × Array Tier1.Seg),
+    (∀ sg ∈ acc.2.toList, sg.start ≤ sg.stop ∧ sg.stop ≤ acc.1.size) →
+    let res := l.foldl (concatStep data) acc;
+    (∀ sg ∈ res.2.toList, sg.start ≤ sg.stop ∧ sg.stop ≤ res.1.size) ∧
+    res.2.toList.map (segAt res.1) = acc.2.toList.map (segAt acc.1) ++ l.map (segOf data)
+  | [], acc, h => by simpa using h
+  | s :: l, acc, h => by
+    simp only [List.foldl_cons, concatStep]
+    have ih := foldl_concat data l (acc.1 ++ s.bytes data, acc.2.push
+      { start := acc.1.size, stop := acc.1.size + (s.bytes data).size, passes := s.passes }) (by
+        intro sg hsg
+        simp only [Array.toList_push, List.mem_append, List.mem_singleton] at hsg
+        simp only [ByteArray.size_append]
+        rcases hsg with hsg | hsg
+        · have := h sg hsg; omega
+        · subst hsg; simp)
+    refine ⟨ih.1, ?_⟩
+    rw [ih.2]
+    simp only [Array.toList_push, List.map_append, List.map_cons, List.map_nil, List.append_assoc,
+      List.singleton_append, segAt, segment_new]
+    congr 1
+    · apply List.map_congr_left
+      intro sg hsg
+      simp only [segAt]
+      rw [segment_append _ _ _ _ (h sg hsg).2]
+
+/-- A segment held in at most one in-range range: its direct Tier-1 range is valid and holds the
+segment's bytes. -/
+theorem directSeg_ok (data : ByteArray) (s : Segment) (h1 : s.ranges.size ≤ 1)
+    (h2 : ∀ rg ∈ s.ranges, rg.offset + rg.length ≤ data.size) :
+    (Assemble.directSeg s).start ≤ (Assemble.directSeg s).stop ∧
+      (Assemble.directSeg s).stop ≤ data.size ∧ segAt data (Assemble.directSeg s) = segOf data s := by
+  have hb := Spec.Tier2Equiv.segment_bytes data s
+  unfold Assemble.directSeg segAt segOf
+  rw [hb]
+  rcases hr : s.ranges with ⟨l⟩
+  rw [hr] at h1 h2
+  simp only [List.size_toArray] at h1
+  match l, h1, h2 with
+  | [], _, _ => simp [Spec.MQEquiv.segment]
+  | [rg], _, h2 =>
+    have := h2 rg (by simp)
+    simp only [List.getElem?_toArray, List.getElem?_cons_zero, List.flatMap_cons, List.flatMap_nil,
+      List.append_nil, Spec.Tier2Equiv.rb_eq]
+    refine ⟨by omega, this, ?_⟩
+    simp only [Spec.MQEquiv.segment, bytesFrom, TilePart.ByteRange.stop, List.drop_take, Nat.add_sub_cancel_left]
+
+/-- `Assemble.tier1Input` of a code-block with in-range segments: every range valid in its
+buffer, holding the segments' bytes (`segOf`). -/
+theorem tier1Input_ok (data : ByteArray) (cb : CodeBlock) (hin : segsIn data cb = true) :
+    (∀ sg ∈ (Assemble.tier1Input data cb).2.toList,
+      sg.start ≤ sg.stop ∧ sg.stop ≤ (Assemble.tier1Input data cb).1.size) ∧
+    (Assemble.tier1Input data cb).2.toList.map (segAt (Assemble.tier1Input data cb).1) =
+      cb.segments.toList.map (segOf data) := by
+  unfold Assemble.tier1Input
+  split
+  · rename_i hall
+    simp only [segsIn, Array.all_eq_true', decide_eq_true_eq] at hin hall
+    simp only [Array.toList_map, List.mem_map, List.map_map]
+    refine ⟨?_, ?_⟩
+    · rintro sg ⟨s, hs, rfl⟩
+      have hs : s ∈ cb.segments := by simpa using hs
+      have := directSeg_ok data s (hall s hs) (hin s hs)
+      exact ⟨this.1, this.2.1⟩
+    · apply List.map_congr_left
+      intro s hs
+      have hs : s ∈ cb.segments := by simpa using hs
+      exact (directSeg_ok data s (hall s hs) (hin s hs)).2.2
+  · have := foldl_concat data cb.segments.toList (ByteArray.empty, #[]) (by simp)
+    rw [Array.foldl_toList] at this
+    have h2 := this.2
+    simp only [List.map_nil, List.nil_append] at h2
+    exact ⟨this.1, h2⟩
+
+/-- The spec code-block of a fast code-block with in-range segments is that of its spec image. -/
+theorem specCodeBlock_eq (data : ByteArray) (p : CompParams) (r : Nat) (b : Band) (cb : CodeBlock)
+    (hin : segsIn data cb = true) :
+    specCodeBlock data p r b cb = .ok (blockStCodeBlock p r b (blockOf data cb)) := by
+  obtain ⟨h1, h2⟩ := tier1Input_ok data cb hin
+  unfold specCodeBlock Tier2Spec.segments
+  generalize Assemble.tier1Input data cb = x at h1 h2
+  obtain ⟨buf, segs⟩ := x
+  have hany : (segs.any fun sg => decide (sg.start > sg.stop) || decide (sg.stop > buf.size)) = false := by
+    rw [Bool.eq_false_iff]
+    intro hc
+    rw [Array.any_eq_true'] at hc
+    obtain ⟨sg, hs, hc⟩ := hc
+    have := h1 sg (by simpa using hs)
+    dsimp only at this
+    simp only [Bool.or_eq_true, decide_eq_true_eq] at hc
+    omega
+  simp only [hany, Bool.false_eq_true, ↓reduceIte]
+  show Except.ok _ = _
+  simp only [blockStCodeBlock, blockOf, ← h2]
+  rfl
+
+/-- **Tier-1 on a fast code-block = Tier-1 on its spec image** when its ranges lie in the input. -/
+theorem decodeBlock_eq_st (data : ByteArray) (p : CompParams) (r : Nat) (b : Band) (cb : CodeBlock)
+    (hin : segsIn data cb = true) :
+    Decode.decodeBlock data p r b cb = decodeBlockSt p r b (blockOf data cb) := by
+  unfold Decode.decodeBlock
+  rw [specCodeBlock_eq data p r b cb hin]
+  rfl
+
+/-- The spec image of a fast tile-component's Tier-2 result. -/
+def imagePrecs (data : ByteArray) (precs : Array (Array PrecinctOut)) : SpecPrecs :=
+  precs.toList.map fun ps => ps.toList.map fun p => p.bands.toList.map (imageBand data)
+
+/-- Resolution `r` of the image. -/
+theorem imagePrecs_getD (data : ByteArray) (precs : Array (Array PrecinctOut)) (r : Nat) :
+    (imagePrecs data precs).getD r [] =
+      (precs.getD r #[]).toList.map fun p => p.bands.toList.map (imageBand data) := by
+  simp only [imagePrecs, List.getD_eq_getElem?_getD, Array.getD_eq_getD_getElem?, List.getElem?_map,
+    Array.getElem?_toList]
+  cases precs[r]? <;> rfl
+
+/-- **The spec tile-component loop over the spec image** of a fast Tier-2 result is
+`tileCompWith` over the fast result with Tier-1 `decodeBlockSt ∘ blockOf`. -/
+theorem tileComp_image (L : Limits) (data : ByteArray) (tc : TileCompGeom) (depth F reduce : Nat)
+    (precs : Array (Array PrecinctOut)) :
+    Decode.tileComp L tc depth F reduce (imagePrecs data precs) =
+      tileCompWith (initSpec L) (fun p r b cb => decodeBlockSt p r b (blockOf data cb)) collect finSpec
+        tc depth F reduce precs := by
+  unfold Decode.tileComp tileCompWith
+  simp only [imagePrecs_getD, List.forIn_map, Array.forIn_toList]
+  simp only [imagePrecs, List.length_map, Array.length_toList, imageBand,
+    List.forIn_map, Array.forIn_toList]
+  rfl
+
+/-- `forIn` over a list depends only on the body at the list's elements. -/
+theorem list_forIn_congr {m : Type → Type} [Monad m] {α β : Type} (l : List α)
+    (f g : α → β → m (ForInStep β)) (h : ∀ x ∈ l, ∀ b, f x b = g x b) (b : β) :
+    forIn l b f = forIn l b g := by
+  induction l generalizing b with
+  | nil => rfl
+  | cons x xs ih =>
+    simp only [List.forIn_cons, h x List.mem_cons_self]
+    congr 1
+    funext r
+    cases r with
+    | done => rfl
+    | yield c => exact ih (fun y hy => h y (List.mem_cons_of_mem _ hy)) c
+
+/-- `forIn` over an array depends only on the body at the array's elements. -/
+theorem array_forIn_congr {m : Type → Type} [Monad m] {α β : Type} (xs : Array α)
+    (f g : α → β → m (ForInStep β)) (h : ∀ x ∈ xs, ∀ b, f x b = g x b) (b : β) :
+    forIn xs b f = forIn xs b g := by
+  rw [← Array.forIn_toList, ← Array.forIn_toList]
+  exact list_forIn_congr _ f g (fun x hx => h x (by simpa using hx)) b
+
+/-- `tileCompWith` depends on the Tier-1 stage only at the code-blocks it visits. -/
+theorem tileCompWith_congr {σ β O : Type} (init : Nat → Nat → Except Error σ)
+    (dec dec' : CompParams → Nat → Band → CodeBlock → Except Error β)
+    (write : σ → Rect → Nat → Nat → Band → Rect → Quant.BandQuant → Nat → β → Except Error (σ × Bool))
+    (fin : Bool → σ → Rect → Nat → Nat → Except Error (O × Nat))
+    (tc : TileCompGeom) (depth F reduce : Nat) (precs : Array (Array PrecinctOut))
+    (h : ∀ r, ∀ prec ∈ precs.getD r #[], ∀ bo ∈ prec.bands, ∀ cb ∈ bo.blocks, ∀ p b,
+      dec p r b cb = dec' p r b cb) :
+    tileCompWith init dec write fin tc depth F reduce precs =
+      tileCompWith init dec' write fin tc depth F reduce precs := by
+  unfold tileCompWith
+  dsimp only
+  split
+  · rfl
+  · congr 1; funext plane
+    congr 1
+    · congr 1; funext r s
+      congr 1
+      apply array_forIn_congr; intro prec hprec s
+      congr 1
+      apply array_forIn_congr; intro bo hbo s
+      congr 1
+      apply array_forIn_congr; intro cb hcb s
+      rw [h r prec hprec bo hbo cb hcb]
+
+/-- The image of a tile, component `c`, is `imagePrecs` of the fast component. -/
+theorem image_getD (data : ByteArray) (x : TileCodeBlocks) (c : Nat) :
+    (image data x).getD c [] = imagePrecs data (x.comps.getD c #[]) := by
+  simp only [image, List.getD_eq_getElem?_getD, Array.getD_eq_getD_getElem?, List.getElem?_map,
+    Array.getElem?_toList]
+  cases x.comps[c]? <;> rfl
+
+/-! ## Header facts used by the composition -/
+
+/-- Non-zero sub-sampling of a `SIZ` component. -/
+def DxDy (c : Marker.Component) : Prop := c.dx ≠ 0 ∧ c.dy ≠ 0
+
+/-- A `SIZ` component read successfully has non-zero sub-sampling. -/
+theorem readSizComponent_dxdy {r : Reader} {c : Marker.Component} {r' : Reader}
+    (h : Marker.readSizComponent r = .ok (c, r')) : DxDy c := by
+  unfold Marker.readSizComponent at h
+  obtain ⟨⟨s, r1⟩, -, h⟩ := bind_ok h
+  obtain ⟨_, -, h⟩ := bind_ok h
+  obtain ⟨⟨dx, r2⟩, -, h⟩ := bind_ok h
+  obtain ⟨_, h1, h⟩ := bind_ok h
+  obtain ⟨⟨dy, r3⟩, -, h⟩ := bind_ok h
+  obtain ⟨_, h2, h⟩ := bind_ok h
+  unfold Marker.require at h1 h2
+  split at h1 <;> rename_i e1 <;> try cases h1
+  split at h2 <;> rename_i e2 <;> try cases h2
+  cases h
+  simp only [decide_eq_true_eq] at e1 e2
+  exact ⟨e1, e2⟩
+
+/-- `Marker.readArray Marker.readSizComponent` keeps non-zero sub-sampling. -/
+theorem readArray_dxdy : ∀ (n : Nat) (acc : Array Marker.Component) (r : Reader) (out : Array Marker.Component) (r' : Reader),
+    (∀ c ∈ acc.toList, DxDy c) → Marker.readArray Marker.readSizComponent acc n r = .ok (out, r') →
+    ∀ c ∈ out.toList, DxDy c
+  | 0, acc, r, out, r', ha, h => by
+    simp only [Marker.readArray, Except.ok.injEq, Prod.mk.injEq] at h
+    obtain ⟨rfl, -⟩ := h; exact ha
+  | n + 1, acc, r, out, r', ha, h => by
+    simp only [Marker.readArray] at h
+    split at h
+    · cases h
+    · rename_i a r'' hf
+      refine readArray_dxdy n _ _ out r' ?_ h
+      intro c hc
+      simp only [Array.toList_push, List.mem_append, List.mem_singleton] at hc
+      rcases hc with hc | rfl
+      · exact ha c hc
+      · exact readSizComponent_dxdy hf
+
+/-- A parsed `SIZ` has non-zero sub-sampling in every component. -/
+theorem parseSIZ_dxdy {L : Limits} {r : Reader} {s : Marker.SIZ} (h : Marker.parseSIZ L r = .ok s) :
+    ∀ c ∈ s.components.toList, DxDy c := by
+  unfold Marker.parseSIZ at h
+  repeat (obtain ⟨_, _, h⟩ := bind_ok h)
+  cases h
+  refine readArray_dxdy _ _ _ _ _ ?_ (by assumption)
+  simp
+
+/-- See `parseSIZ_dxdy`: the main header's `SIZ`. -/
+theorem parseMainHeader_dxdy {L : Limits} {r : Reader} {mh : Marker.MainHeader} {r' : Reader}
+    (h : Marker.parseMainHeader L r = .ok (mh, r')) : ∀ c ∈ mh.siz.components.toList, DxDy c := by
+  unfold Marker.parseMainHeader at h
+  repeat (obtain ⟨_, _, h⟩ := bind_ok h)
+  split at h
+  split at h
+  · split at h
+    · cases h; exact parseSIZ_dxdy (by assumption)
+    · cases h
+  · cases h
+
+/-- See `parseSIZ_dxdy`: a parsed codestream's `SIZ`. -/
+theorem parseCodestreamIn_dxdy {L : Limits} {data : ByteArray} {rg : Box.ByteRange}
+    {ct : Option Box.Container} {h : Header} (hp : parseCodestreamIn L data rg ct = .ok h) :
+    ∀ c ∈ h.siz.components.toList, DxDy c := by
+  unfold parseCodestreamIn at hp
+  obtain ⟨_, -, hp⟩ := bind_ok hp
+  obtain ⟨⟨mh, r⟩, hm, hp⟩ := bind_ok hp
+  repeat (obtain ⟨_, _, hp⟩ := bind_ok hp)
+  cases hp
+  exact parseMainHeader_dxdy hm
+
+/-- **`SIZ` parsing rejects zero sub-sampling** (T.800 A.5.1, `XRsiz`, `YRsiz` ≥ 1): every
+component of a parsed header has `dx ≠ 0` and `dy ≠ 0`. -/
+theorem parse_dxdy {L : Limits} {data : ByteArray} {h : Header} (hp : Header.parse L data = .ok h) :
+    ∀ comp ∈ h.siz.components.toList, comp.dx ≠ 0 ∧ comp.dy ≠ 0 := by
+  unfold Header.parse at hp
+  obtain ⟨_, -, hp⟩ := bind_ok hp
+  exact parseCodestreamIn_dxdy hp
 
 /-! ## Relations used by the stage hypotheses -/
 
@@ -300,11 +617,18 @@ def PrecsWF (tc : TileCompGeom) (precs : Array (Array PrecinctOut)) : Prop :=
 def ParamsWF (tc : TileCompGeom) : Prop :=
   ∀ st ∈ tc.params.steps, st.mantissa.toNat < 2048
 
-/-- Tier-2 output well-formedness for a tile (`PrecsWF` per component of the tile's
-layout). -/
-def T2WF (h : Header) (tp : TileParams) (x : TileCodeBlocks) : Prop :=
-  ∀ g coding, Progression.Layout.ofHeader h tp.index = .ok (g, coding) →
-    ∀ c, PrecsWF (g.comp c) (x.comps.getD c #[])
+/-- Every code-block of a tile-component's Tier-2 result has its segment ranges inside the input
+(`segsIn`). -/
+def BlocksIn (data : ByteArray) (precs : Array (Array PrecinctOut)) : Prop :=
+  ∀ r, ∀ prec ∈ precs.getD r #[], ∀ bo ∈ prec.bands, ∀ cb ∈ bo.blocks, segsIn data cb = true
+
+/-- Tier-2 output well-formedness for a tile: `PrecsWF` per component of the tile's layout, and
+every code-block's segment ranges inside the input `data` (`BlocksIn`; the fast Tier-1 refuses a
+range outside its buffer, the spec's byte lists have no ranges). -/
+def T2WF (h : Header) (data : ByteArray) (tp : TileParams) (x : TileCodeBlocks) : Prop :=
+  (∀ g coding, Progression.Layout.ofHeader h tp.index = .ok (g, coding) →
+    ∀ c, PrecsWF (g.comp c) (x.comps.getD c #[])) ∧
+  ∀ c, BlocksIn data (x.comps.getD c #[])
 
 /-- The state of the coefficient loop of a tile-component, fast (plane, saturated count) vs
 spec (collected code-blocks): the plane has the rectangle's size, and when nothing
@@ -317,28 +641,34 @@ def LoopRel (F : Nat) (rev : Bool) (pl : Plane) (rect : Rect) (nl n : Nat) (es :
 
 /-! ## The stage hypotheses -/
 
-/-- **Stage hypothesis: Tier-2** (B.9–B.12). The fast packet decoder equals the Tier-2 spec. OPEN
-for a real spec (task 7.1b); for the current placeholder it holds by `rfl`
-(`tier2Equiv_placeholder`). -/
+/-- **Stage hypothesis: Tier-2** (B.9–B.12). For a header whose components have non-zero
+sub-sampling (`SIZ` parsing guarantees it, `parse_dxdy`), the fast packet decoder and the Tier-2
+spec `Spec.Tier2.decodeWithStream` both fail, or both succeed with the spec result the image of
+the fast one (`Spec.Tier2Equiv.image`: same geometry, inclusion, zero bit-planes and passes per
+code-block, each segment the bytes of the fast segment's ranges) and the same pass count.
+Discharged: `Spec.Tier2Wire.tier2Equiv` (from `Spec.Tier2Equiv.tier2_equiv_of_siz`). -/
 def Tier2Equiv : Prop :=
   ∀ (L : Limits) (h : Header) (data : ByteArray) (tp : TileParams)
     (hs : Option Tier2.Headers.HeaderStream) (n : Nat),
-    ERel (· = ·) (Tier2.Headers.decodeWithStream L h data tp hs n) (Tier2Spec.decode L h data tp hs n)
+    (∀ comp ∈ h.siz.components.toList, comp.dx ≠ 0 ∧ comp.dy ≠ 0) →
+    ERel (fun (t : TileCodeBlocks) (s : Spec.Tier2.TileOut) => s.comps = image data t ∧ s.passes = t.passes)
+      (Tier2.Headers.decodeWithStream L h data tp hs n) (Tier2Spec.decode L h data tp hs n)
 
 /-- **Stage hypothesis: Tier-2 output well-formedness.** Every tile the fast Tier-2 decodes has band
-labels and code-block rectangles consistent with the layout (`T2WF`). OPEN: task 7.1b (from
-`Tier2.Geometry` and `Tier2.Packet`). -/
+labels and code-block rectangles consistent with the layout, and segment ranges inside the input
+(`T2WF`). OPEN: task 7.1g (from `Tier2.Geometry` and `Tier2.Packet`). -/
 def Tier2WF : Prop :=
   ∀ (L : Limits) (h : Header) (data : ByteArray) (tp : TileParams)
     (hs : Option Tier2.Headers.HeaderStream) (n : Nat) (x : TileCodeBlocks),
-    Tier2.Headers.decodeWithStream L h data tp hs n = .ok x → T2WF h tp x
+    Tier2.Headers.decodeWithStream L h data tp hs n = .ok x → T2WF h data tp x
 
 /-- **Stage hypothesis: Tier-1, every code-block style** (Annex D). The fast code-block decoder as
 the pipeline calls it (`Assemble.decodeBlock`) and the spec (`Spec.Decode.decodeBlock`,
 `Spec.Tier1.decodeCodeBlock`) agree (`BlockAgree`) or both fail, or the fast one refuses with
 `unsupported` (K > 31). Plain mode is C3 (`Spec.Tier1Equiv.c3_plain`) up to the segment plumbing;
 OPEN: task 7.1c (all modes) and the glue of `Assemble.tier1Input` / `decodeCodeBlockSegs` to
-`c3_plain`. -/
+`c3_plain`. `Spec.decode` runs Tier-1 on the spec Tier-2 code-blocks (`decodeBlockSt`); on a
+code-block with in-range segments the two spec forms agree (`decodeBlock_eq_st`). -/
 def Tier1Equiv : Prop :=
   ∀ (data : ByteArray) (p : CompParams) (r : Nat) (b : Band) (cb : CodeBlock),
     ERel (BlockAgree cb) (Assemble.decodeBlock data p r b cb) (Decode.decodeBlock data p r b cb)
@@ -514,11 +844,13 @@ theorem fin_rel (h53 : DWT53PlaneEquiv) (h97 : DWT97PlaneErr) (F : Nat) (rev : B
 theorem tileComp_rel (hT1 : Tier1Equiv) (hQ : DequantLoopEquiv) (h53 : DWT53PlaneEquiv)
     (h97 : DWT97PlaneErr) (L : Limits) (data : ByteArray) (tc : TileCompGeom)
     (depth F reduce : Nat) (precs : Array (Array PrecinctOut)) (hP : ParamsWF tc)
-    (hW : PrecsWF tc precs) :
+    (hW : PrecsWF tc precs) (hB : BlocksIn data precs) :
     ERel (TCRel F (tc.params.transform == .reversible53))
       (Assemble.reconstructTileComp L data tc depth F reduce precs)
-      (Decode.tileComp L data tc depth F reduce precs) := by
-  rw [reconstructTileComp_eq_with]
+      (Decode.tileComp L tc depth F reduce (imagePrecs data precs)) := by
+  rw [reconstructTileComp_eq_with, tileComp_image,
+    tileCompWith_congr _ _ (Decode.decodeBlock data) _ _ _ _ _ _ _
+      (fun r prec hp bo hbo cb hcb p b => (decodeBlock_eq_st data p r b cb (hB r prec hp bo hbo cb hcb)).symm)]
   exact hQ L _ _ _ _ (hT1 data) _ _ _ tc depth F reduce precs hP hW
     (fun pl es rect nl n m hl => fin_rel h53 h97 F _ pl es rect nl n m hl)
 
@@ -1282,17 +1614,24 @@ theorem dc_step (h : Header) (g : Progression.Layout) (mct : Bool) (b : Prop) (c
       simp only [↓reduceIte] at hwx
       rw [MCT.DcShift.rev_eq dc (MCT.DcShift.make_wf _ _ _ dc hmk), hvw, reconRev_clamp32 _ _ hd1 hd32, hwx]
 
+/-- The Tier-2 results of a tile, fast and spec: both absent, or the spec one's components the
+image of the fast one (`Spec.Tier2Equiv.image`). -/
+def T2Img (data : ByteArray) : Option TileCodeBlocks → Option Spec.Tier2.TileOut → Prop
+  | none, none => True
+  | some x, some s => s.comps = image data x
+  | _, _ => False
+
 /-- **Tile level of C9**: per tile-component reconstruction, MCT and DC shift composed (`TileRel`).
 -/
 theorem tile_rel (hT1 : Tier1Equiv) (hQ : DequantLoopEquiv) (h53 : DWT53PlaneEquiv)
     (h97 : DWT97PlaneErr) (L : Limits) (h : Header) (data : ByteArray) (t reduce : Nat)
-    (tcb : Option TileCodeBlocks)
+    (tcb : Option TileCodeBlocks) (stcb : Option Spec.Tier2.TileOut) (hT : T2Img data tcb stcb)
     (hH : ∀ g coding, Progression.Layout.ofHeader h t = .ok (g, coding) →
       (∀ c, ParamsWF (g.comp c)) ∧
       (coding.mctApplies h.siz → ∀ c, c < 3 → (g.comp c).params.transform = (g.comp 0).params.transform))
-    (hW : ∀ x, tcb = some x → ∀ g coding, Progression.Layout.ofHeader h t = .ok (g, coding) →
-      ∀ c, PrecsWF (g.comp c) (x.comps.getD c #[])) :
-    ERel (TileRel h) (Assemble.decodeTile L h data t reduce tcb) (Decode.decodeTile L h data t reduce tcb) := by
+    (hW : ∀ x, tcb = some x → (∀ g coding, Progression.Layout.ofHeader h t = .ok (g, coding) →
+      ∀ c, PrecsWF (g.comp c) (x.comps.getD c #[])) ∧ ∀ c, BlocksIn data (x.comps.getD c #[])) :
+    ERel (TileRel h) (Assemble.decodeTile L h data t reduce tcb) (Decode.decodeTile L h t reduce stcb) := by
   rw [decodeTile_eq_with]
   unfold Decode.decodeTile tileWith
   cases hl : Progression.Layout.ofHeader h t with
@@ -1309,7 +1648,15 @@ theorem tile_rel (hT1 : Tier1Equiv) (hQ : DequantLoopEquiv) (h53 : DWT53PlaneEqu
   · apply ERel.forIn_range_idx (fun i (a : Array Plane × Nat) (b : Array CellPlane × Nat) =>
       a.1.size = i ∧ PreArr h.siz g (Coding.mctApplies h.siz coding) (a.2 = 0) a.1 b.1)
     · intro c a b ⟨hsz, hab⟩
-      apply ERel.bind (tileComp_rel hT1 hQ h53 h97 L data (g.comp c) _ _ reduce _ (hP c) ?_)
+      refine ERel.bind (R := TCRel (Assemble.fracBitsOf h.siz (Coding.mctApplies h.siz coding) c)
+        ((g.comp c).params.transform == .reversible53)) ?_ ?_
+      · rcases tcb with _ | x <;> rcases stcb with _ | sx <;> simp only [T2Img] at hT
+        · exact tileComp_rel hT1 hQ h53 h97 L data (g.comp c) _ _ reduce #[] (hP c)
+            (fun r hr => by simp at hr) (fun r prec hp => by simp at hp)
+        · obtain ⟨hW1, hW2⟩ := hW x rfl
+          dsimp only
+          rw [hT, image_getD]
+          exact tileComp_rel hT1 hQ h53 h97 L data (g.comp c) _ _ reduce _ (hP c) (hW1 g coding hl c) (hW2 c)
       · intro x y hxy
         apply ERel.pure
         refine ⟨by simp [hsz], ?_⟩
@@ -1317,9 +1664,6 @@ theorem tile_rel (hT1 : Tier1Equiv) (hQ : DequantLoopEquiv) (h53 : DWT53PlaneEqu
         refine ArrRel.push ?_ ?_
         · exact ArrRel.mono hab fun c' a' b' hr => CellsRel.mono hr (fun e => by omega) fun _ _ k => k
         · exact CellsRel.mono hxy (fun e => by omega) fun _ _ k => k
-      · cases tcb with
-        | none => intro r hr; simp at hr
-        | some x => exact hW x rfl g coding hl c
     · exact ⟨rfl, rfl, fun c => CellsRel.zero _ _⟩
   · intro a b ⟨hsz, hab⟩
     -- second loop: DC shift (both branches of the MCT)
@@ -1679,12 +2023,13 @@ def LoopInv (h : Header) (p0 : Array Plane) (a : Array Plane × Nat × Nat × Na
 /-- One iteration of the tile loop after Tier-2: reconstruction and placement. -/
 theorem tail_rel (hT1 : Tier1Equiv) (hQ : DequantLoopEquiv) (h53 : DWT53PlaneEquiv)
     (h97 : DWT97PlaneErr) (hPl : PlaceEquiv) (L : Limits) (h : Header) (data : ByteArray)
-    (t reduce : Nat) (tcb : Option TileCodeBlocks)
+    (t reduce : Nat) (tcb : Option TileCodeBlocks) (stcb : Option Spec.Tier2.TileOut)
+    (hT : T2Img data tcb stcb)
     (hH : ∀ g coding, Progression.Layout.ofHeader h t = .ok (g, coding) →
       (∀ c, ParamsWF (g.comp c)) ∧
       (coding.mctApplies h.siz → ∀ c, c < 3 → (g.comp c).params.transform = (g.comp 0).params.transform))
-    (hW : ∀ x, tcb = some x → ∀ g coding, Progression.Layout.ofHeader h t = .ok (g, coding) →
-      ∀ c, PrecsWF (g.comp c) (x.comps.getD c #[]))
+    (hW : ∀ x, tcb = some x → (∀ g coding, Progression.Layout.ofHeader h t = .ok (g, coding) →
+      ∀ c, PrecsWF (g.comp c) (x.comps.getD c #[])) ∧ ∀ c, BlocksIn data (x.comps.getD c #[]))
     (info : Array DecodedComponent) (p0 pl : Array Plane) (spl : Array SamplePlane) (n sat s2 j : Nat)
     (hpl : PlaneArr (SampleRel h) (sat = 0) pl spl) (hsd : SameDims (initPlanes p0) spl) :
     ERel (StepRel (LoopInv h p0))
@@ -1693,10 +2038,10 @@ theorem tail_rel (hT1 : Tier1Equiv) (hQ : DequantLoopEquiv) (h53 : DWT53PlaneEqu
         let p ← JPEG2000.Decode.place info pl out
         pure (ForInStep.yield (p, n, sat + out.saturated, j)))
       (do
-        let out ← Decode.decodeTile L h data t reduce tcb
+        let out ← Decode.decodeTile L h t reduce stcb
         let p ← Decode.place info spl out
         pure (ForInStep.yield (p, n, s2, j))) := by
-  apply ERel.bind (tile_rel hT1 hQ h53 h97 L h data t reduce tcb hH hW)
+  apply ERel.bind (tile_rel hT1 hQ h53 h97 L h data t reduce tcb stcb hT hH hW)
   intro o so ⟨ht, hout⟩
   have hpl' := hpl.weaken (b' := sat + o.saturated = 0) (fun e => by omega)
   have hout' : OutRel h (sat + o.saturated = 0) o.comps so.comps :=
@@ -1755,10 +2100,11 @@ theorem final_rel (h : Header) (reduce : Nat) (info : Array DecodedComponent) (p
 reduction, `decodeCodestream` and `Spec.decode` are related by `ERel C9Rel`: both fail, or the fast
 decoder refuses with `unsupported`, or both succeed with the same header and geometry and — when no
 code-block saturated — every in-range sample equal (reversible paths) or within C8's per-sample
-bound `cellErr + 1` (irreversible paths). Assumes the open stage obligations `Tier2Equiv`,
+bound `cellErr + 1` (irreversible paths). Assumes the stage obligations `Tier2Equiv`,
 `Tier2WF`, `Tier1Equiv`, `DequantLoopEquiv`, `DWT53PlaneEquiv`, `DWT97PlaneErr`, `HeaderWF`; MCT, DC
-shift and placement are proved here. This is the composition only: C9 itself (task 7.1e) discharges
-the hypotheses. -/
+shift, placement and the sub-sampling premise of `Tier2Equiv` (`parse_dxdy`) are proved here. This
+is the composition only: `Spec.Tier2Wire.c9_of_open` supplies the proved hypotheses, C9 itself
+(task 7.1e) discharges the rest. -/
 theorem c9_of_stages (hT2 : Tier2Equiv) (hT2w : Tier2WF) (hT1 : Tier1Equiv) (hQ : DequantLoopEquiv)
     (h53 : DWT53PlaneEquiv) (h97 : DWT97PlaneErr) (hHd : HeaderWF) :
     ∀ (L : Limits) (data : ByteArray) (reduce : Nat),
@@ -1795,40 +2141,28 @@ theorem c9_of_stages (hT2 : Tier2Equiv) (hT2w : Tier2WF) (hT1 : Tier1Equiv) (hQ 
         | none =>
           simp only [Option.isSome_none, Bool.false_eq_true, ↓reduceIte]
           try simp only [pure_bind]
-          exact tail_rel hT1 hQ h53 h97 placeEquiv L h data t reduce none (hH t)
+          exact tail_rel hT1 hQ h53 h97 placeEquiv L h data t reduce none none trivial (hH t)
             (fun x hx => by simp at hx) info planes0 pl spl n sat _ j hpl hsd
         | some tp =>
           by_cases hti : tp.index = t
           · simp only [hti, ↓reduceIte, Option.isSome_some]
             try simp only [pure_bind]
             apply ERel.bind_same; intro hs
-            apply ERel.bind ((hT2 L h data tp hs n).and_left (hT2w L h data tp hs n))
-            intro x y ⟨hxy, hwf⟩
-            subst hxy
+            apply ERel.bind ((hT2 L h data tp hs n (parse_dxdy hp)).and_left (hT2w L h data tp hs n))
+            intro x y ⟨⟨hxy, hpass⟩, hwf⟩
             try simp only [pure_bind]
-            refine tail_rel hT1 hQ h53 h97 placeEquiv L h data t reduce (some x) (hH t) ?_ info planes0 pl spl
-              _ sat _ _ hpl hsd
-            intro x' hx' g coding hl c
+            rw [hpass]
+            refine tail_rel hT1 hQ h53 h97 placeEquiv L h data t reduce (some x) (some y) hxy (hH t) ?_ info
+              planes0 pl spl _ sat _ _ hpl hsd
+            intro x' hx'
             cases hx'
-            exact hwf g coding (hti ▸ hl) c
+            exact ⟨fun g coding hl c => hwf.1 g coding (hti ▸ hl) c, hwf.2⟩
           · simp only [hti, ↓reduceIte, Option.isSome_none, Bool.false_eq_true]
             try simp only [pure_bind]
-            exact tail_rel hT1 hQ h53 h97 placeEquiv L h data t reduce none (hH t)
+            exact tail_rel hT1 hQ h53 h97 placeEquiv L h data t reduce none none trivial (hH t)
               (fun x hx => by simp at hx) info planes0 pl spl n sat _ j hpl hsd
       · exact ⟨rfl, rfl, hinit.weaken (fun _ => trivial), SameDims.refl _⟩
     · intro a b hi
       exact final_rel h reduce info planes0 hsz0 (fun c hc => ⟨(hdims0 c hc).1, (hdims0 c hc).2.1⟩) a b hi
-
-/-! ## Discharged hypotheses -/
-
-/-- `Tier2Equiv` holds for the placeholder `Tier2Spec.decode` (it is the fast decoder). Must
-be re-proved when task 7.1b replaces the placeholder. -/
-theorem tier2Equiv_placeholder : Tier2Equiv := by
-  intro L h data tp hs n
-  show ERel _ (Tier2.Headers.decodeWithStream L h data tp hs n)
-    (Tier2.Headers.decodeWithStream L h data tp hs n)
-  cases Tier2.Headers.decodeWithStream L h data tp hs n with
-  | error e => trivial
-  | ok x => rfl
 
 end JPEG2000.Spec.Equiv

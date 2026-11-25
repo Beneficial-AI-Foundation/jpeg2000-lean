@@ -34,6 +34,7 @@ import Spec.QuantBlock.Mallat
 import Spec.QuantBlock.Write
 import Spec.QuantBlock.Step
 import Spec.QuantBlock
+import Spec.Tier2Wire
 import Spec.Tier1Equiv.Basic
 import Spec.Tier1Equiv.Rel
 import Spec.Tier1Equiv.Nb
