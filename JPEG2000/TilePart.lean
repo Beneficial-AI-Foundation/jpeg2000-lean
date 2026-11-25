@@ -35,7 +35,8 @@ Strictness choices (Part 1; OpenJPEG 2.5.3 `opj_j2k_read_sot`/`read_ppt`/`read_p
 
 * Strict like OpenJPEG: `Isot` < number of tiles; `TPsot` of a tile = the number of its
   tile-parts seen so far (A.4.2: tile-parts of a tile appear in `TPsot` order; this also
-  rules out duplicates); `TPsot < TNsot` when `TNsot ≠ 0`; `Psot` is 0 or ≥ 14; `Zppm`
+  rules out duplicates); `TPsot < TNsot` when `TNsot ≠ 0` (but see the `TNsot` correction
+  below; `TPsot > TNsot` is always malformed); `Psot` is 0 or ≥ 14; `Zppm`
   unique (main header), `Zppt` unique per tile (across its tile-parts, as OpenJPEG);
   `PPT` forbidden when the main header has `PPM` (A.7.4); a PLT ending inside a packet
   length is malformed.
@@ -54,6 +55,20 @@ Strictness choices (Part 1; OpenJPEG 2.5.3 `opj_j2k_read_sot`/`read_ppt`/`read_p
   Not every tile needs a tile-part (only tiles present are returned); TLM entries are not
   cross-checked against the tile-parts, nor the number of PPM chunks against the number of
   tile-parts (task 4.5).
+* **`TNsot` correction** (task 1.9; OpenJPEG's `m_nb_tile_parts_correction`, decided once
+  per codestream in `opj_j2k_read_tile_header` via `opj_j2k_need_nb_tile_parts_correction`):
+  some encoders write `TNsot` one too small (`issue208.jp2`, `issue559-eci-090-CIELab.jp2`:
+  `TNsot = 5` with 6 tile-parts). The decision is taken at the *first completion*: the
+  first tile-part in stream order whose `TPsot + 1` equals its tile's `TNsot` (the last
+  nonzero `TNsot` seen for the tile, this tile-part included). The correction is on iff
+  that `TNsot ≠ 1` (OpenJPEG skips the check for a single declared tile-part) and the
+  tile has a further tile-part (necessarily `TPsot = TNsot`) declaring the same `TNsot`
+  (OpenJPEG's look-ahead tests `TPsot == TNsot` on that tile's next `SOT`). With the
+  correction on, every nonzero `TNsot` of the codestream counts as `TNsot + 1` (OpenJPEG
+  increments all tiles' counts); without it, a tile-part with `TPsot = TNsot` is an error
+  (via the exact tile-part count). `parseSOT` therefore accepts `TPsot ≤ TNsot`;
+  `TPsot > TNsot` (two or more too small) stays malformed. `Tile.tnsot` is the corrected
+  count.
 -/
 
 namespace JPEG2000.TilePart
@@ -193,7 +208,8 @@ structure Tile where
   index : Nat
   /-- The tile-parts, sorted by `TPsot` (= their stream order). -/
   parts : Array TilePartHeader
-  /-- `TNsot` as declared by some tile-part (all nonzero values agree), or 0 if none. -/
+  /-- `TNsot` as declared by some tile-part (all nonzero values agree), plus 1 when the
+  codestream-wide `TNsot` correction is on (module doc), or 0 if none declared. -/
   tnsot : Nat
   /-- The `Ippt` ranges of all the tile's `PPT`s, sorted by `Zppt`. -/
   ppt : Array ByteRange
@@ -233,7 +249,9 @@ def numTiles (s : SIZ) : Nat := numTilesX s * numTilesY s
 /-! ## Segment parsers -/
 
 /-- Parses a SOT body (T.800 A.4.2): exactly 8 bytes (`Lsot = 10`); checks
-`Isot ≤ 65534`, `Psot = 0 ∨ Psot ≥ 14`, `TPsot ≤ 254`, `TPsot < TNsot` when `TNsot ≠ 0`. -/
+`Isot ≤ 65534`, `Psot = 0 ∨ Psot ≥ 14`, `TPsot ≤ 254`, `TPsot ≤ TNsot` when `TNsot ≠ 0`
+(`TPsot = TNsot` only survives with the codestream-wide `TNsot` correction, decided by
+`parseTileParts`; see the module doc). -/
 def parseSOT (r : Reader) : Except Error SOT := do
   require r (r.remaining = 8) s!"Lsot = {r.remaining + 2}, expected 10"
   let (isot, r1) ← r.u16be
@@ -244,7 +262,7 @@ def parseSOT (r : Reader) : Except Error SOT := do
   require r (isot ≠ 0xFFFF) "Isot = 65535"
   require r (psot = 0 ∨ psot ≥ 14) s!"Psot = {psot} (0 or ≥ 14)"
   require r (tpsot ≠ 255) "TPsot = 255"
-  require r (tnsot = 0 ∨ tpsot < tnsot) s!"TPsot = {tpsot} ≥ TNsot = {tnsot}"
+  require r (tnsot = 0 ∨ tpsot ≤ tnsot) s!"TPsot = {tpsot} > TNsot = {tnsot}"
   return { isot, psot, tpsot, tnsot }
 
 /-- Reads one TLM entry with `st` tile-index bytes and a 2- or 4-byte length. -/
@@ -488,6 +506,9 @@ structure State where
   total : Nat
   /-- POC entries over the main header and the tile-part headers read so far. -/
   pocEntries : Nat
+  /-- The first completion (module doc, `TNsot` correction): the tile index and its
+  `TNsot` at the first tile-part with `TPsot + 1 = TNsot`, if one was read. -/
+  firstDone : Option (Nat × Nat) := none
 
 /-- Whether the reader's data ends with `EOC` (`0xFF 0xD9` as the last two bytes before
 `stop`). -/
@@ -527,8 +548,14 @@ def readTilePart (c : Ctx) (st : State) (r : Reader) : Except Error (State × Re
   let part : TilePartHeader :=
     { sot, pos := start, segments := acc.segments, markers := acc.markers,
       data := { offset := rData.pos, length := rData.remaining } }
+  -- The tile's `TNsot` so far (OpenJPEG's `m_nb_tile_parts` before any correction).
+  let tn := if sot.tnsot ≠ 0 then sot.tnsot.toNat
+    else prev.foldl (fun a p => if p.sot.tnsot ≠ 0 then p.sot.tnsot.toNat else a) 0
+  let firstDone := match st.firstDone with
+    | some d => some d
+    | none => if tn ≠ 0 ∧ sot.tpsot.toNat + 1 = tn then some (i, tn) else none
   return ({ parts := st.parts.modify i (·.push part), total := st.total + 1,
-            pocEntries := acc.pocEntries }, rNext)
+            pocEntries := acc.pocEntries, firstDone }, rNext)
 
 /-- The tile-part loop: tile-parts until `EOC` (bytes after `EOC` are ignored). `fuel`
 starts at the remaining byte count; every tile-part consumes ≥ 12 bytes. -/
@@ -552,34 +579,48 @@ def partPlt (p : TilePartHeader) : Except Error (Array Nat) := do
   let plts ← sortUnique PLT.zplt (.atOffset .marker p.pos) "Zplt" plts
   return plts.foldl (fun acc x => acc ++ x.lengths) #[]
 
-/-- Assembles a tile from its tile-parts: checks the tile-part count against `TNsot`,
-merges `PPT` (sorted by `Zppt`, unique) and `PLT` data. -/
-def assembleTile (i : Nat) (parts : Array TilePartHeader) : Except Error Tile := do
+/-- Whether the codestream-wide `TNsot` correction is on (module doc), from the first
+completion recorded by the tile-part loop and the tile-parts per tile. -/
+def tnsotCorrection (parts : Array (Array TilePartHeader)) : Option (Nat × Nat) → Bool
+  | none => false
+  | some (i, tn) =>
+    tn ≠ 1 && ((parts[i]?.bind (·[tn]?)).any fun p => p.sot.tnsot.toNat = tn)
+
+/-- Assembles a tile from its tile-parts: checks the tile-part count against `TNsot`
+(read as `TNsot + 1` when `corr`, the `TNsot` correction, is on), merges `PPT` (sorted by
+`Zppt`, unique) and `PLT` data. -/
+def assembleTile (corr : Bool) (i : Nat) (parts : Array TilePartHeader) :
+    Except Error Tile := do
   let loc : Location := .atOffset .marker ((parts[0]?.map (·.pos)).getD 0)
-  let tn := parts.foldl (fun a p => if p.sot.tnsot ≠ 0 then p.sot.tnsot.toNat else a) 0
+  let declared := parts.foldl (fun a p => if p.sot.tnsot ≠ 0 then p.sot.tnsot.toNat else a) 0
+  let tn := if declared ≠ 0 ∧ corr then declared + 1 else declared
   if tn ≠ 0 ∧ tn ≠ parts.size then
-    throw (.malformed loc s!"tile {i}: {parts.size} tile-parts, TNsot = {tn}")
+    let note := if corr then s!" (corrected to {tn})"
+      else if parts.size = tn + 1 then " (TPsot = TNsot without the TNsot correction)"
+      else ""
+    throw (.malformed loc s!"tile {i}: {parts.size} tile-parts, TNsot = {declared}{note}")
   let ppts := parts.foldl (fun acc p =>
     acc ++ p.segments.filterMap fun | .ppt x => some x | _ => none) #[]
   let ppts ← sortUnique PPT.zppt loc "Zppt" ppts
   let plt ← parts.foldlM (fun acc p => do return acc ++ (← partPlt p)) #[]
   return { index := i, parts, tnsot := tn, ppt := ppts.map PPT.body, plt }
 
-/-- Assembles the tiles `i, i+1, …` that have tile-parts (structural on the count). -/
-def assembleTiles (L : Limits) (parts : Array (Array TilePartHeader)) :
+/-- Assembles the tiles `i, i+1, …` that have tile-parts (structural on the count); `corr`:
+the `TNsot` correction is on. -/
+def assembleTiles (L : Limits) (corr : Bool) (parts : Array (Array TilePartHeader)) :
     Nat → Nat → Nat → Array Tile → Except Error (Array Tile)
   | 0, _, _, acc => .ok acc
   | n + 1, i, packets, acc =>
     let ps := parts[i]?.getD #[]
-    if ps.isEmpty then assembleTiles L parts n (i + 1) packets acc
+    if ps.isEmpty then assembleTiles L corr parts n (i + 1) packets acc
     else
-      match assembleTile i ps with
+      match assembleTile corr i ps with
       | .error e => .error e
       | .ok t =>
         let packets := packets + t.plt.size
         match L.check (.atOffset .marker ((ps[0]?.map (·.pos)).getD 0)) .packets packets with
         | .error e => .error e
-        | .ok () => assembleTiles L parts n (i + 1) packets (acc.push t)
+        | .ok () => assembleTiles L corr parts n (i + 1) packets (acc.push t)
 
 /-- Reads every tile-part from the reader (positioned at the first `SOT`, as returned by
 `parseMainHeader`) up to `EOC`, and groups them into tiles sorted by index (only tiles with
@@ -592,6 +633,6 @@ def parseTileParts (L : Limits) (mh : MainHeader) (r : Reader) : Except Error (A
   let st0 : State := { parts := Array.replicate n #[], total := 0,
                        pocEntries := mh.poc.foldl (fun a p => a + p.entries.size) 0 }
   let st ← tilePartLoop c r.remaining st0 r
-  assembleTiles L st.parts n 0 0 #[]
+  assembleTiles L (tnsotCorrection st.parts st.firstDone) st.parts n 0 0 #[]
 
 end JPEG2000.TilePart

@@ -457,13 +457,6 @@ def tileChecks : List (String × Nat × List String × List (Nat × Nat × Nat �
     ("nonregression/Bretagne2.j2k", 24,
       List.replicate 3 "1 6 5 5 0 1 [4/4 5/5 6/6 7/7 7/7 7/7] 0 2 [0/8 0/9 0/9 0/10 0/9 0/9 0/10 0/9 0/9 0/10 0/9 0/9 0/10 0/9 0/9 0/10] 0", []) ]
 
-/-- Files expected to fail in `TilePart.parseTileParts` until it adopts OpenJPEG's `TNsot`
-correction (these encoders write `TNsot` one too small; `opj_j2k_read_sot`'s
-`m_nb_tile_parts_correction`). Reported as XFAIL, not counted; a parse that succeeds is
-compared normally. -/
-def xfailTNsot : List String :=
-  ["nonregression/issue208.jp2", "nonregression/issue559-eci-090-CIELab.jp2"]
-
 /-- Corpus root. -/
 def corpusDir : System.FilePath := "corpus/files/openjpeg-data/input"
 
@@ -482,22 +475,7 @@ def corpus : IO Nat := do
     checked := checked + 1
     let data ← IO.FS.readBinFile p
     match parse Limits.default data with
-    | .error e =>
-      if xfailTNsot.contains row.file then
-        IO.println s!"  header: XFAIL {row.file}: {e}"
-        -- The main-header merge alone must still match `opj_dump`.
-        let main := do
-          let c ← Box.parseFile Limits.default data
-          let r ← rangeReader data { offset := c.codestream.start, length := c.codestream.len }
-          let (mh, _) ← parseMainHeader Limits.default r
-          return (← mainCoding mh)
-        match main with
-        | .error e => f := f + (← expect s!"{row.file}: main header: {e}" false)
-        | .ok d =>
-          let got := rle (d.comps.toList.map compStr)
-          f := f + (← expect s!"{row.file}: main-header components {got} ≠ {row.comps}"
-            (got == row.comps))
-      else f := f + (← expect s!"{row.file}: {e}" false)
+    | .error e => f := f + (← expect s!"{row.file}: {e}" false)
     | .ok h =>
       f := f + (← expect s!"{row.file}: tile line {tileStr h} ≠ {row.tile}" (tileStr h == row.tile))
       let got := rle (h.defaults.comps.toList.map compStr)
