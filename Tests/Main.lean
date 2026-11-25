@@ -2,6 +2,7 @@ import JPEG2000
 import Spec
 import Encode
 import Tests.Basic
+import Tests.Bytes
 
 /-!
 # Test runner
@@ -23,7 +24,8 @@ structure Suite where
 /-- Registered test suites. -/
 def suites : List Suite :=
   [ { name := "smoke", run := return 0 },
-    { name := "basic", run := JPEG2000.Tests.Basic.run } ]
+    { name := "basic", run := JPEG2000.Tests.Basic.run },
+    { name := "bytes", run := JPEG2000.Tests.Bytes.run } ]
 
 end JPEG2000.Tests
 

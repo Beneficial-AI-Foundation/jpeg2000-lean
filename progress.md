@@ -43,7 +43,7 @@ Plan.md §7 row 0, §3 ground rules, §8, §12, §13 "First steps". Exit: **M0**
 | 0.3 | Hygiene guard adapted from safe-pdf: forbidden constructs in `JPEG2000/`, `Spec/` (Plan §3 rule 1), `sorry` anywhere; `#print axioms` check over the theorems listed in `scripts/axioms.lean` | 0.1 | `scripts/check-hygiene.sh`, `scripts/hygiene.py`, `scripts/axioms.lean` | new | done (2026-11-25) |
 | 0.4 | CI on Linux + macOS: pinned actions and elan, build, tests, hygiene guard, Python lint; corpus fetch + verify as a separate cached job | 0.1 | `.github/workflows/ci.yml` | new | done (2026-11-25) |
 | 0.5 | Corpus: `corpus/manifest.json` (T.803 profile-0/1 codestreams + reference decodes from `openjpeg-data`, pinned commit, SHA-256 per file, licence noted; a benchmark set per Plan §8.4), `scripts/fetch-corpus.py` (stdlib only, verifies every hash, `--check`), `docs/corpus.md` (sources, licences, what is committed) | — | `corpus/manifest.json`, `scripts/fetch-corpus.py`, `docs/corpus.md` | new | done (2026-11-25) |
-| 0.6 | OpenJPEG baseline: `scripts/bench-openjpeg.sh` (single- and multi-threaded `opj_decompress` timings over the benchmark set, median of N runs, machine info), first numbers recorded in `docs/performance.md` as the Plan §6 targets | 0.5 | `scripts/bench-openjpeg.sh`, `docs/performance.md` | new | todo |
+| 0.6 | OpenJPEG baseline: `scripts/bench-openjpeg.sh` (single- and multi-threaded `opj_decompress` timings over the benchmark set, median of N runs, machine info), first numbers recorded in `docs/performance.md` as the Plan §6 targets | 0.5 | `scripts/bench-openjpeg.sh`, `docs/performance.md` | new | | done (2026-11-25) |
 | 0.7 | M0 check: CI green on the PR, `fetch-corpus.py --check` passes, baselines in `docs/performance.md` | 0.1–0.6 | — | solo | todo |
 Exit criterion checked: [ ]
 
@@ -51,7 +51,7 @@ Exit criterion checked: [ ]
 Plan.md §7 row 1, §3, Annex A/I. Exit: **M1**: every T.803 stream and every corpus file parses to a header identical to OpenJPEG's dump; parse ∘ serialise round trip proved for marker segments.
 | ID | Task | Needs | Owns | Par | Status |
 |---|---|---|---|---|---|
-| 1.1 | Byte reader (big-endian, bounds-proved), packet-header bit reader with the `0xFF` bit-stuffing rule, `ByteArray`-backed `Int32` plane type with proved-bounds `uget`/`uset` | 0.2 | `JPEG2000/Bytes.lean`, `Tests/Bytes.lean` | new | todo |
+| 1.1 | (landed on `phase-0-infra`, PR #1) Byte reader (big-endian, bounds-proved), packet-header bit reader with the `0xFF` bit-stuffing rule, `ByteArray`-backed `Int32` plane type with proved-bounds `uget`/`uset` | 0.2 | `JPEG2000/Bytes.lean`, `Tests/Bytes.lean` | new | | done (2026-11-25) |
 | 1.2 | JP2/JPX box parser (Annex I): box headers incl. XL boxes, signature/ftyp/jp2h (ihdr, colr, pclr, cmap, cdef, bpcc, res ignored)/jp2c; raw J2K detection | 1.1 | `JPEG2000/Box.lean`, `Tests/Box.lean` | new | todo |
 | 1.3 | Main-header marker segments (Annex A): SIZ, COD/COC, QCD/QCC, RGN, POC, COM, CAP/CRG tolerated; typed records | 1.1 | `JPEG2000/Marker.lean`, `Tests/Marker.lean` | new | todo |
 | 1.4 | Tile-part markers SOT/SOD/EOC, PPM/PPT/PLT/TLM, tile-part assembly into tiles (Psot=0, out-of-order parts, TNsot) | 1.3 | `JPEG2000/TilePart.lean`, `Tests/TilePart.lean` | new | todo |
@@ -175,12 +175,21 @@ Exit criterion checked: [ ]
 * Lean MCP (`lean_*`) tools were not available to subagents in this session (server not registered for this checkout yet); they fall back to `lake env lean`.
 * Corpus: raw.githubusercontent.com and `gh api` work through the sandbox proxy. `p0_03` = `p0_15` byte-identical (T.803 erratum); `p0_13` has 257 components (OpenJPEG compares only 4). Class-0 thresholds in OpenJPEG's conformance CMake are commented out (it only runs class 1).
 
+* OpenJPEG bench: `.raw` output is refused for sub-sampled streams (`p1_03`); `scripts/bench-openjpeg.sh` falls back to `.tif` then `.pgx`. `exec python3` at a script's end skips its `trap` cleanup — call it plainly. `lscpu` shows no model name in this VM (aarch64, 8 cores).
+* Lean v4.36 `ByteArray`: `uget` needs `i.toNat < a.size` on `USize` and core has no `ByteArray.size < USize.size` lemma, so `Plane` uses `get`/`set` with `Nat` index + proof (compiled to unchecked `fget`/`fset`). Core lacks `ByteArray.size_set`/`get_set`/`getElem_push`: prove via `cases a; simp [ByteArray.set, ByteArray.size]` + `Array.getElem_set`/`Array.getElem_push`. `(ByteArray.emptyWithCapacity n).size = 0` is `rfl`.
+* Byte split/join proofs: `UInt32.toNat_inj.mp`, then `simp [UInt32.toNat_add, UInt32.toNat_mul, UInt32.toNat_shiftRight, Nat.shiftRight_eq_div_pow]`, then `omega`; write constants as `(256 : UInt32)`. Combining bytes with `+`/`*` (not `|||`/`<<<`) keeps proofs in `omega`.
+* `if_pos`/`if_neg`/`dif_pos`/`if_true` are deprecated in v4.36: use `↓reduceIte`/`↓reduceDIte` or `simp (disch := omega)`. `bv_decide` is unusable (relies on `Lean.ofReduceBool`).
+* `JPEG2000.Bytes.BitReader` (B.10.1): after `0xFF` the next byte gives 7 bits; `align` after a `0xFF` byte also consumes the stuffed byte (as `opj_bio_inalign`); reading past the end is `truncated` (OpenJPEG reads zeros).
+
 ## Decisions and deviations from the design document
 * 0.1: three libraries (`JPEG2000`, `Spec`, `Encode`) with one umbrella each, all default targets; `Tests` is a separate lib built only via `lake build tests`. `.mcp.json` pins `lean-lsp-mcp==0.33.0` with `lean_build` disabled (as bib-lean).
 
 * 0.2: `Error.Stage` gains `decode` (argument checks before any stage). Defaults that are judgement calls, not T.800 bounds: image side 2^17, 2^22 code-blocks/precincts, 255 passes per code-block, box nesting 8 — revisit against the corpus.
 * 0.3: the guard also forbids `axiom` declarations and `native_decide`, and fails on unlisted theorems in `JPEG2000/`, `Spec/` (not `Encode/`).
 * 0.5 (Plan §10 open question "Licensing of conformance files", resolved for M0): fetch-only. The T.803 files carry a 2002 non-assertion notice limited to conformance testing (not an open licence; `COPYRIGHT` is fetched alongside); openjpeg-data nonregression files have no stated licence. Only `corpus/manifest.json` is committed. Source pinned at `uclouvain/openjpeg-data@39524bd`, thresholds from `uclouvain/openjpeg@8314119` `tests/conformance/CMakeLists.txt`.
+
+* 1.1: `Plane` cells via `ByteArray.get`/`set` with proofs, not `uget`/`uset` (Plan §6.2 says `uget`/`uset`); revisit in Phase 8 with a `data.size < USize.size` invariant if profiling shows it matters.
+* 0.6: OpenJPEG baseline times include process start-up and output write (no decode-only flag); see `docs/performance.md`.
 
 ## Blocked / questions for the human
 
@@ -190,3 +199,4 @@ Exit criterion checked: [ ]
 * 2026-11-25 — wave 0 (phase 0, PR #1): ledger bootstrapped from Plan.md §7; draft PR #1 opened; commit "wave 0: ledger"
 * 2026-11-25 — wave 1 (phase 0, PR #1): 0.1 done (solo: Lake skeleton, CLAUDE.md, test runner; `lake build && lake build tests && lake exe tests` green); commit "wave 1: 0.1 — Lake skeleton and CLAUDE.md"
 * 2026-11-25 — wave 2 (phase 0, PR #1): 0.2, 0.3, 0.4, 0.5 done (Limits/Error + 4 theorems, hygiene guard, CI Linux+macOS, corpus 132 files verified); commit "wave 2: 0.2–0.5 — limits, guard, CI, corpus"
+* 2026-11-25 — wave 3 (phase 0, PR #1): 0.6 done (OpenJPEG 2.5.3 baseline, 15/15 files), 1.1 done (Bytes: Reader/BitReader/Plane, 20 theorems; landed on phase-0 branch); commit "wave 3: 0.6, 1.1 — OpenJPEG baseline, byte/bit readers"

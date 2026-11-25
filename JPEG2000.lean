@@ -1,5 +1,6 @@
 import JPEG2000.Error
 import JPEG2000.Limits
+import JPEG2000.Bytes
 
 /-!
 # jpeg2000-lean

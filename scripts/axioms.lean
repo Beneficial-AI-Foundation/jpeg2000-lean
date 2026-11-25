@@ -44,3 +44,25 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Limits.check_eq_ok_iff
 #print axioms JPEG2000.Limits.checkLe_eq_error
 #print axioms JPEG2000.Limits.strict_le_default
+
+-- Phase 1, task 1.1: bytes (JPEG2000/Bytes.lean)
+#print axioms JPEG2000.Bytes.Reader.pos_le_size
+#print axioms JPEG2000.Bytes.Reader.u8_pos
+#print axioms JPEG2000.Bytes.Reader.u16be_pos
+#print axioms JPEG2000.Bytes.Reader.u32be_pos
+#print axioms JPEG2000.Bytes.Reader.u64be_pos
+#print axioms JPEG2000.Bytes.Reader.skip_pos
+#print axioms JPEG2000.Bytes.Reader.take_spec
+#print axioms JPEG2000.Bytes.Reader.u8_error
+#print axioms JPEG2000.Bytes.BitReader.load_pos
+#print axioms JPEG2000.Bytes.BitReader.bit_pos
+#print axioms JPEG2000.Bytes.BitReader.bitsAux_pos
+#print axioms JPEG2000.Bytes.BitReader.bits_pos
+#print axioms JPEG2000.Bytes.BitReader.align_pos
+#print axioms JPEG2000.Bytes.size_pushZeros
+#print axioms JPEG2000.Bytes.get_pushZeros
+#print axioms JPEG2000.Bytes.Plane.zero_dims
+#print axioms JPEG2000.Bytes.Plane.set_dims
+#print axioms JPEG2000.Bytes.Plane.get_set_self
+#print axioms JPEG2000.Bytes.Plane.get_set_ne
+#print axioms JPEG2000.Bytes.Plane.get_zero
