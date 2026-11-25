@@ -38,7 +38,7 @@ States: none · draft · awaiting-ci · ready (<date>) · changes-requested · m
 Plan.md §7 row 0, §3 ground rules, §8, §12, §13 "First steps". Exit: **M0**: CI green; `scripts/fetch-corpus.py` verifies every file; OpenJPEG baseline numbers recorded.
 | ID | Task | Needs | Owns | Par | Status |
 |---|---|---|---|---|---|
-| 0.1 | Lake skeleton adapted from safe-pdf: `lean-toolchain` (v4.36.0), `lakefile.lean` (lib `JPEG2000`, lib `Spec`, lib `Encode`, lib `Tests` by globs, exe `tests`; `autoImplicit = false`), umbrella `JPEG2000.lean`/`Spec.lean`/`Encode.lean`, `Tests/Main.lean` runner (suite list, nonzero exit on failure), `.gitignore` (`.lake/`, `corpus/*` except manifest), `CLAUDE.md` (commands, concurrency, registries, conventions, Lean MCP rule, attribution), `.mcp.json` | — | `lean-toolchain`, `lakefile.lean`, `JPEG2000.lean`, `Spec.lean`, `Encode.lean`, `Tests/Main.lean`, `.gitignore`, `CLAUDE.md`, `.mcp.json` | solo | todo |
+| 0.1 | Lake skeleton adapted from safe-pdf: `lean-toolchain` (v4.36.0), `lakefile.lean` (lib `JPEG2000`, lib `Spec`, lib `Encode`, lib `Tests` by globs, exe `tests`; `autoImplicit = false`), umbrella `JPEG2000.lean`/`Spec.lean`/`Encode.lean`, `Tests/Main.lean` runner (suite list, nonzero exit on failure), `.gitignore` (`.lake/`, `corpus/*` except manifest), `CLAUDE.md` (commands, concurrency, registries, conventions, Lean MCP rule, attribution), `.mcp.json` | — | `lean-toolchain`, `lakefile.lean`, `JPEG2000.lean`, `Spec.lean`, `Encode.lean`, `Tests/Main.lean`, `.gitignore`, `CLAUDE.md`, `.mcp.json` | solo | done (2026-11-25) |
 | 0.2 | `Limits` (image area, components, tiles, tile-parts, code-blocks, layers, decomposition levels, bytes, per-stage work) with documented defaults, and `Error` (`truncated`, `malformed`, `unsupported`, `limitExceeded`, … with a location/stage) + a unit suite | 0.1 | `JPEG2000/Limits.lean`, `JPEG2000/Error.lean`, `Tests/Basic.lean` | new | todo |
 | 0.3 | Hygiene guard adapted from safe-pdf: forbidden constructs in `JPEG2000/`, `Spec/` (Plan §3 rule 1), `sorry` anywhere; `#print axioms` check over the theorems listed in `scripts/axioms.lean` | 0.1 | `scripts/check-hygiene.sh`, `scripts/hygiene.py`, `scripts/axioms.lean` | new | todo |
 | 0.4 | CI on Linux + macOS: pinned actions and elan, build, tests, hygiene guard, Python lint; corpus fetch + verify as a separate cached job | 0.1 | `.github/workflows/ci.yml` | new | todo |
@@ -170,8 +170,10 @@ Exit criterion checked: [ ]
 * Sandbox: egress is limited to GitHub and the Lean release host (+ Debian apt mirrors); loogle/leansearch are blocked — use `lean_local_search` and `exact?`. OpenJPEG tools come from apt (`libopenjp2-tools`).
 
 ## Decisions and deviations from the design document
+* 0.1: three libraries (`JPEG2000`, `Spec`, `Encode`) with one umbrella each, all default targets; `Tests` is a separate lib built only via `lake build tests`. `.mcp.json` pins `lean-lsp-mcp==0.33.0` with `lean_build` disabled (as bib-lean).
 
 ## Blocked / questions for the human
 
 ## Log (append-only; one line per integrated wave)
 * 2026-11-25 — wave 0 (phase 0, PR #1): ledger bootstrapped from Plan.md §7; draft PR #1 opened; commit "wave 0: ledger"
+* 2026-11-25 — wave 1 (phase 0, PR #1): 0.1 done (solo: Lake skeleton, CLAUDE.md, test runner; `lake build && lake build tests && lake exe tests` green); commit "wave 1: 0.1 — Lake skeleton and CLAUDE.md"

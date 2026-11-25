@@ -1,0 +1,38 @@
+import Lake
+
+open Lake DSL
+
+/-!
+# jpeg2000-lean build configuration
+
+No Lake dependencies by rule (Plan.md §9, §10): safe-pdf depends on this library and must
+not inherit anything transitive. `autoImplicit` and `relaxedAutoImplicit` are off for every
+library.
+-/
+
+package jpeg2000 where
+  version := v!"0.1.0"
+  leanOptions := #[⟨`autoImplicit, false⟩, ⟨`relaxedAutoImplicit, false⟩]
+
+/-- The decoder (Plan.md §3): pure, total, no `IO`. -/
+@[default_target]
+lean_lib JPEG2000 where
+  roots := #[`JPEG2000]
+
+/-- Executable specifications and theorems (Plan.md §5.1). -/
+@[default_target]
+lean_lib Spec where
+  roots := #[`Spec]
+
+/-- Reference encoder, for tests and proofs only (Plan.md §5.3). -/
+@[default_target]
+lean_lib Encode where
+  roots := #[`Encode]
+
+/-- Test suites: every module under `Tests/` (new modules need no lakefile line). -/
+lean_lib Tests where
+  globs := #[.submodules `Tests]
+
+/-- The test runner: `lake exe tests`. -/
+lean_exe tests where
+  root := `Tests.Main

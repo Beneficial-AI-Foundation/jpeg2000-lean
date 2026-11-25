@@ -1,2 +1,6 @@
-# cache and other artifacts produced by Lean's Lake build tool
+# Lake build output
 .lake/
+# Downloaded corpus files (only corpus/manifest.json is committed)
+corpus/files/
+.claude/worktrees/
+__pycache__/
