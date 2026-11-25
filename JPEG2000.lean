@@ -3,6 +3,8 @@ import JPEG2000.Limits
 import JPEG2000.Bytes
 import JPEG2000.Box
 import JPEG2000.Marker
+import JPEG2000.TilePart
+import JPEG2000.MQ
 
 /-!
 # jpeg2000-lean

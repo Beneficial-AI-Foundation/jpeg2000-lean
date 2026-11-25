@@ -6,6 +6,10 @@ import Tests.Bytes
 import Tests.Box
 import Tests.Marker
 import Tests.MQSpec
+import Tests.TilePart
+import Tests.MarkerRoundTrip
+import Tests.MQEnc
+import Tests.MQ
 
 /-!
 # Test runner
@@ -31,7 +35,11 @@ def suites : List Suite :=
     { name := "bytes", run := JPEG2000.Tests.Bytes.run },
     { name := "box", run := JPEG2000.Tests.Box.run },
     { name := "marker", run := JPEG2000.Tests.Marker.run },
-    { name := "mqspec", run := JPEG2000.Tests.MQSpec.run } ]
+    { name := "mqspec", run := JPEG2000.Tests.MQSpec.run },
+    { name := "tilepart", run := JPEG2000.Tests.TilePart.run },
+    { name := "marker-roundtrip", run := JPEG2000.Tests.MarkerRoundTrip.run },
+    { name := "mqenc", run := JPEG2000.Tests.MQEnc.run },
+    { name := "mq", run := JPEG2000.Tests.MQ.run } ]
 
 end JPEG2000.Tests
 

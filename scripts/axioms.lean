@@ -84,3 +84,59 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.MQ.renormd_fuel_suffices
 #print axioms JPEG2000.Spec.MQ.lpsExchange_A
 #print axioms JPEG2000.Spec.MQ.decode_A_range
+
+-- Phase 1, task 1.6: marker round trip (Spec/MarkerRoundTrip.lean)
+#print axioms JPEG2000.Spec.MarkerRoundTrip.be16_val
+#print axioms JPEG2000.Spec.MarkerRoundTrip.be32_val
+#print axioms JPEG2000.Spec.MarkerRoundTrip.rd_ofByteArray
+#print axioms JPEG2000.Spec.MarkerRoundTrip.rd_get
+#print axioms JPEG2000.Spec.MarkerRoundTrip.rd_adv
+#print axioms JPEG2000.Spec.MarkerRoundTrip.rd_len
+#print axioms JPEG2000.Spec.MarkerRoundTrip.rd_u8
+#print axioms JPEG2000.Spec.MarkerRoundTrip.rd_u16
+#print axioms JPEG2000.Spec.MarkerRoundTrip.rd_u32
+#print axioms JPEG2000.Spec.MarkerRoundTrip.rd_readArray
+#print axioms JPEG2000.Spec.MarkerRoundTrip.rd_readArray'
+#print axioms JPEG2000.Spec.MarkerRoundTrip.rd_expectEnd
+#print axioms JPEG2000.Spec.MarkerRoundTrip.parseSIZ_rd
+#print axioms JPEG2000.Spec.MarkerRoundTrip.parseSIZ_roundTrip
+#print axioms JPEG2000.Spec.MarkerRoundTrip.readCodingStyle_rd
+#print axioms JPEG2000.Spec.MarkerRoundTrip.progression_roundTrip
+#print axioms JPEG2000.Spec.MarkerRoundTrip.parseCOD_rd
+#print axioms JPEG2000.Spec.MarkerRoundTrip.readCompIndex_rd
+#print axioms JPEG2000.Spec.MarkerRoundTrip.readComponent_rd
+#print axioms JPEG2000.Spec.MarkerRoundTrip.parseCOC_rd
+#print axioms JPEG2000.Spec.MarkerRoundTrip.parseCOD_roundTrip
+#print axioms JPEG2000.Spec.MarkerRoundTrip.parseCOC_roundTrip
+#print axioms JPEG2000.Spec.MarkerRoundTrip.readQuant_rd
+#print axioms JPEG2000.Spec.MarkerRoundTrip.parseQCD_rd
+#print axioms JPEG2000.Spec.MarkerRoundTrip.parseQCD_roundTrip
+#print axioms JPEG2000.Spec.MarkerRoundTrip.parseQCC_rd
+#print axioms JPEG2000.Spec.MarkerRoundTrip.parseQCC_roundTrip
+#print axioms JPEG2000.Spec.MarkerRoundTrip.parseRGN_rd
+#print axioms JPEG2000.Spec.MarkerRoundTrip.parsePOC_rd
+#print axioms JPEG2000.Spec.MarkerRoundTrip.rd_rest
+#print axioms JPEG2000.Spec.MarkerRoundTrip.parseCOM_rd
+#print axioms JPEG2000.Spec.MarkerRoundTrip.parseCRG_rd
+#print axioms JPEG2000.Spec.MarkerRoundTrip.parseRGN_roundTrip
+#print axioms JPEG2000.Spec.MarkerRoundTrip.parsePOC_roundTrip
+#print axioms JPEG2000.Spec.MarkerRoundTrip.parseCOM_roundTrip
+#print axioms JPEG2000.Spec.MarkerRoundTrip.parseCRG_roundTrip
+#print axioms JPEG2000.Spec.MarkerRoundTrip.rd_take
+#print axioms JPEG2000.Spec.MarkerRoundTrip.segment_rd
+#print axioms JPEG2000.Spec.MarkerRoundTrip.pack_append
+#print axioms JPEG2000.Spec.MarkerRoundTrip.segment_roundTrip
+#print axioms JPEG2000.Spec.MarkerRoundTrip.parseCOD_segment
+
+-- Phase 2, task 2.2: MQ encoder (Encode/MQ.lean)
+#print axioms JPEG2000.Encode.MQ.renormeStep_A
+#print axioms JPEG2000.Encode.MQ.renormeLoop_bit15
+#print axioms JPEG2000.Encode.MQ.renorme_fuel_suffices
+#print axioms JPEG2000.Encode.MQ.encode_A_range
+
+-- Phase 2, task 2.3: fast MQ decoder (JPEG2000/MQ.lean, Spec/MQTable.lean)
+#print axioms JPEG2000.MQ.qeTab_size
+#print axioms JPEG2000.Spec.MQTable.mkEntry_agree
+#print axioms JPEG2000.Spec.MQTable.entry_eq
+#print axioms JPEG2000.Spec.MQTable.qeTab_agree
+#print axioms JPEG2000.Spec.MQTable.stateOf_packCx

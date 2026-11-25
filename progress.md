@@ -54,9 +54,9 @@ Plan.md §7 row 1, §3, Annex A/I. Exit: **M1**: every T.803 stream and every co
 | 1.1 | (landed on `phase-0-infra`, PR #1) Byte reader (big-endian, bounds-proved), packet-header bit reader with the `0xFF` bit-stuffing rule, `ByteArray`-backed `Int32` plane type with proved-bounds `uget`/`uset` | 0.2 | `JPEG2000/Bytes.lean`, `Tests/Bytes.lean` | new | | done (2026-11-25) |
 | 1.2 | JP2/JPX box parser (Annex I): box headers incl. XL boxes, signature/ftyp/jp2h (ihdr, colr, pclr, cmap, cdef, bpcc, res ignored)/jp2c; raw J2K detection | 1.1 | `JPEG2000/Box.lean`, `Tests/Box.lean` | new | | done (2026-11-25) |
 | 1.3 | Main-header marker segments (Annex A): SIZ, COD/COC, QCD/QCC, RGN, POC, COM, CAP/CRG tolerated; typed records | 1.1 | `JPEG2000/Marker.lean`, `Tests/Marker.lean` | new | | done (2026-11-25) |
-| 1.4 | Tile-part markers SOT/SOD/EOC, PPM/PPT/PLT/TLM, tile-part assembly into tiles (Psot=0, out-of-order parts, TNsot) | 1.3 | `JPEG2000/TilePart.lean`, `Tests/TilePart.lean` | new | todo |
+| 1.4 | Tile-part markers SOT/SOD/EOC, PPM/PPT/PLT/TLM, tile-part assembly into tiles (Psot=0, out-of-order parts, TNsot) | 1.3 | `JPEG2000/TilePart.lean`, `Tests/TilePart.lean` | new | | done (2026-11-25) |
 | 1.5 | `Header`: main + per-tile headers merged (COD/COC/QCD/QCC precedence, tile overrides), validation against `Limits` before allocation; `parseCodestream` | 1.3, 1.4 | `JPEG2000/Header.lean`, `Tests/Header.lean` | new | todo |
-| 1.6 | Marker-segment serialiser (`Encode/Marker.lean`) and the round-trip theorem `parse (serialise m) = m` for every marker segment type (`Spec/MarkerRoundTrip.lean`) | 1.3 | `Encode/Marker.lean`, `Spec/MarkerRoundTrip.lean` | new | todo |
+| 1.6 | Marker-segment serialiser (`Encode/Marker.lean`) and the round-trip theorem `parse (serialise m) = m` for every marker segment type (`Spec/MarkerRoundTrip.lean`) | 1.3 | `Encode/Marker.lean`, `Spec/MarkerRoundTrip.lean` | new | | done (2026-11-25) |
 | 1.7 | Header dump exe + `scripts/diff-headers.py` comparing against `opj_dump` on every corpus stream | 1.2, 1.5, 0.5 | `Tests/HeaderDump.lean`, `scripts/diff-headers.py` | new | todo |
 | 1.8 | M1 check | 1.1–1.7 | — | solo | todo |
 Exit criterion checked: [ ]
@@ -66,8 +66,8 @@ Plan.md §7 row 2, §5.2 "MQ decoder", Annex C. Exit: **M2**: C1 and C2 proved; 
 | ID | Task | Needs | Owns | Par | Status |
 |---|---|---|---|---|---|
 | 2.1 | (landed on `phase-1-headers`) `Spec.MQ`: Qe table (C.2) as data, `INITDEC`/`DECODE`/`RENORMD`/`BYTEIN` transcribed over `Nat`/`List UInt8` with synthetic `0xFF` padding past the end | 0.2 | `Spec/MQ.lean` | new | | done (2026-11-25) |
-| 2.2 | Reference MQ encoder (Annex C encoder flowcharts, `FLUSH`) | 2.1 | `Encode/MQ.lean` | new | todo |
-| 2.3 | Fast MQ decoder: `UInt32` `C`/`A`/`CT`, context state array, no GMP, bounded reads | 2.1, 1.1 | `JPEG2000/MQ.lean` | new | todo |
+| 2.2 | (landed on `phase-1-headers`) Reference MQ encoder (Annex C encoder flowcharts, `FLUSH`) | 2.1 | `Encode/MQ.lean` | new | | done (2026-11-25) |
+| 2.3 | (landed on `phase-1-headers`) Fast MQ decoder: `UInt32` `C`/`A`/`CT`, context state array, no GMP, bounded reads | 2.1, 1.1 | `JPEG2000/MQ.lean` | new | | done (2026-11-25) |
 | 2.4 | C1: `mqDecode (mqEncode s) = s` | 2.1, 2.2 | `Spec/MQRoundTrip.lean` | new | todo |
 | 2.5 | C2: fast decoder = `Spec.MQ` on every input; termination of `RENORMD` | 2.3 | `Spec/MQEquiv.lean` | new | todo |
 | 2.6 | Tests (10⁶ random round trips, fixed vectors) + throughput bench | 2.2, 2.3 | `Tests/MQ.lean`, `Bench/MQ.lean` | new | todo |
@@ -186,6 +186,13 @@ Exit criterion checked: [ ]
 * Proofs: `split` can't see through `let` in an unfolded def — `simp only [f]; split` instead of `unfold f; split`; `decide` fails on goals with free variables after `split` — use `simp`. Bit tests written as `a / 0x8000 % 2 = 1` stay in `omega`.
 * Corpus-backed test suites skip when `corpus/files` is absent; CI's `build` job fetches the corpus (cached) before `lake exe tests` since wave 4.
 
+* MQ encoder: `B` is an 8-bit register; after a carry `C >> 19` still holds bit 27, so loads need `% 0x100`. Round trips hide a missing mask (`UInt8.ofNat` truncates) — check `B < 256` per step. T.88 H.2 `t88Encoded` = T.800 FLUSH output followed by `0xFF 0xAC`.
+* MQ benchmarks: uniformly random bytes are useless (an `0xFF` followed by > `0x8F` soon reads as a marker and the decoder then consumes ~nothing); benchmark data must avoid `0xFF`. Fast decoder: 82–101 M decisions/s compiled (`lake exe tests`, suite `mq`).
+* `decide` over 256 `UInt32` table entries hits max recursion; `decide +kernel` proves it in < 1 s with no extra axiom. `{ d with cx := ctxSet d.cx i v }` on a unique `d` compiles to an in-place `lean_byte_array_fset`. `(UInt8.ofNat n).toNat`: `simp only [UInt8.toNat_ofNat']` (`rw [UInt8.toNat_ofNat]` doesn't match).
+* `opj_dump -i` (2.5.3) prints only the main-header index, not tile-part positions; the T.803 tile-part table in `Tests/TilePart.lean` came from an independent Python walker. T.803 facts: p0_07 256 tiles / 257 tile-parts, TNsot ∈ {0,1,2}, PLT sums equal tile data lengths; p0_10 interleaves tiles' tile-parts and has a `Psot = 14` (empty) tile-part; p1_05 has 225 PPM segments; p1_02, p1_06 use PPT; no corpus file uses `Psot = 0`.
+* `let mut x` cannot be re-bound by `let x ← …` in the same `do` block ("mutable variable cannot be shadowed") — use a new name.
+* Round-trip proof recipes (Spec/MarkerRoundTrip.lean): reader lemmas `rd_u8/rd_u16/rd_u32/rd_take/rd_rest/rd_readArray/rd_expectEnd`; pattern `generalize Reader.ofByteArray (…) st = r at h ⊢`, chain `obtain ⟨r', h, hr⟩ := rd_u8 …`, finish with one `simp [parseX, …, bind, Except.bind, pure, Except.pure, Limits.check, Limits.checkLe, Limits.bound]`. `|||`/`<<<` recombination: `Nat.shiftLeft_add_eq_or_of_lt` + `Nat.shiftLeft_add`; masks: `UIntN.toNat_and` with constant as `2^k - 1` then `Nat.and_two_pow_sub_one_eq_mod`. `simp` turns `Array.mkEmpty n` into `#[]` and `n.toUInt16` into `UInt16.ofNat` (generalize first). For `if (∀ x ∈ l, P x)` use `rw [ite_eq_left_of_eq_true _ _ (eq_true h)]`.
+
 ## Decisions and deviations from the design document
 * 0.1: three libraries (`JPEG2000`, `Spec`, `Encode`) with one umbrella each, all default targets; `Tests` is a separate lib built only via `lake build tests`. `.mcp.json` pins `lean-lsp-mcp==0.33.0` with `lean_build` disabled (as bib-lean).
 
@@ -199,6 +206,10 @@ Exit criterion checked: [ ]
 * 1.2: JP2 duplicates follow OpenJPEG (second ihdr/bpcc ignored; second pclr/cmap/cdef an error; first colr wins, malformed later colr skipped). Deviation from OpenJPEG: a METH 3 (any-ICC, JPX) `colr` is kept, whereas OpenJPEG skips it and uses the next `colr` (seen in `issue208.jp2`) — Phase 6 (6.1) decides which to follow for rendering.
 * 1.3: lenient on unknown main-header segments (kept), parameterless 0xFF30–0xFF3F (skipped), any `Rcom`; strict (malformed) on reserved bits, precinct exponent 0 above resolution 0, duplicate SIZ/COD/QCD/CAP/CRG, SOC/SOD/EOC/SOP/EPH/PLT/PPT in the main header; `unsupported` for Part 2/15 features (HT code-block bit, transform > 1, MCT > 1, Srgn ≠ 0). Cross-segment checks and image/tile limits are task 1.5's.
 
+* 1.4: tile-part strictness — as OpenJPEG: Isot < numTiles, TPsot sequential per tile, TPsot < TNsot, Psot 0 or ≥ 14, unique Zppm / Zppt per tile, PPT with PPM is an error. Stricter than OpenJPEG: consistent nonzero TNsot and exact tile-part count, COD/COC/QCD/QCC/RGN only in a tile's first tile-part, duplicate COD/QCD per tile-part, `Psot = 12`, tile-part past end of data (`truncated`), missing EOC (`truncated`), bad TLM, duplicate Ztlm/Zplt, PLT length ≥ 2³². Lenient: bytes after EOC, unknown tile-part segments kept raw, 0xFF30–0xFF3F skipped, tiles without tile-parts, TLM not cross-checked, PPM chunk count vs tile-parts left to 4.5. `parsePointers` takes `Limits`; PLM kept raw.
+* 1.6: round trip proved one way (WF ⇒ parse ∘ serialise = id) for all nine main-header segment types; "parse succeeds ⇒ WF" not proved (not required by M1). SOT/TLM/PLT/PPM/PPT have no serialiser or round trip (M1 names "marker segments"; see 1.8).
+* 2.3: Qe table is packed into a 256-entry `UInt32` table indexed by the context byte (`index<<<1 ||| mps`), so lookups need no bounds check; agreement with `Spec.MQ.qeAt` is `Spec.MQTable.qeTab_agree`. C2 (2.5) must carry the invariant `0x8000 ≤ A < 0x10000` and inits < 47.
+
 ## Blocked / questions for the human
 
 * Benchmark set (Plan §8.4) lacks a ≥ 20 Mpx stream: openjpeg-data has none that decodes. Where may one come from (a licensable large JP2, or one we generate with `opj_compress` from a public-domain image)? Proceeding with the 15-file set meanwhile.
@@ -211,3 +222,4 @@ Exit criterion checked: [ ]
 * 2026-11-25 — wave 3 (phase 0, PR #1): 0.7 done, M0 ticked
 * 2026-11-25 — phase 0 milestone: PR #1 marked ready for review
 * 2026-11-25 — wave 4 (phase 1, PR #2): 1.2 (JP2 boxes, 9/9 conformance JP2 match opj_dump), 1.3 (main-header markers, 23/23 T.803 streams match opj_dump), 2.1 (MQ spec, T.88 H.2 vector passes, 13 theorems) done; CI build job now fetches the corpus; commit "wave 4: 1.2, 1.3, 2.1 — boxes, markers, MQ spec"
+* 2026-11-25 — wave 5 (phase 1, PR #2): 1.4 (tile-parts, 23/23 T.803 streams), 1.6 (parse∘serialise proved for 9 segment types, 41 theorems; 23/23 headers byte-identical), 2.2 (MQ encoder, 3000 random round trips), 2.3 (fast MQ decoder = spec on 3000 cases, ~100 M decisions/s) done; commit "wave 5: 1.4, 1.6, 2.2, 2.3 — tile-parts, marker round trip, MQ encoder and fast decoder"

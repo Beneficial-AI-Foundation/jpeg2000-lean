@@ -1,4 +1,6 @@
 import Spec.MQ
+import Spec.MQTable
+import Spec.MarkerRoundTrip
 
 /-!
 # Executable specifications
