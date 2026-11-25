@@ -1126,3 +1126,29 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.Resources.BlockPasses.decodeTilePacketsWith_blockPasses
 #print axioms JPEG2000.Spec.Resources.BlockPasses.decodeWithStream_blockPasses
 #print axioms JPEG2000.Spec.Resources.BlockPasses.decodeAllTileCodeBlocks_blockPasses
+
+-- Phase 7, task 7.3a: C10 layers 1–2a (Spec/RoundTrip/*)
+#print axioms JPEG2000.Spec.RoundTrip.decodePasses_encode
+#print axioms JPEG2000.Spec.RoundTrip.scanOrder_nodup
+#print axioms JPEG2000.Spec.RoundTrip.mem_scanOrder_of
+#print axioms JPEG2000.Spec.RoundTrip.decodeValues_encodeCodeBlock
+#print axioms JPEG2000.Spec.RoundTrip.length_bitsOf
+#print axioms JPEG2000.Spec.RoundTrip.bitsOf_double
+#print axioms JPEG2000.Spec.RoundTrip.bitsOf_zero
+#print axioms JPEG2000.Spec.RoundTrip.unstuffAux_append
+#print axioms JPEG2000.Spec.RoundTrip.lastFF_snoc
+#print axioms JPEG2000.Spec.RoundTrip.unstuffAux_snoc
+#print axioms JPEG2000.Spec.RoundTrip.winv_init
+#print axioms JPEG2000.Spec.RoundTrip.winv_bit
+#print axioms JPEG2000.Spec.RoundTrip.winv_bits
+#print axioms JPEG2000.Spec.RoundTrip.length_unstuffAux_cons
+#print axioms JPEG2000.Spec.RoundTrip.lastFF_cons
+#print axioms JPEG2000.Spec.RoundTrip.alignedLength_at
+#print axioms JPEG2000.Spec.RoundTrip.bitsOf_shift
+#print axioms JPEG2000.Spec.RoundTrip.unstuff_append_noFF
+#print axioms JPEG2000.Spec.RoundTrip.finish_spec
+#print axioms JPEG2000.Spec.RoundTrip.natBits_succ
+#print axioms JPEG2000.Spec.RoundTrip.bitsVal_natBits
+#print axioms JPEG2000.Spec.RoundTrip.field_natBits
+#print axioms JPEG2000.Spec.RoundTrip.numPasses_passBits
+#print axioms JPEG2000.Spec.RoundTrip.commaCode_replicate

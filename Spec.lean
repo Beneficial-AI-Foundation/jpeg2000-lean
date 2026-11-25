@@ -48,6 +48,9 @@ import Spec.Tier1Wire
 import Spec.Tier2WF
 import Spec.HeaderWF
 import Spec.C9
+import Spec.RoundTrip.Tier1
+import Spec.RoundTrip.Tier2Bits
+import Spec.RoundTrip
 import Spec.Resources
 import Spec.Resources.BlockPasses
 import Spec.Tier1Equiv.Basic
