@@ -17,6 +17,7 @@ Design document: Plan.md
   becomes current. Proof tasks name their theorem IDs from Plan.md §4 (S1–S6, C1–C10).
 
 ## Current wave
+Wave 9: 3.3 (wt), 3.4a (new), 3.5 (new), 4.3 (new)
 
 ## Branches and PRs
 | Phase | Branch | Base | PR | State |
@@ -24,8 +25,8 @@ Design document: Plan.md
 | 0 | `phase-0-infra` | `origin/main` | [#1](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/1) | ready (2026-11-25) |
 | 1 | `phase-1-headers` | `phase-0-infra` | [#2](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/2) | ready (2026-11-25) |
 | 2 | (none: all Phase 2 tasks landed on `phase-1-headers`) | — | [#2](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/2) | M2 reached 2026-11-25; ships with PR #2 |
-| 3 | `phase-3-tier1` | `phase-1-headers` | — | none |
-| 4 | `phase-4-tier2` | `phase-3-tier1` | — | none |
+| 3 | `phase-3-tier1` | `phase-1-headers` | [#3](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/3) | draft |
+| 4 | (shares `phase-3-tier1`) | — | [#3](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/3) | draft (with phase 3) |
 | 5 | `phase-5-reconstruction` | `phase-4-tier2` | — | none |
 | 6 | `phase-6-jp2-output` | `phase-5-reconstruction` | — | none |
 | 7 | `phase-7-equivalence` | `phase-6-jp2-output` | — | none |
@@ -82,11 +83,13 @@ Plan.md §7 row 3, §5.2 "Tier-1", Annex D. Exit: **M3**: C3 proved for plain mo
 |---|---|---|---|---|---|
 | 3.1 | (landed on `phase-1-headers`) Spec context tables D.1–D.3 (zero coding, sign coding, magnitude refinement) as data | 2.1 | `Spec/Tier1/Context.lean` | new | | done (2026-11-25) |
 | 3.2 | (landed on `phase-1-headers`) Spec Tier-1 decoder, plain mode: per-coefficient state, significance propagation / magnitude refinement / cleanup passes, run-length coding | 3.1 | `Spec/Tier1/Decode.lean`, `Tests/Tier1Spec.lean` | new | | done (2026-11-25) |
-| 3.3 | Spec modes: reset, termall, vertically causal, segmentation symbols, predictable termination, bypass (raw) | 3.2 | `Spec/Tier1/Modes.lean` | new | todo |
-| 3.4 | Fast Tier-1: 32-bit flag word per coefficient, stripe scan, zero-stripe skipping, all modes | 3.2, 2.3 | `JPEG2000/Tier1/` | new | todo |
-| 3.5 | Reference Tier-1 encoder, plain mode | 3.2, 2.2 | `Encode/Tier1.lean` | new | todo |
-| 3.6 | C3 for plain mode: simulation relation flag words ↔ spec state, preserved by each pass | 3.4 | `Spec/Tier1Equiv.lean` | new | todo |
-| 3.7 | Tests: every mode combination fast = spec on random code-blocks; T.803 code-blocks vs OpenJPEG | 3.3, 3.4, 3.5, 4.4 | `Tests/Tier1.lean`, `scripts/diff-codeblocks.py` | new | todo |
+| 3.3 | Spec modes: reset, termall, vertically causal, segmentation symbols, predictable termination, bypass (raw) | 3.2 | `Spec/Tier1/Modes.lean`, `Spec/Tier1/Decode.lean`, `Tests/Tier1Spec.lean` | wt | doing (2026-11-25) |
+| 3.4 | Fast Tier-1 | — | — | — | split (into 3.4a, 3.4b) |
+| 3.4a | Fast Tier-1, plain mode: 32-bit flag word per coefficient (significance, sign, visited, refined + pre-merged neighbourhood bits), stripe scan, zero-stripe skipping, `Int32` output plane; tested = spec on random blocks | 3.2, 2.3 | `JPEG2000/Tier1/`, `Tests/Tier1Fast.lean` | new | doing (2026-11-25) |
+| 3.4b | Fast Tier-1, other modes (reset, termall, causal, segsym, predictable termination, bypass) = 3.3's spec | 3.3, 3.4a | `JPEG2000/Tier1/`, `Tests/Tier1Fast.lean` | wt | todo |
+| 3.5 | Reference Tier-1 encoder, plain mode | 3.2, 2.2 | `Encode/Tier1.lean`, `Tests/Tier1Enc.lean` | new | doing (2026-11-25) |
+| 3.6 | C3 for plain mode: simulation relation flag words ↔ spec state, preserved by each pass | 3.4a | `Spec/Tier1Equiv.lean` | new | todo |
+| 3.7 | Tests: every mode combination fast = spec on random code-blocks; T.803 code-blocks vs OpenJPEG | 3.3, 3.4b, 3.5, 4.4 | `Tests/Tier1.lean`, `scripts/diff-codeblocks.py` | new | todo |
 | 3.8 | M3 check | 3.1–3.7 | — | solo | todo |
 Exit criterion checked: [ ]
 
@@ -96,7 +99,7 @@ Plan.md §7 row 4, §5.2 "Tier-2", Annex B. Exit: **M4**: C4, C5 proved; every T
 |---|---|---|---|---|---|
 | 4.1 | (landed on `phase-1-headers`) Tag trees (B.10.2): decoder, reference encoder, C4 | 1.1 | `JPEG2000/TagTree.lean`, `Spec/TagTree.lean`, `Tests/TagTree.lean` | new | | done (2026-11-25) |
 | 4.2 | (landed on `phase-1-headers`) Geometry (B.5–B.7): tile-components, resolutions, sub-bands, precincts, code-blocks, with `Limits` checks | 1.5 | `JPEG2000/Tier2/Geometry.lean`, `Tests/Geometry.lean` | new | | done (2026-11-25) |
-| 4.3 | Progression orders LRCP/RLCP/RPCL/PCRL/CPRL + POC as explicit iterators; C5 (bijection onto the packet set) | 4.2 | `JPEG2000/Progression.lean`, `Spec/Progression.lean` | new | todo |
+| 4.3 | Progression orders LRCP/RLCP/RPCL/PCRL/CPRL + POC as explicit iterators; C5 (bijection onto the packet set) | 4.2 | `JPEG2000/Progression.lean`, `Spec/Progression.lean`, `Tests/Progression.lean` | new | doing (2026-11-25) |
 | 4.4 | Packet headers (B.10): zero-length packets, inclusion, zero bit-planes, passes, `Lblock`, segment lengths per mode; layer accumulation into per-code-block segments; SOP/EPH | 4.1, 4.2, 4.3 | `JPEG2000/Tier2/Packet.lean` | new | todo |
 | 4.5 | PPM/PPT header sourcing and tile-part ordering | 4.4 | `JPEG2000/Tier2/Headers.lean` | new | todo |
 | 4.6 | Differential: per-code-block segments vs OpenJPEG on every T.803 stream | 4.5, 0.5 | `Tests/Tier2.lean`, `scripts/diff-segments.py` | new | todo |
@@ -111,7 +114,7 @@ Plan.md §7 row 5, §5.2 "DWT", §5.4, Annexes E–H. Exit: **M5**: C6, C7, C8 p
 | 5.2 | 5/3 inverse DWT: Annex F spec over `Int` with symmetric extension, in-place lifting on `Int32` planes, C6 | 1.1 | `Spec/DWT53.lean`, `JPEG2000/DWT53.lean` | new | todo |
 | 5.3 | 9/7 inverse DWT: `Rat` spec, fixed-point lifting (fractional bits chosen from the C8 bound; Plan §10 open question), C8 for DWT | 5.2 | `Spec/DWT97.lean`, `JPEG2000/DWT97.lean` | new | todo |
 | 5.4 | RCT/ICT, DC shift, clamping; C7, C8 for ICT | 1.1 | `JPEG2000/MCT.lean`, `Spec/MCT.lean` | new | todo |
-| 5.5 | Assembly and pipeline: tiles, sub-sampling, reduced resolution, `JPEG2000.decodeCodestream` | 3.4, 4.5, 5.1–5.4 | `JPEG2000/Assemble.lean`, `JPEG2000/Decode.lean` | new | todo |
+| 5.5 | Assembly and pipeline: tiles, sub-sampling, reduced resolution, `JPEG2000.decodeCodestream` | 3.4b, 4.5, 5.1–5.4 | `JPEG2000/Assemble.lean`, `JPEG2000/Decode.lean` | new | todo |
 | 5.6 | T.803 conformance runner (peak error / MSE per class) | 5.5, 0.5 | `Tests/Conformance.lean`, `scripts/conformance.py` | new | todo |
 | 5.7 | M5 check | 5.1–5.6 | — | solo | todo |
 Exit criterion checked: [ ]
