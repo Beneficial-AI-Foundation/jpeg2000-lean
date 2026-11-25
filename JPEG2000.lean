@@ -10,6 +10,7 @@ import JPEG2000.TagTree
 import JPEG2000.Tier2.Geometry
 import JPEG2000.Tier1.Tables
 import JPEG2000.Tier1.Decode
+import JPEG2000.Tier1.Modes
 import JPEG2000.Progression
 
 /-!

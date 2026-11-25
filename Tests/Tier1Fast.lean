@@ -1,4 +1,5 @@
 import JPEG2000.Tier1.Decode
+import JPEG2000.Tier1.Modes
 import Spec.Tier1.Decode
 import Encode.MQ
 import Tests.Tier1Spec
@@ -23,9 +24,21 @@ Plan.md §4 (C3), §5.2 "Tier-1 / EBCOT", §6 item 4; T.800 Annex D.
    coefficient's value, significance and `lsbPlane` must agree.
 3. **Argument checks** agree with the spec's (`validate`), plus the fast decoder's own ones.
 4. **Throughput** on dense 64×64 blocks (printed, not checked).
+5. **Every code-block style (task 3.4b).** The style flags, `isRawPass` and `segmentPasses`
+   of `JPEG2000.Tier1.Modes` = the spec's (all 64 styles); the raw bit reader = `Spec.Tier1.rawBit`
+   on random byte strings full of `0xFF` and markers; random blocks in all 64 styles (block
+   `k` has style `k mod 64`) are coded by the all-mode test encoder
+   (`Tests.Tier1Spec.encodeBlock` + `buildSegments`, all passes and truncated pass counts),
+   the codeword segments are placed at random offsets of one buffer with random bytes between
+   them (as Tier-2 delivers them), and `decodeCodeBlockSegs` must give the same values,
+   significance and `lsbPlane` as `Spec.Tier1.decodeCodeBlock`; every eighth block has one
+   segment byte corrupted (both decoders see the same bytes; this drives bad segmentation
+   symbols and raw markers), and the strict variants must agree on acceptance. Argument
+   checks of the segment interface.
 
 Environment: `JPEG2000_TIER1FAST_BLOCKS` (random blocks, default 400),
-`JPEG2000_TIER1FAST_REPS` (throughput repetitions, default 100).
+`JPEG2000_TIER1FAST_REPS` (throughput repetitions, default 100),
+`JPEG2000_TIER1FAST_MODE_BLOCKS` (random all-style blocks, default 320).
 -/
 
 namespace JPEG2000.Tests.Tier1Fast
@@ -301,12 +314,247 @@ def runBench : IO Unit := do
   let cf := reps * 4096
   IO.println s!"  tier1 fast throughput: {cf * 1000000000 / ns} coefficients/s, {decisions * 1000000000 / ns} MQ decisions/s ({reps} blocks of 64x64, K = 12, {ns / 1000000} ms, checksum {acc})"
 
+/-! ## 5. Every code-block style (task 3.4b) -/
+
+/-- The spec mode and the fast style of style byte `st` have the same six flags. -/
+def sameFlags (st : Nat) : Bool :=
+  let m := Spec.Tier1.Mode.ofStyle st
+  let s := Tier1.Style.ofByte st.toUInt8
+  m.bypass == s.bypass && m.reset == s.reset && m.termAll == s.termAll &&
+    m.vertCausal == s.vertCausal && m.predTerm == s.predTerm && m.segSymbols == s.segSymbols
+
+/-- Mode-structure checks: flags, raw passes, segment structure, plain dispatch condition, and
+the raw bit reader against the spec. -/
+def runModeStructure : IO Nat := do
+  let mut f := 0
+  let styles := List.range 64
+  f := f + (← expect "Style.ofByte = Mode.ofStyle (64 styles)" (styles.all sameFlags))
+  f := f + (← expect "isRawPass = spec (64 styles, passes < 100)"
+    (styles.all fun st => (List.range 100).all fun i =>
+      Tier1.isRawPass (Tier1.Style.ofByte st.toUInt8) i ==
+        Spec.Tier1.isRawPass (Spec.Tier1.Mode.ofStyle st) i))
+  f := f + (← expect "segmentPasses = spec (64 styles, n ≤ 60, first ≤ 40)"
+    (styles.all fun st => (List.range 61).all fun n => (List.range 41).all fun i =>
+      Tier1.segmentPasses (Tier1.Style.ofByte st.toUInt8) n i ==
+        Spec.Tier1.segmentPasses (Spec.Tier1.Mode.ofStyle st) n i))
+  f := f + (← expect "decodesAsPlain exactly for styles 0 and 16"
+    (styles.all fun st => (Tier1.Style.ofByte st.toUInt8).decodesAsPlain == (st == 0 || st == 16)))
+  -- raw bit reader: random byte strings rich in 0xFF and markers, read past the end
+  let mut s : UInt64 := 0x5EED_3B
+  let mut bad := 0
+  for _ in [0:300] do
+    let (len, s1) := below s 12
+    let (pre, s2) := below s1 3
+    let mut s3 := s2
+    let mut bytes : Array UInt8 := #[]
+    for _ in [0:len] do
+      let (sel, t1) := below s3 4
+      let (v, t2) := below t1 256
+      s3 := t2
+      bytes := bytes.push (if sel == 0 then 0xFF else if sel == 1 then (0x80 + v % 32).toUInt8 else v.toUInt8)
+    s := s3
+    let nbits := 8 * len + 20
+    let want := (Spec.Tier1.rawBits (Spec.Tier1.RawState.init bytes.toList) nbits).1
+    -- the segment sits at offset `pre` of a buffer with junk around it
+    let buf : ByteArray := ⟨(Array.replicate pre (0x55 : UInt8)) ++ bytes ++ #[0x00, 0x12]⟩
+    let d0 := Tier1.rawInit buf pre (pre + len) (ByteArray.mk #[])
+    let (got, _) := (List.range nbits).foldl (fun (acc, d) _ =>
+      let (b, d) := Tier1.rawBit d
+      (acc.push b, d)) ((#[] : Array Bool), d0)
+    if got.toList != want then bad := bad + 1
+  f := f + (← expect s!"raw bit reader = Spec.Tier1.rawBit ({bad}/300 strings differ)" (bad == 0))
+  return f
+
+/-- Lay the segments out in one buffer: random prefix, then each segment followed by 0–3
+random bytes; the `Seg` ranges and the buffer. -/
+def layout (segs : List Spec.Tier1.Segment) (s : UInt64) : ByteArray × Array Tier1.Seg × UInt64 :=
+  Id.run do
+    let (pl, s) := below s 5
+    let (pre, s) := randBytes s pl
+    let mut s := s
+    let mut buf := pre
+    let mut out : Array Tier1.Seg := #[]
+    for sg in segs do
+      let start := buf.size
+      buf := buf ++ ⟨sg.data.toArray⟩
+      out := out.push { start, stop := buf.size, passes := sg.passes }
+      let (gl, s1) := below s 4
+      let (gap, s2) := randBytes s1 gl
+      s := s2
+      buf := buf ++ gap
+    return (buf, out, s)
+
+/-- Flip one random byte of one random non-empty segment (by XOR with a random non-zero
+byte). -/
+def corrupt (segs : List Spec.Tier1.Segment) (s : UInt64) : List Spec.Tier1.Segment × UInt64 :=
+  let nonEmpty := (List.range segs.length).filter fun j => (segs.getD j default).data.length > 0
+  if nonEmpty.isEmpty then (segs, s) else
+  let (k, s) := below s nonEmpty.length
+  let j := nonEmpty.getD k 0
+  let sg := segs.getD j default
+  let (pos, s) := below s sg.data.length
+  let (x, s) := below s 255
+  let data := sg.data.set pos (sg.data.getD pos 0 ^^^ (x + 1).toUInt8)
+  (segs.set j { sg with data }, s)
+
+/-- Outcome counters of the all-style checks. -/
+structure ModeStats where
+  /-- Checks run. -/
+  checks : Nat := 0
+  /-- Failed checks. -/
+  fails : Nat := 0
+  /-- Segments decoded. -/
+  segs : Nat := 0
+  /-- Raw segments. -/
+  rawSegs : Nat := 0
+  /-- Corrupted checks where the spec's strict decoder rejected a bad segmentation symbol. -/
+  badSym : Nat := 0
+  /-- Coefficients compared. -/
+  coeffs : Nat := 0
+
+/-- Encode the first `n` passes of `b` in style `st` (optionally corrupt one byte), decode with
+both decoders from the same bytes; `none` if they agree. Also returns (segments, raw
+segments, strict rejection). -/
+def checkModeBlk (st : Nat) (b : Blk) (n : Nat) (bad : Bool) (s : UInt64) :
+    Option String × Nat × Nat × Bool :=
+  let m := Spec.Tier1.Mode.ofStyle st
+  let (_, passes) := Tests.Tier1Spec.encodeBlock m b n
+  let segs := Tests.Tier1Spec.buildSegments m passes
+  let (segs, s) := if bad then corrupt segs s else (segs, s)
+  let (buf, fsegs, _) := layout segs s
+  let rawN := ((List.range segs.length).filter fun j =>
+    Spec.Tier1.isRawPass m ((segs.take j).map (·.passes)).sum).length
+  let cb : Spec.Tier1.CodeBlock := {
+    width := b.w, height := b.h, orient := b.orient, mode := m, numBitPlanes := b.K + b.zbp,
+    zeroBitPlanes := b.zbp, segments := segs }
+  let fast := Tier1.decodeCodeBlockSegs buf fsegs b.w b.h (bandOf b.orient) st.toUInt8
+    (b.K + b.zbp) b.zbp
+  let fastStrict := (err? (Tier1.decodeCodeBlockSegsStrict buf fsegs b.w b.h (bandOf b.orient)
+    st.toUInt8 (b.K + b.zbp) b.zbp)).isSome
+  let specStrict := (err? (Spec.Tier1.decodeCodeBlockStrict cb)).isSome
+  let tag := s!"style {st} {b.w}x{b.h} {repr b.orient} K={b.K} passes {n}/{3 * b.K - 2}{if bad then " corrupted" else ""}"
+  let res : Option String :=
+    match Spec.Tier1.decodeCodeBlock cb, fast with
+    | .error e1, _ => some s!"{tag}: spec error {repr e1}"
+    | _, .error e2 => some s!"{tag}: fast error {repr e2}"
+    | .ok cs, .ok o =>
+      let badIdx := (List.range (b.w * b.h)).filter fun i =>
+        let c := cs.getD i {}
+        let x := i % b.w
+        let y := i / b.w
+        let v := (o.plane.get? i).map Int32.toInt
+        !(v == some c.value && o.sig x y == c.sig && o.lsbPlane x y == c.lsbPlane)
+      if !badIdx.isEmpty || cs.size != b.w * b.h || o.plane.width != b.w ||
+          o.plane.height != b.h then
+        some s!"{tag}: {badIdx.length} bad coefficients (first {badIdx.head?})"
+      else if fastStrict != specStrict then
+        some s!"{tag}: strict decoders disagree (fast rejects: {fastStrict}, spec rejects: {specStrict})"
+      else if !bad && specStrict then some s!"{tag}: clean segments rejected by the strict spec"
+      else none
+  (res, segs.length, rawN, specStrict)
+
+/-- Random all-style checks; returns the number of failures. -/
+def runModesRandom : IO Nat := do
+  let n ← envNat "JPEG2000_TIER1FAST_MODE_BLOCKS" 320
+  let mut s : UInt64 := 0x3_4B_2026
+  let mut stt : ModeStats := {}
+  let t0 ← IO.monoMsNow
+  for k in [0:n] do
+    let st := k % 64
+    let (b, s1) := genBlk s (k % 97 == 50)
+    let total := 3 * b.K - 2
+    let (t1, s2) := below s1 total
+    let (t2, s3) := below s2 total
+    s := s3
+    for np in [total, t1 + 1, t2] do
+      let bad := k % 8 == 7 && np > 0
+      let (_, s4) := Tests.Tier1Spec.splitmix s
+      s := s4
+      let (r, ns, nr, rej) := checkModeBlk st b np bad s
+      stt := { stt with
+        checks := stt.checks + 1, segs := stt.segs + ns, rawSegs := stt.rawSegs + nr,
+        badSym := stt.badSym + (if bad && rej then 1 else 0), coeffs := stt.coeffs + b.w * b.h }
+      if let some msg := r then
+        stt := { stt with fails := stt.fails + 1 }
+        if stt.fails ≤ 5 then IO.eprintln s!"  mismatch: {msg}"
+  let t1 ← IO.monoMsNow
+  IO.println s!"  tier1 fast = spec, 64 styles: {stt.checks - stt.fails}/{stt.checks} ok ({n} blocks, {stt.coeffs} coefficients, {stt.segs} segments, {stt.rawSegs} raw, {stt.badSym} corrupted blocks rejected by strict, {t1 - t0} ms)"
+  let mut f ← expect s!"random blocks, all styles: fast = spec ({stt.fails} failures)" (stt.fails == 0)
+  f := f + (← expect "raw segments were exercised" (stt.rawSegs > 0))
+  f := f + (← expect "bad segmentation symbols were exercised" (stt.badSym > 0))
+  return f
+
+/-- Hand-made vertically causal case: a 1×8 block (two stripes), only row 4 significant in
+the first cleanup pass. Without vertically causal formation row 3 sees it as its south
+neighbour in the next significance propagation pass; with it, row 3 does not — the flag word
+of row 3 must not carry `SIG_S`. -/
+def runCausalUnit : IO Nat := do
+  let b : Blk := { w := 1, h := 8, orient := .LL, K := 2, zbp := 0,
+                   mags := #[0, 0, 0, 1, 2, 0, 0, 0], negs := Array.replicate 8 false }
+  let mut f := 0
+  for st in [0, 8] do
+    let m := Spec.Tier1.Mode.ofStyle st
+    let segs := Tests.Tier1Spec.buildSegments m (Tests.Tier1Spec.encodeBlock m b 4).2
+    let (buf, fsegs, _) := layout segs 7
+    let spec := Spec.Tier1.decodeValues
+      { width := 1, height := 8, orient := .LL, mode := m, numBitPlanes := 2, zeroBitPlanes := 0,
+        segments := segs }
+    match spec, Tier1.decodeCodeBlockSegs buf fsegs 1 8 .LL st.toUInt8 2 0 with
+    | .ok vs, .ok o =>
+      let got := (List.range 8).map fun i => ((o.plane.get? i).map Int32.toInt).getD 99
+      let row3 := Tier1.fget o.flags (4 * 3 + 1)
+      f := f + (← expect s!"causal unit, style {st}: values {got} = spec {vs.toList} = original"
+        (got == vs.toList && got == [0, 0, 0, 1, 2, 0, 0, 0]))
+      f := f + (← expect s!"causal unit, style {st}: row 3 flag SIG_S {st == 0}"
+        ((row3 &&& Tier1.SIG_S != 0) == (st == 0)))
+    | _, _ => f := f + (← expect s!"causal unit, style {st}: both decode" false)
+  return f
+
+/-- Argument checks of the segment interface. -/
+def runSegChecks : IO Nat := do
+  let mut f := 0
+  let buf : ByteArray := ⟨#[1, 2, 3, 4, 5, 6]⟩
+  let dec (segs : Array Tier1.Seg) (st : UInt8) :=
+    err? (Tier1.decodeCodeBlockSegs buf segs 4 4 .LL st 3 0)
+  f := f + (← expect "termall: one segment of 3 passes rejected" ((dec #[⟨0, 3, 3⟩] 4).isSome))
+  f := f + (← expect "termall: three segments of 1 pass accepted"
+    ((dec #[⟨0, 2, 1⟩, ⟨2, 4, 1⟩, ⟨4, 6, 1⟩] 4).isNone))
+  f := f + (← expect "plain: two segments rejected" ((dec #[⟨0, 2, 1⟩, ⟨2, 4, 1⟩] 0).isSome))
+  f := f + (← expect "plain: no segment accepted (zeros)" ((dec #[] 0).isNone))
+  f := f + (← expect "segment with 0 passes rejected" ((dec #[⟨0, 2, 0⟩] 2).isSome))
+  f := f + (← expect "segment past the buffer rejected" ((dec #[⟨0, 7, 2⟩] 2).isSome))
+  f := f + (← expect "segment start > stop rejected" ((dec #[⟨3, 2, 2⟩] 2).isSome))
+  f := f + (← expect "segment past the buffer rejected (termall, last segment)"
+    ((dec #[⟨0, 2, 1⟩, ⟨2, 9, 1⟩] 4).isSome))
+  f := f + (← expect "too many passes rejected (K = 3: 7 passes max)" ((dec #[⟨0, 6, 8⟩] 2).isSome))
+  f := f + (← expect "K = 32 with passes unsupported"
+    (match err? (Tier1.decodeCodeBlockSegs buf #[⟨0, 6, 1⟩] 4 4 .LL 2 32 0) with
+     | some (.unsupported _ _) => true | _ => false))
+  -- plain dispatch: style 0 and 16 give exactly `decodeCodeBlock`'s output
+  let (mags, negs, _) := genMags 0x77 (16 * 16) 9
+  let b : Blk := { w := 16, h := 16, orient := .HL, K := 9, zbp := 1, mags, negs }
+  let code := Encode.MQ.encodeAll Spec.Tier1.initialStates (plainTrace b 20)
+  let cbuf : ByteArray := ⟨#[9, 9] ++ code.toArray ++ #[7]⟩
+  let ref := Tier1.decodeCodeBlock cbuf 2 (2 + code.length) 16 16 .HL 10 1 20
+  for st in [0, 16] do
+    let got := Tier1.decodeCodeBlockSegs cbuf #[⟨2, 2 + code.length, 20⟩] 16 16 .HL st 10 1
+    f := f + (← expect s!"style {st} dispatches to the plain decodeCodeBlock"
+      (match ref, got with
+       | .ok a, .ok b => a.plane.data == b.plane.data && a.flags == b.flags &&
+           a.numPasses == b.numPasses && a.codedPlanes == b.codedPlanes
+       | _, _ => false))
+  return f
+
 /-- Runs the suite; returns the number of failures. -/
 def run : IO Nat := do
   let mut f ← runLuts
   f := f + (← runChecks)
   f := f + (← runRandom)
   runBench
+  f := f + (← runModeStructure)
+  f := f + (← runCausalUnit)
+  f := f + (← runSegChecks)
+  f := f + (← runModesRandom)
   return f
 
 end JPEG2000.Tests.Tier1Fast
