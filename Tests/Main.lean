@@ -30,6 +30,7 @@ import Tests.Pgx
 import Tests.Decode
 import Tests.Encode
 import Tests.MQRoundTrip
+import Tests.Conformance
 
 /-!
 # Test runner
@@ -79,7 +80,8 @@ def suites : List Suite :=
     { name := "color", run := JPEG2000.Tests.Color.run },
     { name := "pgx", run := JPEG2000.Tests.Pgx.run },
     { name := "decode", run := JPEG2000.Tests.Decode.run },
-    { name := "encode", run := JPEG2000.Tests.Encode.run } ]
+    { name := "encode", run := JPEG2000.Tests.Encode.run },
+    { name := "conformance", run := JPEG2000.Tests.Conformance.run } ]
 
 end JPEG2000.Tests
 

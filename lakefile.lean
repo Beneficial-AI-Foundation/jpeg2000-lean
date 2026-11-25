@@ -55,3 +55,8 @@ lean_exe «header-dump» where
 `scripts/diff-segments.py`. Not a default target. -/
 lean_exe «segment-dump» where
   root := `Tests.SegmentDump
+
+/-- T.803 conformance runner (task 5.6b): every profile-0/1 stream against the reference
+decodes at the class-0 and class-1 thresholds: `lake exe conformance`. Not a default target. -/
+lean_exe conformance where
+  root := `Tests.ConformanceMain
