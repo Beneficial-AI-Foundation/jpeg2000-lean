@@ -17,15 +17,14 @@ Design document: Plan.md
   becomes current. Proof tasks name their theorem IDs from Plan.md §4 (S1–S6, C1–C10).
 
 ## Current wave
-Wave 6: 1.5 (new), 2.4 (new), 2.5 (new), 2.6 (wt)
 
 ## Branches and PRs
 | Phase | Branch | Base | PR | State |
 |---|---|---|---|---|
 | 0 | `phase-0-infra` | `origin/main` | [#1](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/1) | ready (2026-11-25) |
 | 1 | `phase-1-headers` | `phase-0-infra` | [#2](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/2) | draft |
-| 2 | `phase-2-mq` | `phase-1-headers` | — | none |
-| 3 | `phase-3-tier1` | `phase-2-mq` | — | none |
+| 2 | (none: all Phase 2 tasks landed on `phase-1-headers`) | — | [#2](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/2) | M2 reached 2026-11-25; ships with PR #2 |
+| 3 | `phase-3-tier1` | `phase-1-headers` | — | none |
 | 4 | `phase-4-tier2` | `phase-3-tier1` | — | none |
 | 5 | `phase-5-reconstruction` | `phase-4-tier2` | — | none |
 | 6 | `phase-6-jp2-output` | `phase-5-reconstruction` | — | none |
@@ -56,10 +55,11 @@ Plan.md §7 row 1, §3, Annex A/I. Exit: **M1**: every T.803 stream and every co
 | 1.2 | JP2/JPX box parser (Annex I): box headers incl. XL boxes, signature/ftyp/jp2h (ihdr, colr, pclr, cmap, cdef, bpcc, res ignored)/jp2c; raw J2K detection | 1.1 | `JPEG2000/Box.lean`, `Tests/Box.lean` | new | | done (2026-11-25) |
 | 1.3 | Main-header marker segments (Annex A): SIZ, COD/COC, QCD/QCC, RGN, POC, COM, CAP/CRG tolerated; typed records | 1.1 | `JPEG2000/Marker.lean`, `Tests/Marker.lean` | new | | done (2026-11-25) |
 | 1.4 | Tile-part markers SOT/SOD/EOC, PPM/PPT/PLT/TLM, tile-part assembly into tiles (Psot=0, out-of-order parts, TNsot) | 1.3 | `JPEG2000/TilePart.lean`, `Tests/TilePart.lean` | new | | done (2026-11-25) |
-| 1.5 | `Header`: main + per-tile headers merged (COD/COC/QCD/QCC precedence, tile overrides), validation against `Limits` before allocation; `parseCodestream` | 1.3, 1.4 | `JPEG2000/Header.lean`, `Tests/Header.lean` | new | | doing (2026-11-25) |
+| 1.5 | `Header`: main + per-tile headers merged (COD/COC/QCD/QCC precedence, tile overrides), validation against `Limits` before allocation; `parseCodestream` | 1.3, 1.4 | `JPEG2000/Header.lean`, `Tests/Header.lean` | new | | done (2026-11-25) |
 | 1.6 | Marker-segment serialiser (`Encode/Marker.lean`) and the round-trip theorem `parse (serialise m) = m` for every marker segment type (`Spec/MarkerRoundTrip.lean`) | 1.3 | `Encode/Marker.lean`, `Spec/MarkerRoundTrip.lean` | new | | done (2026-11-25) |
 | 1.7 | Header dump exe + `scripts/diff-headers.py` comparing against `opj_dump` on every corpus stream | 1.2, 1.5, 0.5 | `Tests/HeaderDump.lean`, `scripts/diff-headers.py` | new | todo |
-| 1.8 | M1 check | 1.1–1.7 | — | solo | todo |
+| 1.9 | Tolerate `TNsot` one too small as OpenJPEG does (`m_nb_tile_parts_correction` in `opj_j2k_read_sot`): `issue208.jp2`, `issue559-eci-090-CIELab.jp2` declare TNsot = 5 with 6 tile-parts; fix `parseSOT`/`assembleTile`, drop the two `xfailTNsot` entries in `Tests/Header.lean` | 1.5 | `JPEG2000/TilePart.lean`, `Tests/TilePart.lean`, `Tests/Header.lean` | wt | todo |
+| 1.8 | M1 check | 1.1–1.7, 1.9 | — | solo | todo |
 Exit criterion checked: [ ]
 
 ## Phase 2 — MQ coder
@@ -69,11 +69,11 @@ Plan.md §7 row 2, §5.2 "MQ decoder", Annex C. Exit: **M2**: C1 and C2 proved; 
 | 2.1 | (landed on `phase-1-headers`) `Spec.MQ`: Qe table (C.2) as data, `INITDEC`/`DECODE`/`RENORMD`/`BYTEIN` transcribed over `Nat`/`List UInt8` with synthetic `0xFF` padding past the end | 0.2 | `Spec/MQ.lean` | new | | done (2026-11-25) |
 | 2.2 | (landed on `phase-1-headers`) Reference MQ encoder (Annex C encoder flowcharts, `FLUSH`) | 2.1 | `Encode/MQ.lean` | new | | done (2026-11-25) |
 | 2.3 | (landed on `phase-1-headers`) Fast MQ decoder: `UInt32` `C`/`A`/`CT`, context state array, no GMP, bounded reads | 2.1, 1.1 | `JPEG2000/MQ.lean` | new | | done (2026-11-25) |
-| 2.4 | C1: `mqDecode (mqEncode s) = s` | 2.1, 2.2 | `Spec/MQRoundTrip.lean` | new | | doing (2026-11-25) |
-| 2.5 | C2: fast decoder = `Spec.MQ` on every input; termination of `RENORMD` | 2.3 | `Spec/MQEquiv.lean` | new | | doing (2026-11-25) |
-| 2.6 | Tests (10⁶ random round trips, fixed vectors) + throughput bench | 2.2, 2.3 | `Tests/MQRoundTrip.lean`, `Bench/MQ.lean`, `lakefile.lean` (exe `bench-mq`, lib `Bench`) | wt | doing (2026-11-25) |
-| 2.7 | M2 check | 2.1–2.6 | — | solo | todo |
-Exit criterion checked: [ ]
+| 2.4 | (landed on `phase-1-headers`) C1: `mqDecode (mqEncode s) = s` | 2.1, 2.2 | `Spec/MQRoundTrip.lean` | new | | done (2026-11-25) |
+| 2.5 | (landed on `phase-1-headers`) C2: fast decoder = `Spec.MQ` on every input; termination of `RENORMD` | 2.3 | `Spec/MQEquiv.lean` | new | | done (2026-11-25) |
+| 2.6 | (landed on `phase-1-headers`) Tests (10⁶ random round trips, fixed vectors) + throughput bench | 2.2, 2.3 | `Tests/MQRoundTrip.lean`, `Bench/MQ.lean`, `lakefile.lean` (exe `bench-mq`, lib `Bench`) | wt | done (2026-11-25) |
+| 2.7 | M2 check | 2.1–2.6 | — | solo | done (2026-11-25) |
+Exit criterion checked: [x] (2026-11-25 on the wave-6 tree: C1 `Spec.MQRoundTrip.roundTrip` (no side conditions) and C2 `Spec.MQEquiv.decodeAll_eq` (inits < 128) + `decode_init_eq` (any segment of a buffer) proved, axioms OK (120 theorems checked); `JPEG2000_MQ_ROUNDTRIPS=1000000 lake exe tests` → `mq round trips: 1000000/1000000 ok (113171773 decisions, 12831008 coded bytes, 46505 ms)` through both decoders; `lake exe bench-mq`: fast decoder 51–86 M decisions/s on skewed data (93.7 on T.88 ×20000), ~15× the spec decoder — `docs/performance.md`)
 
 ## Phase 3 — Tier-1 (EBCOT)
 Plan.md §7 row 3, §5.2 "Tier-1", Annex D. Exit: **M3**: C3 proved for plain mode; other modes tested against the spec; code-blocks extracted from T.803 streams decode identically to OpenJPEG.
@@ -194,6 +194,12 @@ Exit criterion checked: [ ]
 * `let mut x` cannot be re-bound by `let x ← …` in the same `do` block ("mutable variable cannot be shadowed") — use a new name.
 * Round-trip proof recipes (Spec/MarkerRoundTrip.lean): reader lemmas `rd_u8/rd_u16/rd_u32/rd_take/rd_rest/rd_readArray/rd_expectEnd`; pattern `generalize Reader.ofByteArray (…) st = r at h ⊢`, chain `obtain ⟨r', h, hr⟩ := rd_u8 …`, finish with one `simp [parseX, …, bind, Except.bind, pure, Except.pure, Limits.check, Limits.checkLe, Limits.bound]`. `|||`/`<<<` recombination: `Nat.shiftLeft_add_eq_or_of_lt` + `Nat.shiftLeft_add`; masks: `UIntN.toNat_and` with constant as `2^k - 1` then `Nat.and_two_pow_sub_one_eq_mod`. `simp` turns `Array.mkEmpty n` into `#[]` and `n.toUInt16` into `UInt16.ofNat` (generalize first). For `if (∀ x ∈ l, P x)` use `rw [ite_eq_left_of_eq_true _ _ (eq_true h)]`.
 
+* `omega` (v4.36) can hit max recursion on simple linear goals depending on argument order (`z * 1048` vs `1048 * z`); fall back to `lia`. For ring rearrangements with powers: `generalize 2 ^ m = p` then `grind`. `by_contra` doesn't exist without Mathlib. `obtain ⟨-, …⟩` clears every hypothesis mentioning the witness — name it instead. Facts about `f (g s)` don't rewrite goals about a definitionally equal `h s`: restate with `have h' : (h s).A = _ := h0`.
+* `ByteArray.toList` is implemented with `get!` (hygiene rejects it even in proofs): prove `bs.toList = bs.data.toList` via `show [bs.data.getD i default] ++ _ = _` then `simp [Array.getD, h]`. After `simp only` a pair component may already be `True` (close with `trivial`, not `rfl`). `¬b = true` becomes `b = false`: add `Bool.false_eq_true` before `↓reduceIte`. `Nat` bit test `x &&& 0x8000 ≠ 0 ↔ x / 0x8000 % 2 = 1`: `Nat.eq_of_testBit_eq`, `Nat.testBit_and`, `Nat.testBit_two_pow`, `Nat.testBit_eq_decide_div_mod_eq`. `exact h.data` in a record field can hit max recursion: `fun j => by simpa [Dec.byteAt] using h.data j`.
+* Lean syntax: a multi-line structure instance in `do` fails ("expected '}'") when continuation lines sit left of the first field — put fields on their own lines after `{`.
+* `opj_dump` prints 1 step size for derived quantisation and `3·numres−2` otherwise; default-tile `csty`, `cblksty`, `prg` are hex. It prints no per-tile parameters; per-tile overrides were verified against an independent Python walker (`Tests/Header.lean`). No corpus file has a tile-part COD.
+* Bench data: the reference MQ encoder runs ~7 M decisions/s, so `bench-mq` caps data sets at 8 M decisions / 1 MB. `Spec.MQ.byteAt` is `List.getD` (linear): compare spec vs fast only on small segments. Worktree subagents start on an old commit (`d3d050f`) — the brief must tell them to `git reset --hard <selection commit>` on their own worktree branch first (commit the wave selection before fanning out).
+
 ## Decisions and deviations from the design document
 * 0.1: three libraries (`JPEG2000`, `Spec`, `Encode`) with one umbrella each, all default targets; `Tests` is a separate lib built only via `lake build tests`. `.mcp.json` pins `lean-lsp-mcp==0.33.0` with `lean_build` disabled (as bib-lean).
 
@@ -211,6 +217,9 @@ Exit criterion checked: [ ]
 * 1.6: round trip proved one way (WF ⇒ parse ∘ serialise = id) for all nine main-header segment types; "parse succeeds ⇒ WF" not proved (not required by M1). SOT/TLM/PLT/PPM/PPT have no serialiser or round trip (M1 names "marker segments"; see 1.8).
 * 2.3: Qe table is packed into a 256-entry `UInt32` table indexed by the context byte (`index<<<1 ||| mps`), so lookups need no bounds check; agreement with `Spec.MQ.qeAt` is `Spec.MQTable.qeTab_agree`. C2 (2.5) must carry the invariant `0x8000 ≤ A < 0x10000` and inits < 47.
 
+* 1.5: precedence tile COC > tile COD > main COC > main COD (same for QCC/QCD, RGN), matching OpenJPEG; tile POC *replaces* main POC (T.800 A.6.6; OpenJPEG appends — no corpus file has both). Strict: duplicate COC/QCC/RGN per component in one header; MCT with differing sub-sampling/transform on components 0–2; `CSpoc ≥ Csiz`; derived quantisation needs εo ≥ NL−1. Step counts: ≥ 3·NL+1 (extra ignored, as OpenJPEG), not exactly. Lenient: MCT with Csiz < 3 ignored (`123.j2c`, decoded by OpenJPEG); CEpoc/REpoc/LYEpoc clamped by progression (4.3). Limits checked before tile-parts (image side/area, tiles, numTiles·Csiz vs maxCodeBlocks, work samples, decoded bytes) and after merging (exact code-block/precinct/packet totals). `Limits` has no `maxTileComponents`; `maxCodeBlocks` is reused.
+* Phase 2 (all of 2.1–2.6) landed on `phase-1-headers` and ships with PR #2 (Phases 1 and 2 together); no `phase-2-mq` branch. Phase 3 will branch from `phase-1-headers`.
+
 ## Blocked / questions for the human
 
 * Benchmark set (Plan §8.4) lacks a ≥ 20 Mpx stream: openjpeg-data has none that decodes. Where may one come from (a licensable large JP2, or one we generate with `opj_compress` from a public-domain image)? Proceeding with the 15-file set meanwhile.
@@ -224,3 +233,4 @@ Exit criterion checked: [ ]
 * 2026-11-25 — phase 0 milestone: PR #1 marked ready for review
 * 2026-11-25 — wave 4 (phase 1, PR #2): 1.2 (JP2 boxes, 9/9 conformance JP2 match opj_dump), 1.3 (main-header markers, 23/23 T.803 streams match opj_dump), 2.1 (MQ spec, T.88 H.2 vector passes, 13 theorems) done; CI build job now fetches the corpus; commit "wave 4: 1.2, 1.3, 2.1 — boxes, markers, MQ spec"
 * 2026-11-25 — wave 5 (phase 1, PR #2): 1.4 (tile-parts, 23/23 T.803 streams), 1.6 (parse∘serialise proved for 9 segment types, 41 theorems; 23/23 headers byte-identical), 2.2 (MQ encoder, 3000 random round trips), 2.3 (fast MQ decoder = spec on 3000 cases, ~100 M decisions/s) done; commit "wave 5: 1.4, 1.6, 2.2, 2.3 — tile-parts, marker round trip, MQ encoder and fast decoder"
+* 2026-11-25 — wave 6 (phase 1, PR #2): 1.5 (header merge + validation; 42/44 corpus files parse, 2 XFAIL → new task 1.9), 2.4 (C1 proved), 2.5 (C2 proved), 2.6 (10⁶ round trips, bench-mq) done; 2.7 M2 ticked; commit "wave 6: 1.5, 2.4–2.7 — header merge, C1, C2, MQ round trips (M2)"

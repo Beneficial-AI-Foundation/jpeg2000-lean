@@ -140,3 +140,37 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.MQTable.entry_eq
 #print axioms JPEG2000.Spec.MQTable.qeTab_agree
 #print axioms JPEG2000.Spec.MQTable.stateOf_packCx
+
+-- Phase 2, task 2.4: C1 MQ round trip (Spec/MQRoundTrip.lean)
+#print axioms JPEG2000.Spec.MQRoundTrip.roundTrip
+#print axioms JPEG2000.Spec.MQRoundTrip.run_Q
+#print axioms JPEG2000.Spec.MQRoundTrip.dec_many
+
+-- Phase 2, task 2.5: C2 fast MQ = spec (Spec/MQEquiv.lean)
+#print axioms JPEG2000.Spec.MQEquiv.byteAt_lt
+#print axioms JPEG2000.Spec.MQEquiv.bytein_sim
+#print axioms JPEG2000.Spec.MQEquiv.bit_fast
+#print axioms JPEG2000.Spec.MQEquiv.bytein_cx
+#print axioms JPEG2000.Spec.MQEquiv.spec_bytein_CT
+#print axioms JPEG2000.Spec.MQEquiv.renormStep_sim
+#print axioms JPEG2000.Spec.MQEquiv.renormLoop_sim
+#print axioms JPEG2000.Spec.MQEquiv.renormd_sim
+#print axioms JPEG2000.Spec.MQEquiv.ctxSet_size
+#print axioms JPEG2000.Spec.MQEquiv.ctxGet_ctxSet
+#print axioms JPEG2000.Spec.MQEquiv.contexts_get_put
+#print axioms JPEG2000.Spec.MQEquiv.cxRel_set
+#print axioms JPEG2000.Spec.MQEquiv.mps_fast
+#print axioms JPEG2000.Spec.MQEquiv.decode_sim
+#print axioms JPEG2000.Spec.MQEquiv.decodeList_sim
+#print axioms JPEG2000.Spec.MQEquiv.segment_byteAt
+#print axioms JPEG2000.Spec.MQEquiv.toList_eq_data_toList
+#print axioms JPEG2000.Spec.MQEquiv.segment_full
+#print axioms JPEG2000.Spec.MQEquiv.init_sim
+#print axioms JPEG2000.Spec.MQEquiv.initContexts_size
+#print axioms JPEG2000.Spec.MQEquiv.initContexts_rel
+#print axioms JPEG2000.Spec.MQEquiv.decode_init_eq
+#print axioms JPEG2000.Spec.MQEquiv.decodeAll_eq
+#print axioms JPEG2000.Spec.MQEquiv.renormStep_a
+#print axioms JPEG2000.Spec.MQEquiv.renormLoop_a_range
+#print axioms JPEG2000.Spec.MQEquiv.renormd_fuel_suffices_fast
+#print axioms JPEG2000.Spec.MQEquiv.decode_a_range

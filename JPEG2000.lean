@@ -5,6 +5,7 @@ import JPEG2000.Box
 import JPEG2000.Marker
 import JPEG2000.TilePart
 import JPEG2000.MQ
+import JPEG2000.Header
 
 /-!
 # jpeg2000-lean
