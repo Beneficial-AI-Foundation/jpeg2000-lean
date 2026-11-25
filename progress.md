@@ -22,7 +22,7 @@ Design document: Plan.md
 | Phase | Branch | Base | PR | State |
 |---|---|---|---|---|
 | 0 | `phase-0-infra` | `origin/main` | [#1](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/1) | ready (2026-11-25) |
-| 1 | `phase-1-headers` | `phase-0-infra` | [#2](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/2) | draft |
+| 1 | `phase-1-headers` | `phase-0-infra` | [#2](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/2) | ready (2026-11-25) |
 | 2 | (none: all Phase 2 tasks landed on `phase-1-headers`) | — | [#2](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/2) | M2 reached 2026-11-25; ships with PR #2 |
 | 3 | `phase-3-tier1` | `phase-1-headers` | — | none |
 | 4 | `phase-4-tier2` | `phase-3-tier1` | — | none |
@@ -257,3 +257,4 @@ Exit criterion checked: [ ]
 * 2026-11-25 — wave 6 (phase 1, PR #2): 1.5 (header merge + validation; 42/44 corpus files parse, 2 XFAIL → new task 1.9), 2.4 (C1 proved), 2.5 (C2 proved), 2.6 (10⁶ round trips, bench-mq) done; 2.7 M2 ticked; commit "wave 6: 1.5, 2.4–2.7 — header merge, C1, C2, MQ round trips (M2)"
 * 2026-11-25 — wave 7 (phase 1, PR #2): 1.7 (header-dump + diff-headers.py: 44/44 corpus files identical to opj_dump), 1.9 (TNsot correction), 3.1 (Tier-1 context tables, 20 theorems, = OpenJPEG on all inputs) done; new task 1.10 (tile-part segment round trips); commit "wave 7: 1.7, 1.9, 3.1 — opj_dump differential, TNsot correction, Tier-1 contexts"
 * 2026-11-25 — wave 8 (phase 1, PR #2): 1.10 (tile-part segment round trips, 15 theorems), 3.2 (Tier-1 plain spec, 1600/1600 random round trips), 4.1 (tag trees, C4 proved incl. fast = spec), 4.2 (Tier-2 geometry, 23/23 T.803 consistent) done; 1.8 M1 ticked; tag-tree default cases 500 → 60; commit "wave 8: 1.10, 3.2, 4.1, 4.2 — M1, Tier-1 spec, tag trees, geometry"
+* 2026-11-25 — phase 1 + 2 milestones: PR #2 marked ready for review (CI 6/6 on c480c57)
