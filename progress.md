@@ -17,6 +17,7 @@ Design document: Plan.md
   becomes current. Proof tasks name their theorem IDs from Plan.md §4 (S1–S6, C1–C10).
 
 ## Current wave
+Wave 16: 7.1f (wt), 7.1c (new), 7.4 (new), 8.1 (wt)
 
 ## Branches and PRs
 | Phase | Branch | Base | PR | State |
@@ -142,14 +143,14 @@ Plan.md §7 row 7, §4, §5.3. Exit: **M7**: C9, C10, S2, S3 proved; `#print axi
 | 7.1 | `Spec.decode` composed from the stage specs; C9 from the stage theorems | — | — | — | split (into 7.1a–7.1e) |
 | 7.1a | (landed on `phase-5-reconstruction`) `Spec.decode` (codestream → per-component Int samples, reversible exact / irreversible over Rat) composed from the stage specs, and the C9 composition theorem proved from explicitly stated per-stage equivalence hypotheses (one `Prop` per stage); inventory of which stage obligations are already discharged by existing theorems and which are open | 5.5 | `Spec/Decode.lean`, `Spec/Equiv.lean` | new | done (2026-11-25) |
 | 7.1b | (landed on `phase-6-jp2-output`) Tier-2 packet decoding spec (B.10 over bit lists, using `Spec.TagTree`) + equivalence with `JPEG2000.Tier2.Packet` | 7.1a | `Spec/Tier2.lean`, `Spec/Tier2Equiv.lean` | new | | done (2026-11-25) |
-| 7.1c | Tier-1 modes: fast = spec for all code-block styles (extends C3 beyond plain) | 7.1a | `Spec/Tier1Equiv/Modes.lean` | new | todo |
+| 7.1c | Tier-1 modes: fast = spec for all code-block styles (extends C3 beyond plain) | 7.1a | `Spec/Tier1Equiv/Modes.lean`, `Spec/Tier1Equiv/Modes/` | new | | doing (2026-11-25) |
 | 7.1d | (landed on `phase-6-jp2-output`) 2-D DWT plane loops (Mallat load/store, level composition) for 5/3 and 9/7 and the dequantisation block loop proved = spec | 7.1a | `Spec/DWTPlane.lean`, `Spec/QuantBlock.lean` | new | | done (2026-11-25) |
-| 7.1f | Wire the real Tier-2 spec into C9: `Spec/Decode.lean` `Tier2Spec.decode := Spec.Tier2.decodeWithStream`, spec tile path reads `Spec.Tier2.BlockSt` (rect, zbp, segs); restate `Spec.Equiv.Tier2Equiv` as the ERel with `Spec.Tier2Equiv.image` under non-zero sub-sampling; discharge it with `tier2_equiv_of_siz`; update `c9_of_stages` and the skeletons | 7.1b | `Spec/Decode.lean`, `Spec/Equiv.lean`, `Spec/Tier2Wire.lean` | wt | todo |
+| 7.1f | Wire the real Tier-2 spec into C9: `Spec/Decode.lean` `Tier2Spec.decode := Spec.Tier2.decodeWithStream`, spec tile path reads `Spec.Tier2.BlockSt` (rect, zbp, segs); restate `Spec.Equiv.Tier2Equiv` as the ERel with `Spec.Tier2Equiv.image` under non-zero sub-sampling; discharge it with `tier2_equiv_of_siz`; update `c9_of_stages` and the skeletons | 7.1b | `Spec/Decode.lean`, `Spec/Equiv.lean`, `Spec/Tier2Wire.lean` | wt | | doing (2026-11-25) |
 | 7.1g | `Tier2WF`: `Geometry.precinct` lemma (bands ∈ `bandsOf r`, code-block rects inside the band rect), `initPrecincts` invariant per (component, resolution), decoding never changes band/rect/geom (tools: `forIn_inv`, `bind_ok`, `arrayMapM_inv` in `Spec/Tier2Equiv/Tile.lean`) | 7.1f | `Spec/Tier2WF.lean` | new | todo |
 | 7.1e | Discharge the remaining C9 hypotheses and state C9 unconditionally (header, tile assembly, ROI, DC shift) | 7.1c, 7.1d, 7.1f, 7.1g | `Spec/Equiv.lean` | wt | todo |
 | 7.2 | (landed on `phase-5-reconstruction`) Reference encoder end to end (one tile, one layer, LRCP, plain mode, 5/3 + RCT; 9/7 variant) | 3.5, 4.1, 1.6 | `Encode/Encode.lean`, `Encode/Tier2.lean`, `Tests/Encode.lean` | new | done (2026-11-25) |
 | 7.3 | C10: `decode (encode img) = img` for the lossless encoder | 7.1a, 7.2 | `Spec/RoundTrip.lean` | new | todo |
-| 7.4 | S2 totality and S3 resource bounds as theorems over `Limits` | 7.1a | `Spec/Resources.lean` | new | todo |
+| 7.4 | S2 totality and S3 resource bounds as theorems over `Limits` | 7.1a | `Spec/Resources.lean` | new | | doing (2026-11-25) |
 | 7.5 | M7 check (axioms) | 7.1e, 7.2–7.4 | — | solo | todo |
 Exit criterion checked: [ ]
 
@@ -157,7 +158,7 @@ Exit criterion checked: [ ]
 Plan.md §7 row 8, §6. Exit: **M8**: the §6 targets met on the benchmark set, with numbers in the ledger.
 | ID | Task | Needs | Owns | Par | Status |
 |---|---|---|---|---|---|
-| 8.1 | Benchmark harness over the benchmark set vs the 0.6 baselines | 6.2, 0.6 | `Bench/`, `scripts/bench.sh` | new | todo |
+| 8.1 | Benchmark harness: `lake exe bench` decoding the benchmark set (manifest role `benchmark`) with `JPEG2000.decode` (and `decodeCodestream`), median of N runs, 1 thread, per-stage timing (Tier-2, Tier-1, dequant, DWT, MCT) vs the 0.6 OpenJPEG baselines; `scripts/bench.sh` writes a Markdown table; results appended to `docs/performance.md` History | 6.2, 0.6 | `Bench/Decode.lean`, `scripts/bench.sh`, `lakefile.lean` (exe), `docs/performance.md` | wt | doing (2026-11-25) |
 | 8.2 | Profile and optimise (split per hot stage when current) | 8.1 | — | wt | todo |
 | 8.3 | Parallel code-block / tile decoding with pure `Task`s | 8.1 | `JPEG2000/Parallel.lean` | new | todo |
 | 8.4 | M8 check | 8.1–8.3 | — | solo | todo |
