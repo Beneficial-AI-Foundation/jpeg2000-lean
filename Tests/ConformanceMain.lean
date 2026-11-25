@@ -11,7 +11,8 @@ separate module so that the `tests` and `conformance` executables do not clash.
 open JPEG2000.Tests.Conformance in
 /-- `lake exe conformance [--gate-class0]`: every profile-0/1 reference entry, both classes.
 Exit 1 on any class-1 failure (the M5 criterion; class 1 includes the reversible bit-exact
-check) or when the corpus is missing. Class 0 is always run and reported; it gates the exit
+check), any compared JP2 TIFF failure (task 6.3a), or when the corpus is missing. Class 0 is
+always run and reported; it gates the exit
 code only with `--gate-class0` (OpenJPEG's class-0 block is commented out and OpenJPEG
 itself fails the same class-0 entries). -/
 def main (args : List String) : IO UInt32 := do

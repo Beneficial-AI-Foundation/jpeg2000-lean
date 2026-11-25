@@ -74,20 +74,26 @@ jobs:
       - name: Tests
         run: lake exe tests
 
-      # T.803 conformance (task 5.6b): every p0/p1 stream against the reference decodes;
-      # fails on any class-1 failure (M5); class 0 is reported, informational. Linux only.
-      - name: T.803 conformance
-        if: runner.os == 'Linux'
-        run: lake build conformance && .lake/build/bin/conformance
-
-      # Header differential against OpenJPEG's opj_dump (task 1.7). Linux only: Ubuntu's
-      # libopenjp2-tools provides opj_dump; macOS runs the build and tests without it.
-      - name: Install opj_dump
+      # Linux only: Ubuntu's libopenjp2-tools provides opj_dump (header differential, task
+      # 1.7); liblcms2-utils provides tificc, with which the JP2 conformance harness applies
+      # the embedded ICC profiles of file5/7/8 (task 6.3a, test-only colour management).
+      # Installed after `lake exe tests` (whose jp2 suite then skips the ICC files) so the
+      # test suites keep their tool-less CI behaviour; macOS runs without them.
+      - name: Install opj_dump and tificc
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libopenjp2-tools
+          sudo apt-get install -y libopenjp2-tools liblcms2-utils
           opj_dump -h 2>&1 | head -n 3 || true
+          python3 -I scripts/icc-apply.py --check
+
+      # T.803 conformance (task 5.6b): every p0/p1 stream against the reference decodes;
+      # fails on any class-1 failure (M5); class 0 is reported, informational. Also the nine
+      # JP2 references jp2_N.tif (task 6.3a, ICC applied through tificc): any failure fails.
+      # Linux only.
+      - name: T.803 and JP2 conformance
+        if: runner.os == 'Linux'
+        run: lake build conformance && .lake/build/bin/conformance
 
       - name: Build header-dump
         if: runner.os == 'Linux'
