@@ -174,3 +174,25 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.MQEquiv.renormLoop_a_range
 #print axioms JPEG2000.Spec.MQEquiv.renormd_fuel_suffices_fast
 #print axioms JPEG2000.Spec.MQEquiv.decode_a_range
+
+-- Phase 3, task 3.1: Tier-1 context tables (Spec/Tier1/Context.lean)
+#print axioms JPEG2000.Spec.Tier1.initialStates_eq
+#print axioms JPEG2000.Spec.Tier1.initialStates_length
+#print axioms JPEG2000.Spec.Tier1.zcContext_LL_eq_LH
+#print axioms JPEG2000.Spec.Tier1.zcContext_HL_swap
+#print axioms JPEG2000.Spec.Tier1.zcContext_HH_symm
+#print axioms JPEG2000.Spec.Tier1.zcContext_clamp
+#print axioms JPEG2000.Spec.Tier1.zcContext_le
+#print axioms JPEG2000.Spec.Tier1.zcContext_eq_zero_iff
+#print axioms JPEG2000.Spec.Tier1.zcContext_mono_h
+#print axioms JPEG2000.Spec.Tier1.zcContext_mono_v
+#print axioms JPEG2000.Spec.Tier1.zcContext_mono_d
+#print axioms JPEG2000.Spec.Tier1.signContribution_comm
+#print axioms JPEG2000.Spec.Tier1.signContribution_range
+#print axioms JPEG2000.Spec.Tier1.signContribution_eq_clamp
+#print axioms JPEG2000.Spec.Tier1.scContext_range
+#print axioms JPEG2000.Spec.Tier1.scContext_neg_fst
+#print axioms JPEG2000.Spec.Tier1.scContext_neg_snd
+#print axioms JPEG2000.Spec.Tier1.scContext_zero
+#print axioms JPEG2000.Spec.Tier1.mrContext_range
+#print axioms JPEG2000.Spec.Tier1.contexts_partition

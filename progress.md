@@ -17,7 +17,6 @@ Design document: Plan.md
   becomes current. Proof tasks name their theorem IDs from Plan.md §4 (S1–S6, C1–C10).
 
 ## Current wave
-Wave 7: 1.7 (wt), 1.9 (wt), 3.1 (new)
 
 ## Branches and PRs
 | Phase | Branch | Base | PR | State |
@@ -58,9 +57,10 @@ Plan.md §7 row 1, §3, Annex A/I. Exit: **M1**: every T.803 stream and every co
 | 1.4 | Tile-part markers SOT/SOD/EOC, PPM/PPT/PLT/TLM, tile-part assembly into tiles (Psot=0, out-of-order parts, TNsot) | 1.3 | `JPEG2000/TilePart.lean`, `Tests/TilePart.lean` | new | | done (2026-11-25) |
 | 1.5 | `Header`: main + per-tile headers merged (COD/COC/QCD/QCC precedence, tile overrides), validation against `Limits` before allocation; `parseCodestream` | 1.3, 1.4 | `JPEG2000/Header.lean`, `Tests/Header.lean` | new | | done (2026-11-25) |
 | 1.6 | Marker-segment serialiser (`Encode/Marker.lean`) and the round-trip theorem `parse (serialise m) = m` for every marker segment type (`Spec/MarkerRoundTrip.lean`) | 1.3 | `Encode/Marker.lean`, `Spec/MarkerRoundTrip.lean` | new | | done (2026-11-25) |
-| 1.7 | Header dump exe (`lake exe header-dump <file>` printing the merged header in `opj_dump -i`-comparable form) + `scripts/diff-headers.py` comparing against `opj_dump` on every corpus stream | 1.2, 1.5, 0.5 | `Tests/HeaderDump.lean`, `scripts/diff-headers.py`, `lakefile.lean` (exe `header-dump`), `.github/workflows/ci.yml` (diff step) | wt | doing (2026-11-25) |
-| 1.9 | Tolerate `TNsot` one too small as OpenJPEG does (`m_nb_tile_parts_correction` in `opj_j2k_read_sot`): `issue208.jp2`, `issue559-eci-090-CIELab.jp2` declare TNsot = 5 with 6 tile-parts; fix `parseSOT`/`assembleTile`, drop the two `xfailTNsot` entries in `Tests/Header.lean` | 1.5 | `JPEG2000/TilePart.lean`, `Tests/TilePart.lean`, `Tests/Header.lean` | wt | | doing (2026-11-25) |
-| 1.8 | M1 check | 1.1–1.7, 1.9 | — | solo | todo |
+| 1.7 | Header dump exe (`lake exe header-dump <file>` printing the merged header in `opj_dump -i`-comparable form) + `scripts/diff-headers.py` comparing against `opj_dump` on every corpus stream | 1.2, 1.5, 0.5 | `Tests/HeaderDump.lean`, `scripts/diff-headers.py`, `lakefile.lean` (exe `header-dump`), `.github/workflows/ci.yml` (diff step) | wt | done (2026-11-25) |
+| 1.9 | Tolerate `TNsot` one too small as OpenJPEG does (`m_nb_tile_parts_correction` in `opj_j2k_read_sot`): `issue208.jp2`, `issue559-eci-090-CIELab.jp2` declare TNsot = 5 with 6 tile-parts; fix `parseSOT`/`assembleTile`, drop the two `xfailTNsot` entries in `Tests/Header.lean` | 1.5 | `JPEG2000/TilePart.lean`, `Tests/TilePart.lean`, `Tests/Header.lean` | wt | | done (2026-11-25) |
+| 1.10 | Serialisers + round-trip theorems for the tile-part marker segments SOT, TLM, PLT, PPM, PPT (M1 says "marker segments"; 1.6 covered the 9 main-header types only) | 1.4, 1.6 | `Encode/TilePart.lean`, `Spec/TilePartRoundTrip.lean`, `Tests/TilePartRoundTrip.lean` | new | todo |
+| 1.8 | M1 check | 1.1–1.7, 1.9, 1.10 | — | solo | todo |
 Exit criterion checked: [ ]
 
 ## Phase 2 — MQ coder
@@ -80,7 +80,7 @@ Exit criterion checked: [x] (2026-11-25 on the wave-6 tree: C1 `Spec.MQRoundTrip
 Plan.md §7 row 3, §5.2 "Tier-1", Annex D. Exit: **M3**: C3 proved for plain mode; other modes tested against the spec; code-blocks extracted from T.803 streams decode identically to OpenJPEG.
 | ID | Task | Needs | Owns | Par | Status |
 |---|---|---|---|---|---|
-| 3.1 | Spec context tables D.1–D.3 (zero coding, sign coding, magnitude refinement) as data | 2.1 | `Spec/Tier1/Context.lean` | new | | doing (2026-11-25) |
+| 3.1 | (landed on `phase-1-headers`) Spec context tables D.1–D.3 (zero coding, sign coding, magnitude refinement) as data | 2.1 | `Spec/Tier1/Context.lean` | new | | done (2026-11-25) |
 | 3.2 | Spec Tier-1 decoder, plain mode: per-coefficient state, significance propagation / magnitude refinement / cleanup passes, run-length coding | 3.1 | `Spec/Tier1/Decode.lean` | new | todo |
 | 3.3 | Spec modes: reset, termall, vertically causal, segmentation symbols, predictable termination, bypass (raw) | 3.2 | `Spec/Tier1/Modes.lean` | new | todo |
 | 3.4 | Fast Tier-1: 32-bit flag word per coefficient, stripe scan, zero-stripe skipping, all modes | 3.2, 2.3 | `JPEG2000/Tier1/` | new | todo |
@@ -201,6 +201,12 @@ Exit criterion checked: [ ]
 * `opj_dump` prints 1 step size for derived quantisation and `3·numres−2` otherwise; default-tile `csty`, `cblksty`, `prg` are hex. It prints no per-tile parameters; per-tile overrides were verified against an independent Python walker (`Tests/Header.lean`). No corpus file has a tile-part COD.
 * Bench data: the reference MQ encoder runs ~7 M decisions/s, so `bench-mq` caps data sets at 8 M decisions / 1 MB. `Spec.MQ.byteAt` is `List.getD` (linear): compare spec vs fast only on small segments. Worktree subagents start on an old commit (`d3d050f`) — the brief must tell them to `git reset --hard <selection commit>` on their own worktree branch first (commit the wave selection before fanning out).
 
+* `opj_dump -i` prints `[INFO]`/`[WARNING]` on stdout; its "Tile index" block appears only with a TLM, and `end_header` is always 0 there. `scripts/diff-headers.py` drops 4 diagnostic lines and masks `end_header` (each commented). It is Linux-only in CI.
+* `.gitignore` `corpus/files/` (trailing slash) does not match a symlink — fixed to `corpus/files` in wave 7. Worktree subagents symlink `corpus/files` from the main checkout for corpus tests.
+* A long `do` block of `f := f + (← expect …)` lines hits "maximum recursion depth" — split into separate functions with explicitly typed top-level helpers.
+* `decide` can't synthesise `Decidable (∀ h < 3, … (h + 1 < 3 → P) …)` — split into lemmas over `∀ h < 2`. `split` + `omega` on a `Nat` literal-pattern `match` loses case info: `rcases h with _|_|_|h` then `simp [defs, Nat.add_assoc]`. Nested `if` on `Int`: `repeat' split` then `all_goals first | rfl | omega`.
+* Tier-1 context numbering: 0–8 zero coding, 9–13 sign, 14–16 refinement, 17 run-length, 18 UNIFORM (= OpenJPEG `T1_CTXNO_*`, `Spec.MQ`, `JPEG2000.MQ.tier1Inits`). OpenJPEG band numbers: 0 LL, 1 HL, 2 LH, 3 HH; its zc generator swaps H/V for HL at lookup (agrees with T.800).
+
 ## Decisions and deviations from the design document
 * 0.1: three libraries (`JPEG2000`, `Spec`, `Encode`) with one umbrella each, all default targets; `Tests` is a separate lib built only via `lake build tests`. `.mcp.json` pins `lean-lsp-mcp==0.33.0` with `lean_build` disabled (as bib-lean).
 
@@ -221,6 +227,10 @@ Exit criterion checked: [ ]
 * 1.5: precedence tile COC > tile COD > main COC > main COD (same for QCC/QCD, RGN), matching OpenJPEG; tile POC *replaces* main POC (T.800 A.6.6; OpenJPEG appends — no corpus file has both). Strict: duplicate COC/QCC/RGN per component in one header; MCT with differing sub-sampling/transform on components 0–2; `CSpoc ≥ Csiz`; derived quantisation needs εo ≥ NL−1. Step counts: ≥ 3·NL+1 (extra ignored, as OpenJPEG), not exactly. Lenient: MCT with Csiz < 3 ignored (`123.j2c`, decoded by OpenJPEG); CEpoc/REpoc/LYEpoc clamped by progression (4.3). Limits checked before tile-parts (image side/area, tiles, numTiles·Csiz vs maxCodeBlocks, work samples, decoded bytes) and after merging (exact code-block/precinct/packet totals). `Limits` has no `maxTileComponents`; `maxCodeBlocks` is reused.
 * Phase 2 (all of 2.1–2.6) landed on `phase-1-headers` and ships with PR #2 (Phases 1 and 2 together); no `phase-2-mq` branch. Phase 3 will branch from `phase-1-headers`.
 
+* 1.9: `TNsot` correction copied from OpenJPEG (`opj_j2k_read_tile_header`): decided once per codestream at the first tile-part with `TPsot + 1 = TNsot` (TNsot ≠ 1) whose tile has a further part with the same TNsot; then every nonzero TNsot counts as TNsot + 1. Still stricter than OpenJPEG: exact counts required after the correction.
+* 1.7: `diff-headers.py` compares 44 corpus codestreams (conformance, JP2, benchmark) with `opj_dump -i`; result 44/44 identical after 1.9.
+* M1 reading: "parse ∘ serialise round trip proved for marker segments" includes the tile-part segments (SOT, TLM, PLT, PPM, PPT) → task 1.10 before ticking M1.
+
 ## Blocked / questions for the human
 
 * Benchmark set (Plan §8.4) lacks a ≥ 20 Mpx stream: openjpeg-data has none that decodes. Where may one come from (a licensable large JP2, or one we generate with `opj_compress` from a public-domain image)? Proceeding with the 15-file set meanwhile.
@@ -235,3 +245,4 @@ Exit criterion checked: [ ]
 * 2026-11-25 — wave 4 (phase 1, PR #2): 1.2 (JP2 boxes, 9/9 conformance JP2 match opj_dump), 1.3 (main-header markers, 23/23 T.803 streams match opj_dump), 2.1 (MQ spec, T.88 H.2 vector passes, 13 theorems) done; CI build job now fetches the corpus; commit "wave 4: 1.2, 1.3, 2.1 — boxes, markers, MQ spec"
 * 2026-11-25 — wave 5 (phase 1, PR #2): 1.4 (tile-parts, 23/23 T.803 streams), 1.6 (parse∘serialise proved for 9 segment types, 41 theorems; 23/23 headers byte-identical), 2.2 (MQ encoder, 3000 random round trips), 2.3 (fast MQ decoder = spec on 3000 cases, ~100 M decisions/s) done; commit "wave 5: 1.4, 1.6, 2.2, 2.3 — tile-parts, marker round trip, MQ encoder and fast decoder"
 * 2026-11-25 — wave 6 (phase 1, PR #2): 1.5 (header merge + validation; 42/44 corpus files parse, 2 XFAIL → new task 1.9), 2.4 (C1 proved), 2.5 (C2 proved), 2.6 (10⁶ round trips, bench-mq) done; 2.7 M2 ticked; commit "wave 6: 1.5, 2.4–2.7 — header merge, C1, C2, MQ round trips (M2)"
+* 2026-11-25 — wave 7 (phase 1, PR #2): 1.7 (header-dump + diff-headers.py: 44/44 corpus files identical to opj_dump), 1.9 (TNsot correction), 3.1 (Tier-1 context tables, 20 theorems, = OpenJPEG on all inputs) done; new task 1.10 (tile-part segment round trips); commit "wave 7: 1.7, 1.9, 3.1 — opj_dump differential, TNsot correction, Tier-1 contexts"

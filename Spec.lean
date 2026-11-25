@@ -3,6 +3,7 @@ import Spec.MQTable
 import Spec.MarkerRoundTrip
 import Spec.MQEquiv
 import Spec.MQRoundTrip
+import Spec.Tier1.Context
 
 /-!
 # Executable specifications

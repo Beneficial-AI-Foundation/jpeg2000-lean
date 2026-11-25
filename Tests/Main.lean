@@ -11,6 +11,7 @@ import Tests.MarkerRoundTrip
 import Tests.MQEnc
 import Tests.MQ
 import Tests.Header
+import Tests.Tier1Context
 import Tests.MQRoundTrip
 
 /-!
@@ -43,7 +44,8 @@ def suites : List Suite :=
     { name := "mqenc", run := JPEG2000.Tests.MQEnc.run },
     { name := "mq", run := JPEG2000.Tests.MQ.run },
     { name := "header", run := JPEG2000.Tests.Header.run },
-    { name := "mq-roundtrip", run := JPEG2000.Tests.MQRoundTrip.run } ]
+    { name := "mq-roundtrip", run := JPEG2000.Tests.MQRoundTrip.run },
+    { name := "tier1ctx", run := JPEG2000.Tests.Tier1Context.run } ]
 
 end JPEG2000.Tests
 
