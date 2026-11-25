@@ -45,6 +45,11 @@ lean_lib Bench where
 lean_exe «bench-mq» where
   root := `Bench.MQ
 
+/-- Decoder benchmark with per-stage timing (task 8.1): `lake exe bench`
+(see `scripts/bench.sh`). Not a default target. -/
+lean_exe bench where
+  root := `Bench.Decode
+
 /-- Header dump in `opj_dump -i` form (task 1.7): `lake exe header-dump <file>`, compared
 with OpenJPEG by `scripts/diff-headers.py`. Not a default target. -/
 lean_exe «header-dump» where
