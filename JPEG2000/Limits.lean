@@ -21,6 +21,26 @@ Two kinds of field:
   and `maxDecodedTotalBytes` map onto `maxImageArea` and `maxDecodedBytes`).
 
 `Limits.strict` is a tight variant for fuzzing and tests.
+
+## Declared versus allocated (task 6.5)
+
+`maxImageSide`, `maxImageArea`, `maxTiles` bound what the stream **declares** (checked on the
+`SIZ` segment by `Header.checkGeometry`, at full resolution: they reject absurd headers).
+`maxWorkSamples` and `maxDecodedBytes` bound what is **allocated**, so they are checked where the
+allocation happens, at the requested resolution reduction (`reduce`, B-14): the output
+component grids (`Decode.allocOutput`), one tile's reduced tile-component planes
+(`Assemble.decodeTile`; tiles are decoded one at a time and each tile's planes are released
+once copied into the output), the display channels and interleaved buffers of
+`JPEG2000.decode`. A viewer can therefore decode a huge declared image at a reduced
+resolution: the 212 Mpx `issue19517-8` (4 × 8-bit components, one tile) decodes under the
+defaults at `reduce ≥ 1` (reduce 1: 212 M cells ≤ 2²⁸; about 2 GB peak), not at full
+resolution (848 M cells).
+
+Peak decoder memory is about `4 bytes × (output cells + one tile's cells)` (both
+≤ `maxWorkSamples`, i.e. ≤ 2 GiB at the defaults; for a one-tile image the two are equal)
+plus the Tier-2 records of one tile (≤ `maxCodeBlocks` code-blocks) and, in `decode`, the
+up-sampled channels and the interleaved buffer (≤ `maxWorkSamples` cells and
+`maxDecodedBytes` bytes).
 -/
 
 namespace JPEG2000
@@ -77,13 +97,17 @@ structure Limits where
   ROI max-shift (Annex H) adds bit-planes. Default 255, a generous bound that also fits the
   pass counter in a byte. -/
   maxPassesPerCodeBlock : Nat := 255
-  /-- Maximum total size in bytes of the decoded output (all component planes at their
-  output sample width: 1 byte up to 8 bits, 2 bytes up to 16). Default 2³⁰ (1 GiB), equal
-  to safe-pdf's `maxDecodedTotalBytes` (Plan.md §9). -/
+  /-- Maximum total size in bytes of the decoded output (all component planes **at the
+  requested resolution reduction**, at their output sample width: 1 byte up to 8 bits, 2
+  bytes up to 16), and of `decode`'s display channels and interleaved buffers. Default 2³⁰
+  (1 GiB), equal to safe-pdf's `maxDecodedTotalBytes` (Plan.md §9). -/
   maxDecodedBytes : Nat := 1 <<< 30
-  /-- Maximum number of coefficient/sample cells held at once in working buffers (tier-1
-  output, DWT and MCT planes). Default 2²⁸ (1 GiB at 32-bit cells); bounds the
-  intermediate allocation of S3. -/
+  /-- Maximum number of 32-bit coefficient/sample cells in each working allocation: the
+  output component grids at the requested resolution reduction (together), the reduced
+  tile-component planes of one tile (together; tier-1 output, DWT and MCT run in them), and
+  `decode`'s up-sampled channels (together). Default 2²⁸ (1 GiB of cells per allocation
+  group), equal to `maxImageArea` so that a one-component image of the maximum area
+  decodes at full resolution; bounds the intermediate allocation of S3. -/
   maxWorkSamples : Nat := 1 <<< 28
   /-- Maximum number of progression-order-change entries over all `POC` markers (T.800
   A.6.6). Default 4096 (one `POC` segment holds at most 7281; real streams use a few). -/

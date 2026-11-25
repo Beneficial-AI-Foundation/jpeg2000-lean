@@ -23,10 +23,14 @@ already DC-shifted and clamped to the component's range (G.1).
 
 ## Limits
 
-The output planes are checked together against `maxWorkSamples` and (at the output sample
-width of `Header.bytesPerSample`) `maxDecodedBytes` before they are allocated; `reduce` is
-bounded by `maxDecompLevels` before any `2^reduce` is formed. Per-tile limits are
-`Assemble`'s.
+The output planes **at the requested reduction** are checked together against
+`maxWorkSamples` and (at the output sample width of `Header.bytesPerSample`)
+`maxDecodedBytes` before they are allocated (`allocOutput`); the header checks only the
+declared geometry (side, area, tiles), so a large declared image can be decoded at a reduced
+resolution (task 6.5). `reduce` is bounded by `maxDecompLevels` before any `2^reduce` is
+formed. Tiles are decoded one at a time: a tile's Tier-2 result and reconstructed planes are
+dropped once copied into the output planes, so the working set is the output plus one tile
+(its reduced planes checked against `maxWorkSamples` by `Assemble.decodeTile`).
 -/
 
 namespace JPEG2000

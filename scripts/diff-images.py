@@ -30,7 +30,12 @@ A level listed in the entry's `known_deviations` (manifest; each with its explan
 is outside tolerance is reported as `known` and not counted as a failure; a recorded
 deviation that no longer occurs is reported as a `note`.
 
-Files whose image area exceeds --max-mpx (default 40) are skipped (reported), as are
+An entry may carry `"reduce": k` (task 6.5): both decoders then discard the k finest
+resolution levels (`opj_decompress -r k`, `image-dump <file> <prefix> k`), and the size
+check below uses the reduced area (area / 4^k).  `issue19517-8` (212 Mpx) is compared at
+reduce 2 this way.
+
+Files whose (reduced) image area exceeds --max-mpx (default 40) are skipped (reported), as are
 all files when opj_decompress, the image-dump executable (`lake build image-dump`) or the
 corpus files are missing.  Exit status 1 if any compared file is outside tolerance (or only
 one decoder decodes it) at a level not recorded as a known deviation.  "both-fail" (both
@@ -135,10 +140,11 @@ def run(cmd):
     return r.returncode, r.stdout.decode("utf-8", "replace") + r.stderr.decode("utf-8", "replace")
 
 
-def opj_planes(src, tmp, tag):
-    """Decode src with opj_decompress into PGX; list of PGX tuples or an error string."""
+def opj_planes(src, tmp, tag, reduce=0):
+    """Decode src with opj_decompress (`-r reduce`) into PGX; list of PGX tuples or an error
+    string."""
     out = os.path.join(tmp, tag + ".pgx")
-    rc, log = run(["opj_decompress", "-i", src, "-o", out])
+    rc, log = run(["opj_decompress", "-i", src, "-o", out] + (["-r", str(reduce)] if reduce else []))
     if rc != 0:
         return "opj_decompress failed (%s): %s" % (rc, log.strip().splitlines()[-1:] if log else "")
     planes, k = [], 0
@@ -150,10 +156,11 @@ def opj_planes(src, tmp, tag):
     return planes or "opj_decompress wrote no PGX"
 
 
-def ours(src, tmp, tag):
-    """Run image-dump; returns (info dict, raw planes, img planes) or an error string."""
+def ours(src, tmp, tag, reduce=0):
+    """Run image-dump (at `reduce`); returns (info dict, raw planes, img planes) or an error
+    string."""
     pre = os.path.join(tmp, tag)
-    rc, log = run([IMAGE_DUMP, src, pre])
+    rc, log = run([IMAGE_DUMP, src, pre] + ([str(reduce)] if reduce else []))
     info = {"raw": [], "img": [], "error": None}
     for line in (log or "").splitlines():
         t = line.split()
@@ -203,6 +210,8 @@ def check_file(e, root, tmp, lines):
     """Returns the set of levels ('codestream', 'jp2') outside tolerance."""
     path = safe_join(root, e["path"])
     name = e["path"]
+    red = int(e.get("reduce", 0))
+    rtag = " r%d" % red if red else ""
     failed = set()
     with open(path, "rb") as f:
         data = f.read()
@@ -214,13 +223,13 @@ def check_file(e, root, tmp, lines):
     with open(csf, "wb") as f:
         f.write(cs)
     # codestream level
-    theirs = opj_planes(csf, tmp, "opj_cs")
-    r = ours(csf, tmp, "ours_cs")
+    theirs = opj_planes(csf, tmp, "opj_cs", red)
+    r = ours(csf, tmp, "ours_cs", red)
     if isinstance(r, str):
         if isinstance(theirs, str):
-            lines.append("both-fail %s [codestream]: ours %s; OpenJPEG %s" % (name, r, theirs))
+            lines.append("both-fail %s [codestream%s]: ours %s; OpenJPEG %s" % (name, rtag, r, theirs))
         else:
-            lines.append("FAIL %s [codestream]: %s (OpenJPEG decodes it)" % (name, r))
+            lines.append("FAIL %s [codestream%s]: %s (OpenJPEG decodes it)" % (name, rtag, r))
             failed.add("codestream")
         return failed
     info, raw, img = r
@@ -232,7 +241,7 @@ def check_file(e, root, tmp, lines):
     else:
         mine = raw
         tols = [0 if rv else 1 for rv in rev]
-    if not judge(name, "codestream" + (" sYCC->RGB" if sycc else ""), theirs, mine, tols, lines):
+    if not judge(name, "codestream" + rtag + (" sYCC->RGB" if sycc else ""), theirs, mine, tols, lines):
         failed.add("codestream")
     if data[:12] != b"\x00\x00\x00\x0cjP  \r\n\x87\n":
         return failed
@@ -240,9 +249,9 @@ def check_file(e, root, tmp, lines):
     jf = os.path.join(tmp, "f.jp2")
     with open(jf, "wb") as f:
         f.write(data)
-    r = ours(jf, tmp, "ours_jp2")
+    r = ours(jf, tmp, "ours_jp2", red)
     if isinstance(r, str):
-        theirs = opj_planes(jf, tmp, "opj_jp2")
+        theirs = opj_planes(jf, tmp, "opj_jp2", red)
         if isinstance(theirs, str):
             lines.append("both-fail %s [jp2]: ours %s; OpenJPEG %s" % (name, r, theirs))
         else:
@@ -254,11 +263,11 @@ def check_file(e, root, tmp, lines):
     if space == "icc" or space.startswith("enumerated"):
         lines.append("skip %s [jp2]: colour space %s (OpenJPEG converts it itself)" % (name, space))
         return failed
-    theirs = opj_planes(jf, tmp, "opj_jp2")
+    theirs = opj_planes(jf, tmp, "opj_jp2", red)
     rev = [c["rev"] for c in info["raw"]]
     sycc = info.get("sycc_converted") == "true"
     tols = [(0 if all(rev) else 1) + (1 if sycc else 0) for _ in img]
-    if not judge(name, "jp2 %s" % space, theirs, img, tols, lines):
+    if not judge(name, "jp2 %s%s" % (space, rtag), theirs, img, tols, lines):
         failed.add("jp2")
     return failed
 
@@ -295,7 +304,7 @@ def main(argv):
     n_ok, n_fail, n_known, skipped = 0, 0, 0, []
     for e in present:
         cs = e.get("codestream") or {}
-        mpx = cs.get("width", 0) * cs.get("height", 0) / 1e6
+        mpx = cs.get("width", 0) * cs.get("height", 0) / 1e6 / 4 ** int(e.get("reduce", 0))
         if mpx > args.max_mpx:
             skipped.append("%s (%.1f Mpx > --max-mpx %g)" % (e["path"], mpx, args.max_mpx))
             continue

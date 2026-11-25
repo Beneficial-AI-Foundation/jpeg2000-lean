@@ -25,13 +25,15 @@ or escapes the logic:
 
 ## S3 — bounded resources
 
-Every theorem below is about a **successful** run and bounds the quantities the code checks
-(so they survive task 6.5's rework of *which* quantities are checked only if the checks stay):
+Every theorem below is about a **successful** run and bounds the quantities the code checks.
+Since task 6.5 the header bounds what the stream *declares* (side, area, tiles) and the sample
+and byte budgets bound what is *allocated*: the output grids at the requested reduction and one
+tile's reduced working set (a viewer can decode a huge declared image at a reduced resolution):
 
 * input: `data.size ≤ maxInputBytes` (`parse_within`);
-* header (`HeaderWithin`, `GeometryWithin`): image side and area, tile count, declared
-  component samples and output bytes (`checkGeometry_ok_iff`), and the exact code-block,
-  precinct and packet totals of the whole tile grid (`checkWork_within`);
+* header (`HeaderWithin`, `GeometryWithin`): image side and area, tile count,
+  `tiles × Csiz` (`checkGeometry_ok_iff`), and the exact code-block, precinct and packet
+  totals of the whole tile grid (`checkWork_within`);
 * output of `decodeCodestream` (`decodeCodestream_resources`): `reduce ≤ maxDecompLevels`,
   component cells ≤ `maxWorkSamples`, bytes ≤ `maxDecodedBytes`, every plane exactly
   `width × height` (storage `4·width·height` bytes by `Plane.size_eq`);
@@ -44,9 +46,13 @@ Every theorem below is about a **successful** run and bounds the quantities the 
   all tiles ≤ `maxCodingPasses` (`decodeAllTileCodeBlocks_passes`), code-blocks / precincts /
   packets of the tile grid (`checkWork_within`);
 * excess ⇒ `limitExceeded`: `checkGeometry_limitOnly`, `parse_error_of_geometry`,
-  `decode_limitExceeded_of_geometry` / `_of_area` / `_of_bytes` — once the container and the
-  main header parse, a declared geometry outside `Limits` makes `decode` fail with
-  `Error.limitExceeded` (the value above the bound), never another error or success.
+  `decode_limitExceeded_of_geometry` / `_of_area` — once the container and the main header
+  parse, a declared geometry outside `Limits` makes `decode` fail with `Error.limitExceeded`
+  (the value above the bound), never another error or success;
+  `decodeCodestream_limitExceeded_of_output`, `decode_limitExceeded_of_output` / `_of_bytes`
+  — once the header parses, output grids at the requested reduction above `maxWorkSamples`
+  cells (`outputCells`) or `maxDecodedBytes` bytes (`outputBytes`) make the decoder fail with
+  `limitExceeded` before any plane is allocated (`allocOutput_ok_iff`, `allocOutput_limitOnly`).
 
 A step-count theorem ("work ≤ f(Limits, input length)") is not proved here; `docs/resources.md`
 gives the formulation and what it needs.
@@ -92,17 +98,12 @@ theorem checkGeometry_limitOnly (L : Limits) (mh : Marker.MainHeader) :
   unfold checkGeometry
   repeat (first | apply LimitOnly.bind (LimitOnly.check _ _ _ _); intro _ | exact LimitOnly.check _ _ _ _)
 
-/-- The geometry checks of `Header.checkGeometry` on a `SIZ` segment: image side, area, tiles, `tiles × components` (≤ `maxCodeBlocks`), component samples (≤ `maxWorkSamples`) and output bytes (≤ `maxDecodedBytes`). -/
+/-- The geometry checks of `Header.checkGeometry` on a `SIZ` segment (what the stream declares): image side, area, tiles, `tiles × components` (≤ `maxCodeBlocks`). The sample and byte budgets are checked on what is allocated, at the requested reduction (`allocOutput_ok`, `decodeTile_work`; task 6.5). -/
 def GeometryWithin (L : Limits) (s : Marker.SIZ) : Prop :=
   let img := imageRect s
-  let samples := s.components.toList.map fun c =>
-    let r := compRect img c
-    (r.width * r.height, bytesPerSample c.depth.toNat)
   img.width ≤ L.maxImageSide ∧ img.height ≤ L.maxImageSide ∧
   img.width * img.height ≤ L.maxImageArea ∧ numTiles s ≤ L.maxTiles ∧
-  numTiles s * s.csiz ≤ L.maxCodeBlocks ∧
-  samples.foldl (fun a (n, _) => a + n) 0 ≤ L.maxWorkSamples ∧
-  samples.foldl (fun a (n, b) => a + n * b) 0 ≤ L.maxDecodedBytes
+  numTiles s * s.csiz ≤ L.maxCodeBlocks
 
 /-- `Header.checkGeometry` succeeds exactly when the declared geometry is within `Limits` (`GeometryWithin`). -/
 theorem checkGeometry_ok_iff (L : Limits) (mh : Marker.MainHeader) :
@@ -110,12 +111,11 @@ theorem checkGeometry_ok_iff (L : Limits) (mh : Marker.MainHeader) :
   unfold checkGeometry GeometryWithin
   simp only [bind_ok]
   constructor
-  · rintro ⟨_, h1, _, h2, _, h3, _, h4, _, h5, _, h6, h7⟩
-    exact ⟨check_ok h1, check_ok h2, check_ok h3, check_ok h4, check_ok h5, check_ok h6,
-      check_ok h7⟩
-  · rintro ⟨h1, h2, h3, h4, h5, h6, h7⟩
-    exact ⟨(), check_ok_of h1, (), check_ok_of h2, (), check_ok_of h3, (), check_ok_of h4, (),
-      check_ok_of h5, (), check_ok_of h6, check_ok_of h7⟩
+  · rintro ⟨_, h1, _, h2, _, h3, _, h4, h5⟩
+    exact ⟨check_ok h1, check_ok h2, check_ok h3, check_ok h4, check_ok h5⟩
+  · rintro ⟨h1, h2, h3, h4, h5⟩
+    exact ⟨(), check_ok_of h1, (), check_ok_of h2, (), check_ok_of h3, (), check_ok_of h4,
+      check_ok_of h5⟩
 
 /-- A loop invariant of `forIn` over a list in `Except`. -/
 private theorem forIn_inv {ε α β : Type} (P : β → Prop) (f : α → β → Except ε (ForInStep β))
@@ -525,11 +525,73 @@ theorem interleaved16_size {img : Image} {L : Limits} {withAlpha : Bool} {mode :
     buf.size ≤ L.maxDecodedBytes :=
   (interleave_size h).2
 
-/-- The output bytes the `SIZ` segment declares (the quantity `checkGeometry` bounds by `maxDecodedBytes`). -/
-def declaredBytes (s : Marker.SIZ) : Nat :=
+/-- The output cells the decoder allocates for a `SIZ` segment at reduction `reduce`: the sum over the components of the reduced component grid's area (B-12, B-14; `Decode.compImageRect`, the quantity `allocOutput` bounds by `maxWorkSamples`). -/
+def outputCells (s : Marker.SIZ) (reduce : Nat) : Nat :=
   (s.components.toList.map fun c =>
-    let r := compRect (imageRect s) c
-    (r.width * r.height, bytesPerSample c.depth.toNat)).foldl (fun a (n, b) => a + n * b) 0
+    (Decode.compImageRect s c reduce).width * (Decode.compImageRect s c reduce).height).sum
+
+/-- The output bytes at reduction `reduce` (each reduced component grid at `bytesPerSample` of its depth; the quantity `allocOutput` bounds by `maxDecodedBytes`). -/
+def outputBytes (s : Marker.SIZ) (reduce : Nat) : Nat :=
+  (s.components.toList.map fun c =>
+    (Decode.compImageRect s c reduce).width * (Decode.compImageRect s c reduce).height *
+      bytesPerSample c.depth.toNat).sum
+
+/-- `Decode.allocOutput` fails only with `limitExceeded`. -/
+theorem allocOutput_limitOnly (L : Limits) (s : Marker.SIZ) (reduce : Nat) :
+    LimitOnly (Decode.allocOutput L s reduce) := by
+  unfold Decode.allocOutput
+  refine LimitOnly.bind (LimitOnly.check _ _ _ _) fun _ => ?_
+  refine LimitOnly.bind (LimitOnly.check _ _ _ _) fun _ => ?_
+  intro e he; cases he
+
+/-- `Decode.allocOutput` succeeds exactly when the output cells and bytes at the reduction are within `maxWorkSamples` and `maxDecodedBytes`. -/
+theorem allocOutput_ok_iff (L : Limits) (s : Marker.SIZ) (reduce : Nat) :
+    (∃ r, Decode.allocOutput L s reduce = .ok r) ↔
+      outputCells s reduce ≤ L.maxWorkSamples ∧ outputBytes s reduce ≤ L.maxDecodedBytes := by
+  have e1 : (s.components.map fun c => (c, Decode.compImageRect s c reduce)).foldl
+      (fun a (x : Marker.Component × Rect) => a + x.2.width * x.2.height) 0 = outputCells s reduce := by
+    rw [array_foldl_sum (α := Marker.Component × Rect) (fun a x => a + x.2.width * x.2.height)
+      (fun x => x.2.width * x.2.height) (fun _ _ => rfl)]
+    simp only [outputCells, Array.toList_map, List.map_map]; rfl
+  have e2 : (s.components.map fun c => (c, Decode.compImageRect s c reduce)).foldl
+      (fun a (x : Marker.Component × Rect) => a + x.2.width * x.2.height * bytesPerSample x.1.depth.toNat) 0 =
+      outputBytes s reduce := by
+    rw [array_foldl_sum (α := Marker.Component × Rect)
+      (fun a x => a + x.2.width * x.2.height * bytesPerSample x.1.depth.toNat)
+      (fun x => x.2.width * x.2.height * bytesPerSample x.1.depth.toNat) (fun _ _ => rfl)]
+    simp only [outputBytes, Array.toList_map, List.map_map]; rfl
+  unfold Decode.allocOutput
+  simp only [bind_ok]
+  constructor
+  · rintro ⟨_, _, h1, _, h2, -⟩
+    have a := check_ok h1
+    have b := check_ok h2
+    simp only [Limits.bound] at a b
+    exact ⟨e1 ▸ a, e2 ▸ b⟩
+  · rintro ⟨h1, h2⟩
+    refine ⟨_, (), check_ok_of ?_, (), check_ok_of ?_, rfl⟩
+    · simp only [Limits.bound]; rw [e1]; exact h1
+    · simp only [Limits.bound]; rw [e2]; exact h2
+
+/-- **Excess ⇒ `limitExceeded`** for `decodeCodestream` at a reduction: once the header parses, output grids at reduction `reduce` above `maxWorkSamples` cells or `maxDecodedBytes` bytes make `decodeCodestream` fail with `limitExceeded` (value above bound) before any plane is allocated. -/
+theorem decodeCodestream_limitExceeded_of_output {L : Limits} {data : ByteArray} {reduce : Nat}
+    {h : Header} (hp : Header.parse L data = .ok h)
+    (hx : L.maxWorkSamples < outputCells h.siz reduce ∨
+      L.maxDecodedBytes < outputBytes h.siz reduce) :
+    ∃ loc k v b, decodeCodestream L data reduce = .error (.limitExceeded loc k v b) ∧ b < v := by
+  unfold decodeCodestream
+  cases hrd : L.check Decode.loc .decompLevels reduce with
+  | error e =>
+    obtain ⟨loc', k', v', b', rfl, hlt'⟩ := LimitOnly.check L _ _ _ _ hrd
+    exact ⟨loc', k', v', b', by simp only [bind, Except.bind], hlt'⟩
+  | ok u =>
+    cases ha : Decode.allocOutput L h.siz reduce with
+    | ok r =>
+      obtain ⟨a, b⟩ := (allocOutput_ok_iff L h.siz reduce).1 ⟨r, ha⟩
+      exfalso; rcases hx with hx | hx <;> omega
+    | error e =>
+      obtain ⟨loc, k, v, b, rfl, hlt⟩ := allocOutput_limitOnly L h.siz reduce _ ha
+      exact ⟨loc, k, v, b, by simp only [hp, ha, bind, Except.bind], hlt⟩
 
 /-- **Excess ⇒ `limitExceeded`** for `Header.parse`: once the container and the main header parse, a declared geometry outside `Limits` makes the parse fail with `limitExceeded` (value above bound). -/
 theorem parse_error_of_geometry {L : Limits} {data : ByteArray} {c : Box.Container}
@@ -572,16 +634,23 @@ theorem decode_limitExceeded_of_area {L : Limits} {data : ByteArray} {opts : Dec
     ∃ loc k v b, decode L data opts = .error (.limitExceeded loc k v b) ∧ b < v :=
   decode_limitExceeded_of_geometry hc hr hm fun hg => Nat.lt_irrefl _ (Nat.lt_of_lt_of_le hx hg.2.2.1)
 
-/-- **Excess ⇒ `limitExceeded`**: declared output bytes above `maxDecodedBytes` make `decode` fail with `limitExceeded`. -/
+/-- **Excess ⇒ `limitExceeded`** for `decode` at a reduction: once the header parses, output grids at reduction `opts.reduce` above `maxWorkSamples` cells or `maxDecodedBytes` bytes make `decode` fail with `limitExceeded` (value above bound). -/
+theorem decode_limitExceeded_of_output {L : Limits} {data : ByteArray} {opts : DecodeOptions}
+    {h : Header} (hp : Header.parse L data = .ok h)
+    (hx : L.maxWorkSamples < outputCells h.siz opts.reduce ∨
+      L.maxDecodedBytes < outputBytes h.siz opts.reduce) :
+    ∃ loc k v b, decode L data opts = .error (.limitExceeded loc k v b) ∧ b < v := by
+  obtain ⟨loc, k, v, b, hd, hlt⟩ := decodeCodestream_limitExceeded_of_output hp hx
+  refine ⟨loc, k, v, b, ?_, hlt⟩
+  unfold decode
+  simp only [hd, bind, Except.bind]
+
+/-- **Excess ⇒ `limitExceeded`**: output bytes at the requested reduction above `maxDecodedBytes` make `decode` fail with `limitExceeded` (task 6.5: the bound is on what is allocated, the reduced grids, not on the declared full-resolution size). -/
 theorem decode_limitExceeded_of_bytes {L : Limits} {data : ByteArray} {opts : DecodeOptions}
-    {c : Box.Container} {r r' : Bytes.Reader} {mh : Marker.MainHeader}
-    (hc : Box.parseFile L data = .ok c)
-    (hr : rangeReader data { offset := c.codestream.start, length := c.codestream.len } = .ok r)
-    (hm : Marker.parseMainHeader L r = .ok (mh, r'))
-    (hx : L.maxDecodedBytes < declaredBytes mh.siz) :
+    {h : Header} (hp : Header.parse L data = .ok h)
+    (hx : L.maxDecodedBytes < outputBytes h.siz opts.reduce) :
     ∃ loc k v b, decode L data opts = .error (.limitExceeded loc k v b) ∧ b < v :=
-  decode_limitExceeded_of_geometry hc hr hm fun hg =>
-    Nat.lt_irrefl _ (Nat.lt_of_lt_of_le hx hg.2.2.2.2.2.2)
+  decode_limitExceeded_of_output hp (.inr hx)
 
 /-- Dimensions of a plane. -/
 def dims (p : Plane) : Nat × Nat := (p.width, p.height)
