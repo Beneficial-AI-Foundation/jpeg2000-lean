@@ -49,6 +49,7 @@ import Spec.Tier2WF
 import Spec.HeaderWF
 import Spec.C9
 import Spec.Resources
+import Spec.Resources.BlockPasses
 import Spec.Tier1Equiv.Basic
 import Spec.Tier1Equiv.Rel
 import Spec.Tier1Equiv.Nb

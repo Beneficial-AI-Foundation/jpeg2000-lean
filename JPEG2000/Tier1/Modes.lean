@@ -110,9 +110,10 @@ pass index ≥ 10 (`Spec.Tier1.isRawPass`). -/
   s.bypass && 10 ≤ i && passKind i != 2
 
 /-- A codeword segment ends after pass `i` (`Spec.Tier1.passEndsSegment`): termall, or bypass
-from pass 9 on after every magnitude refinement and cleanup pass. -/
+from pass 9 on after every magnitude refinement and cleanup pass, or without bypass every
+109th pass (OpenJPEG's plain-mode cap, task 4.9). -/
 def passEndsSegment (s : Style) (i : Nat) : Bool :=
-  s.termAll || (s.bypass && 9 ≤ i && passKind i != 0)
+  s.termAll || (s.bypass && 9 ≤ i && passKind i != 0) || (!s.bypass && i % 109 == 108)
 
 /-- Split passes `i, …, i + n − 1` into runs ending at segment ends; `cur` passes are already
 in the open run (`Spec.Tier1.segmentRuns`). -/

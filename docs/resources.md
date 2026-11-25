@@ -130,9 +130,13 @@ and `Tier2.Headers.decodeAllTileCodeBlocks`: an edit there must re-check
    (`decodeWithStream_ok` with `passesBefore` = earlier tiles) and the Tier-2 driver
    (`decodeAllTileCodeBlocks_passes`) are proved. Adding the count to `DecodedImage` (6.5
    touches `Decode.lean`) would make the image-wide bound a short loop-invariant proof.
-3. **`maxPassesPerCodeBlock` is never checked** (only declared in `Limits`/`LimitKind`):
-   per-code-block passes are bounded only through `maxCodingPasses` and Tier-1's bit-plane
-   limits. Either check it in Tier-2 (`decodePacket`) or remove the field (Decisions entry).
+3. **`maxPassesPerCodeBlock`** (closed by task 4.8): it *was* checked since task 4.4, through
+   its `LimitKind` (`Tier2.Packet.headerBlock`: `L.check … .passesPerCodeBlock (cb.numPasses
+   + n)`; the spec `Spec.Tier2` does the same and the Tier-2 equivalence covers it), which a
+   search for the field name misses. S3 for it is proved in `Spec/Resources/BlockPasses.lean`:
+   every code-block of every tile Tier-2 returns holds at most `maxPassesPerCodeBlock` passes
+   (`decodeTilePacketsWith_blockPasses`, `decodeWithStream_blockPasses`,
+   `decodeAllTileCodeBlocks_blockPasses`).
 4. Not stated here: `Box` limits (`maxBoxes`, `maxBoxDepth`, `maxPaletteEntries`), `Color`
    palette/sYCC planes, Tier-1 concatenated segment buffers (`Assemble.tier1Input`, bounded by
    the input length), `TagTree`/`Geometry` per-band checks, `ppmChunkIndex`. Each is checked in

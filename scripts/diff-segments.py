@@ -60,11 +60,12 @@ COEF_FIELDS = ("w", "h", "roi", "nz", "hash")
 # Justified deviations: (file substring, record kind "cb"/"coef", field) -> reason.  A
 # difference matching an entry is reported as "excused" and does not fail the run.  Empty:
 # on every T.803 stream and conformance JP2 file our segments and coefficients agree with
-# OpenJPEG 2.5.3 exactly.  (Known T.800-vs-OpenJPEG differences that could matter here but
-# do not occur in the corpus: OpenJPEG caps a plain-mode segment at 109 passes (only ROI
-# blocks with > 109 passes); the packet ORDER deviation for sub-sampling factors that are
-# not powers of two of each other (progress.md 4.3) changes the order of packets, not which
-# bytes belong to a code-block.)
+# OpenJPEG 2.5.3 exactly.  (OpenJPEG's plain-mode cap of 109 passes per codeword segment is
+# implemented on our side too since task 4.9 (kodak_2layers_lrcp.j2c, a benchmark file, has a
+# 172-pass block).  Known difference that could matter here but does not occur in the
+# corpus: the packet ORDER deviation for sub-sampling factors that are not powers of two of
+# each other (progress.md 4.3) changes the order of packets, not which bytes belong to a
+# code-block.)
 # Not an exception: OpenJPEG prints `numbps` (Mb - zero bit-planes) as an unsigned 32-bit
 # value; with ROI the zero bit-planes can exceed Mb (p0_06: 4294967288 = -8), and
 # segment-dump prints the same wrapped value.

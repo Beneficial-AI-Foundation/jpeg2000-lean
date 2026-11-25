@@ -26,7 +26,7 @@ packed headers.
   * the `Lblock` increment (B.10.7.1): the fewest `1`s so that the length fits in
     `Lblock + ⌊log₂ passes⌋` bits (`Lblock` starts at 3), then a `0`;
   * the length of the single codeword segment (B.10.7.2, plain mode: `segmentPasses 0 n 0 =
-    [n]`).
+    [n]` for `n ≤ 109`, which holds as `n ≤ 3K − 2` and `K ≤ Mb ≤ 37` without ROI).
   A precinct none of whose code-blocks has passes gets a zero-length packet (one `0` bit,
   B.10.3) — also when it has no code-blocks at all (empty precinct-bands, B.6).
 * **Packet body** (B.10.8): the included code-blocks' codewords in header order.

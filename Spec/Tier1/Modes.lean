@@ -25,9 +25,13 @@ The mode-driven, data-independent part of the Tier-1 spec, shared by the decoder
     from pass 10 on, at every switch between raw and MQ coding, i.e. after every magnitude
     refinement pass (end of a raw SP+MR pair) and after every cleanup pass (an MQ segment of
     one pass);
-  - otherwise only after the last pass of the code-block (plain mode: one segment).
+  - otherwise after every 109th pass (passes 108, 217, …) and after the last pass of the
+    code-block: plain mode has one segment unless more than 109 passes are signalled.
   This is exactly OpenJPEG's `opj_t2_init_seg` (`maxpasses` 1 with TERMALL; 10, then
-  alternately 2 and 1 with LAZY; unbounded otherwise).
+  alternately 2 and 1 with LAZY; 109 otherwise, task 4.9). T.800 bounds a code-block's
+  passes by `3·Mb − 2`, which is at most `3·37 − 2 = 109` without ROI (B.10.6), so the 109-pass
+  cap never splits a valid non-ROI stream; for ROI shifts or over-long pass counts we follow
+  OpenJPEG for compatibility (it reads one length field per 109 passes).
 * **D.6 — raw bit reader** (`RawState`, `rawBit`): bits are read most significant first; a
   byte following an `0xFF` byte carries only 7 bits (its most significant bit is a stuffed
   `0` and is skipped). As for the MQ decoder (C.3.4, `Spec.MQ.byteAt`), the segment is
@@ -110,9 +114,12 @@ def isRawPass (m : Mode) (i : Nat) : Bool :=
   m.bypass && 10 ≤ i && passKind i != .cleanup
 
 /-- D.4, D.6 (Table D.9): a codeword segment is terminated after pass `i` (independently of
-the number of passes actually included; the last included pass always ends the data). -/
+the number of passes actually included; the last included pass always ends the data).
+Without termall and bypass, a segment holds at most 109 passes (`i % 109 = 108`, task 4.9):
+OpenJPEG's `opj_t2_init_seg` cap `maxpasses = 109`; no valid non-ROI block has more passes
+(`3·37 − 2`), so the cap only matters for ROI or over-long streams. -/
 def passEndsSegment (m : Mode) (i : Nat) : Bool :=
-  m.termAll || (m.bypass && 9 ≤ i && passKind i != .sigProp)
+  m.termAll || (m.bypass && 9 ≤ i && passKind i != .sigProp) || (!m.bypass && i % 109 == 108)
 
 /-- Split the passes `i, i+1, …, i+n−1` into maximal runs ending at segment ends; `cur`
 passes before `i` are already in the open run. -/
@@ -227,22 +234,47 @@ theorem segmentPasses_pos (m : Mode) (numPasses firstPass : Nat) :
     ∀ k ∈ segmentPasses m numPasses firstPass, 0 < k :=
   segmentRuns_pos m numPasses firstPass 0
 
-/-- Without termall and bypass no pass ends a segment. -/
+/-- Without termall and bypass no pass before pass 108 ends a segment (the 109-pass cap,
+task 4.9, ends one after pass 108, 217, …). -/
 theorem segmentRuns_noTerm (m : Mode) (h1 : m.termAll = false) (h2 : m.bypass = false)
-    (n i cur : Nat) : segmentRuns m n i cur = if n + cur = 0 then [] else [n + cur] := by
+    (n i cur : Nat) (hc : i + n ≤ 109) :
+    segmentRuns m n i cur = if n + cur = 0 then [] else [n + cur] := by
   induction n generalizing i cur with
   | zero => simp [segmentRuns]
   | succ n ih =>
     simp only [segmentRuns, passEndsSegment, h1, h2, Bool.false_and, Bool.or_false,
-      Bool.false_eq_true, ↓reduceIte, ih]
-    split <;> split <;> first | rfl | omega | simp_all <;> omega
+      Bool.false_or, Bool.not_false, Bool.true_and]
+    by_cases hi : i = 108
+    · subst hi
+      have hn : n = 0 := by omega
+      subst hn
+      simp [segmentRuns, Nat.add_comm]
+    · have : (i % 109 == 108) = false := by
+        rw [Nat.mod_eq_of_lt (by omega)]; simpa using hi
+      rw [this, ih (i + 1) (cur + 1) (by omega)]
+      simp only [Bool.false_eq_true, ↓reduceIte]
+      split <;> split <;> first | rfl | omega | simp_all <;> omega
 
 /-- Plain mode (and any mode without termall and bypass): one codeword segment holding all
-the passes. -/
+the passes, as long as they end by pass 108 (`firstPass + numPasses ≤ 109`; beyond, the
+109-pass cap of task 4.9 starts a new segment). -/
 theorem segmentPasses_plain (m : Mode) (h1 : m.termAll = false) (h2 : m.bypass = false)
-    (numPasses firstPass : Nat) :
+    (numPasses firstPass : Nat) (hc : firstPass + numPasses ≤ 109) :
     segmentPasses m numPasses firstPass = if numPasses = 0 then [] else [numPasses] := by
-  simp [segmentPasses, segmentRuns_noTerm m h1 h2]
+  simp [segmentPasses, segmentRuns_noTerm m h1 h2 _ _ _ hc]
+
+/-- The segment structure depends only on the termall and bypass flags. -/
+theorem segmentPasses_congr {m m' : Mode} (h1 : m.termAll = m'.termAll)
+    (h2 : m.bypass = m'.bypass) (numPasses firstPass : Nat) :
+    segmentPasses m numPasses firstPass = segmentPasses m' numPasses firstPass := by
+  have he : passEndsSegment m = passEndsSegment m' := by
+    funext i; simp only [passEndsSegment, h1, h2]
+  have : ∀ n i cur, segmentRuns m n i cur = segmentRuns m' n i cur := by
+    intro n
+    induction n with
+    | zero => intro i cur; rfl
+    | succ n ih => intro i cur; simp only [segmentRuns, he, ih]
+  exact this _ _ _
 
 /-- Termall: one pass per segment. -/
 theorem segmentRuns_termAll (m : Mode) (h : m.termAll = true) (n i : Nat) :
