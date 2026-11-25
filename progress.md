@@ -24,9 +24,9 @@ Design document: Plan.md
 | 0 | `phase-0-infra` | `origin/main` | [#1](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/1) | ready (2026-11-25) |
 | 1 | `phase-1-headers` | `phase-0-infra` | [#2](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/2) | ready (2026-11-25) |
 | 2 | (none: all Phase 2 tasks landed on `phase-1-headers`) | — | [#2](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/2) | M2 reached 2026-11-25; ships with PR #2 |
-| 3 | `phase-3-tier1` | `phase-1-headers` | [#3](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/3) | draft |
-| 4 | (shares `phase-3-tier1`) | — | [#3](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/3) | draft (with phase 3) |
-| 5 | `phase-5-reconstruction` | `phase-4-tier2` | — | none |
+| 3 | `phase-3-tier1` | `phase-1-headers` | [#3](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/3) | ready (2026-11-25) |
+| 4 | (shares `phase-3-tier1`) | — | [#3](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/3) | ready (2026-11-25, with phase 3) |
+| 5 | `phase-5-reconstruction` | `phase-3-tier1` | — | none |
 | 6 | `phase-6-jp2-output` | `phase-5-reconstruction` | — | none |
 | 7 | `phase-7-equivalence` | `phase-6-jp2-output` | — | none |
 | 8 | `phase-8-speed` | `phase-7-equivalence` | — | none |
@@ -304,3 +304,4 @@ Exit criterion checked: [ ]
 * 2026-11-25 — wave 10 (phase 3, PR #3): 3.4b (fast Tier-1 all 64 styles = spec), 3.6 (C3 plain proved: `c3_plain`, 159 theorems), 4.4 (packet headers; all T.803 + JP2 conformance packets decode, incl. PPM/PPT via test-built header streams), 5.2 (5/3 DWT, C6 proved, 1-D fast = spec proved) done; commit "wave 10: 3.4b, 3.6, 4.4, 5.2 — Tier-1 modes (fast), C3, packet headers, 5/3 DWT (C6)"
 * 2026-11-25 — wave 11 (phase 3, PR #3): 4.5 (PPM/PPT header streams in the decoder; 32 corpus files), 4.6a (instrumented OpenJPEG dump tool, 54 061 code-blocks dumped), 5.1 (dequantisation + ROI, kernels proved), 5.3 (9/7 Rat spec + fixed point, C8 for the DWT proved) done; commit "wave 11: 4.5, 4.6a, 5.1, 5.3 — PPM/PPT, OpenJPEG dump tool, dequantisation, 9/7 DWT (C8)"
 * 2026-11-25 — wave 12 (phase 3, PR #3): 4.6b (segment-dump + diff-segments.py: 32/32 files, 54 061 code-blocks, segments and coefficients identical to OpenJPEG), 5.4 (RCT/ICT, DC shift, C7 and C8-ICT proved), 6.1 (JP2 colour, palette, cmap, cdef, sYCC; METH 3 decided) done; 3.7, 3.8, 4.7 done; M3 and M4 ticked; commit "wave 12: 4.6b, 5.4, 6.1 — OpenJPEG differential (M3, M4), RCT/ICT (C7, C8), JP2 colour"
+* 2026-11-25 — phase 3 + 4 milestones: PR #3 marked ready for review (CI 6/6 on b0aa015)
