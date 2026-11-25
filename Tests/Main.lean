@@ -3,6 +3,9 @@ import Spec
 import Encode
 import Tests.Basic
 import Tests.Bytes
+import Tests.Box
+import Tests.Marker
+import Tests.MQSpec
 
 /-!
 # Test runner
@@ -25,7 +28,10 @@ structure Suite where
 def suites : List Suite :=
   [ { name := "smoke", run := return 0 },
     { name := "basic", run := JPEG2000.Tests.Basic.run },
-    { name := "bytes", run := JPEG2000.Tests.Bytes.run } ]
+    { name := "bytes", run := JPEG2000.Tests.Bytes.run },
+    { name := "box", run := JPEG2000.Tests.Box.run },
+    { name := "marker", run := JPEG2000.Tests.Marker.run },
+    { name := "mqspec", run := JPEG2000.Tests.MQSpec.run } ]
 
 end JPEG2000.Tests
 

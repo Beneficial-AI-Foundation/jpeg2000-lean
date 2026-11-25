@@ -22,7 +22,7 @@ Design document: Plan.md
 | Phase | Branch | Base | PR | State |
 |---|---|---|---|---|
 | 0 | `phase-0-infra` | `origin/main` | [#1](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/1) | ready (2026-11-25) |
-| 1 | `phase-1-headers` | `phase-0-infra` | — | none |
+| 1 | `phase-1-headers` | `phase-0-infra` | [#2](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/2) | draft |
 | 2 | `phase-2-mq` | `phase-1-headers` | — | none |
 | 3 | `phase-3-tier1` | `phase-2-mq` | — | none |
 | 4 | `phase-4-tier2` | `phase-3-tier1` | — | none |
@@ -52,8 +52,8 @@ Plan.md §7 row 1, §3, Annex A/I. Exit: **M1**: every T.803 stream and every co
 | ID | Task | Needs | Owns | Par | Status |
 |---|---|---|---|---|---|
 | 1.1 | (landed on `phase-0-infra`, PR #1) Byte reader (big-endian, bounds-proved), packet-header bit reader with the `0xFF` bit-stuffing rule, `ByteArray`-backed `Int32` plane type with proved-bounds `uget`/`uset` | 0.2 | `JPEG2000/Bytes.lean`, `Tests/Bytes.lean` | new | | done (2026-11-25) |
-| 1.2 | JP2/JPX box parser (Annex I): box headers incl. XL boxes, signature/ftyp/jp2h (ihdr, colr, pclr, cmap, cdef, bpcc, res ignored)/jp2c; raw J2K detection | 1.1 | `JPEG2000/Box.lean`, `Tests/Box.lean` | new | todo |
-| 1.3 | Main-header marker segments (Annex A): SIZ, COD/COC, QCD/QCC, RGN, POC, COM, CAP/CRG tolerated; typed records | 1.1 | `JPEG2000/Marker.lean`, `Tests/Marker.lean` | new | todo |
+| 1.2 | JP2/JPX box parser (Annex I): box headers incl. XL boxes, signature/ftyp/jp2h (ihdr, colr, pclr, cmap, cdef, bpcc, res ignored)/jp2c; raw J2K detection | 1.1 | `JPEG2000/Box.lean`, `Tests/Box.lean` | new | | done (2026-11-25) |
+| 1.3 | Main-header marker segments (Annex A): SIZ, COD/COC, QCD/QCC, RGN, POC, COM, CAP/CRG tolerated; typed records | 1.1 | `JPEG2000/Marker.lean`, `Tests/Marker.lean` | new | | done (2026-11-25) |
 | 1.4 | Tile-part markers SOT/SOD/EOC, PPM/PPT/PLT/TLM, tile-part assembly into tiles (Psot=0, out-of-order parts, TNsot) | 1.3 | `JPEG2000/TilePart.lean`, `Tests/TilePart.lean` | new | todo |
 | 1.5 | `Header`: main + per-tile headers merged (COD/COC/QCD/QCC precedence, tile overrides), validation against `Limits` before allocation; `parseCodestream` | 1.3, 1.4 | `JPEG2000/Header.lean`, `Tests/Header.lean` | new | todo |
 | 1.6 | Marker-segment serialiser (`Encode/Marker.lean`) and the round-trip theorem `parse (serialise m) = m` for every marker segment type (`Spec/MarkerRoundTrip.lean`) | 1.3 | `Encode/Marker.lean`, `Spec/MarkerRoundTrip.lean` | new | todo |
@@ -65,7 +65,7 @@ Exit criterion checked: [ ]
 Plan.md §7 row 2, §5.2 "MQ decoder", Annex C. Exit: **M2**: C1 and C2 proved; 10⁶ random round trips; decoder throughput measured.
 | ID | Task | Needs | Owns | Par | Status |
 |---|---|---|---|---|---|
-| 2.1 | `Spec.MQ`: Qe table (C.2) as data, `INITDEC`/`DECODE`/`RENORMD`/`BYTEIN` transcribed over `Nat`/`List UInt8` with synthetic `0xFF` padding past the end | 0.2 | `Spec/MQ.lean` | new | todo |
+| 2.1 | (landed on `phase-1-headers`) `Spec.MQ`: Qe table (C.2) as data, `INITDEC`/`DECODE`/`RENORMD`/`BYTEIN` transcribed over `Nat`/`List UInt8` with synthetic `0xFF` padding past the end | 0.2 | `Spec/MQ.lean` | new | | done (2026-11-25) |
 | 2.2 | Reference MQ encoder (Annex C encoder flowcharts, `FLUSH`) | 2.1 | `Encode/MQ.lean` | new | todo |
 | 2.3 | Fast MQ decoder: `UInt32` `C`/`A`/`CT`, context state array, no GMP, bounded reads | 2.1, 1.1 | `JPEG2000/MQ.lean` | new | todo |
 | 2.4 | C1: `mqDecode (mqEncode s) = s` | 2.1, 2.2 | `Spec/MQRoundTrip.lean` | new | todo |
@@ -181,6 +181,11 @@ Exit criterion checked: [ ]
 * `if_pos`/`if_neg`/`dif_pos`/`if_true` are deprecated in v4.36: use `↓reduceIte`/`↓reduceDIte` or `simp (disch := omega)`. `bv_decide` is unusable (relies on `Lean.ofReduceBool`).
 * `JPEG2000.Bytes.BitReader` (B.10.1): after `0xFF` the next byte gives 7 bits; `align` after a `0xFF` byte also consumes the stuffed byte (as `opj_bio_inalign`); reading past the end is `truncated` (OpenJPEG reads zeros).
 
+* `opj_dump -i`: "Start to read j2k main header (N)" = offset of the `jp2c` body; marker `len` printed as Lxxx + 2; its marker index omits parameterless 0xFF30–0xFF3F; its "default tile" component blocks already have COC/QCC/RGN applied.
+* Lean syntax: `x.bind f |>.map g == y` misparses — parenthesise the `|>.` chain; `for p in [...]` in `#eval` needs `([...] : List String)`; a `/--` docstring before `namespace` is a parse error (use `/-!`); `ByteArray` has `DecidableEq` but no `Repr`; `s!"0x{n}"` prints decimal (use `Nat.toDigits 16`).
+* Proofs: `split` can't see through `let` in an unfolded def — `simp only [f]; split` instead of `unfold f; split`; `decide` fails on goals with free variables after `split` — use `simp`. Bit tests written as `a / 0x8000 % 2 = 1` stay in `omega`.
+* Corpus-backed test suites skip when `corpus/files` is absent; CI's `build` job fetches the corpus (cached) before `lake exe tests` since wave 4.
+
 ## Decisions and deviations from the design document
 * 0.1: three libraries (`JPEG2000`, `Spec`, `Encode`) with one umbrella each, all default targets; `Tests` is a separate lib built only via `lake build tests`. `.mcp.json` pins `lean-lsp-mcp==0.33.0` with `lean_build` disabled (as bib-lean).
 
@@ -190,6 +195,9 @@ Exit criterion checked: [ ]
 
 * 1.1: `Plane` cells via `ByteArray.get`/`set` with proofs, not `uget`/`uset` (Plan §6.2 says `uget`/`uset`); revisit in Phase 8 with a `data.size < USize.size` invariant if profiling shows it matters.
 * 0.6: OpenJPEG baseline times include process start-up and output write (no decode-only flag); see `docs/performance.md`.
+
+* 1.2: JP2 duplicates follow OpenJPEG (second ihdr/bpcc ignored; second pclr/cmap/cdef an error; first colr wins, malformed later colr skipped). Deviation from OpenJPEG: a METH 3 (any-ICC, JPX) `colr` is kept, whereas OpenJPEG skips it and uses the next `colr` (seen in `issue208.jp2`) — Phase 6 (6.1) decides which to follow for rendering.
+* 1.3: lenient on unknown main-header segments (kept), parameterless 0xFF30–0xFF3F (skipped), any `Rcom`; strict (malformed) on reserved bits, precinct exponent 0 above resolution 0, duplicate SIZ/COD/QCD/CAP/CRG, SOC/SOD/EOC/SOP/EPH/PLT/PPT in the main header; `unsupported` for Part 2/15 features (HT code-block bit, transform > 1, MCT > 1, Srgn ≠ 0). Cross-segment checks and image/tile limits are task 1.5's.
 
 ## Blocked / questions for the human
 
@@ -202,3 +210,4 @@ Exit criterion checked: [ ]
 * 2026-11-25 — wave 3 (phase 0, PR #1): 0.6 done (OpenJPEG 2.5.3 baseline, 15/15 files), 1.1 done (Bytes: Reader/BitReader/Plane, 20 theorems; landed on phase-0 branch); commit "wave 3: 0.6, 1.1 — OpenJPEG baseline, byte/bit readers"
 * 2026-11-25 — wave 3 (phase 0, PR #1): 0.7 done, M0 ticked
 * 2026-11-25 — phase 0 milestone: PR #1 marked ready for review
+* 2026-11-25 — wave 4 (phase 1, PR #2): 1.2 (JP2 boxes, 9/9 conformance JP2 match opj_dump), 1.3 (main-header markers, 23/23 T.803 streams match opj_dump), 2.1 (MQ spec, T.88 H.2 vector passes, 13 theorems) done; CI build job now fetches the corpus; commit "wave 4: 1.2, 1.3, 2.1 — boxes, markers, MQ spec"

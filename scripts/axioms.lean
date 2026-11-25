@@ -66,3 +66,21 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Bytes.Plane.get_set_self
 #print axioms JPEG2000.Bytes.Plane.get_set_ne
 #print axioms JPEG2000.Bytes.Plane.get_zero
+
+-- Phase 1, task 1.2: boxes (JPEG2000/Box.lean)
+#print axioms JPEG2000.Box.parseFile_range
+
+-- Phase 2, task 2.1: MQ spec (Spec/MQ.lean)
+#print axioms JPEG2000.Spec.MQ.qe_bounds
+#print axioms JPEG2000.Spec.MQ.qeAt_qe_bounds
+#print axioms JPEG2000.Spec.MQ.bit15_iff
+#print axioms JPEG2000.Spec.MQ.bytein_A
+#print axioms JPEG2000.Spec.MQ.bytein_C_lt
+#print axioms JPEG2000.Spec.MQ.bytein_CT_le
+#print axioms JPEG2000.Spec.MQ.bytein_pos_le
+#print axioms JPEG2000.Spec.MQ.bytein_data
+#print axioms JPEG2000.Spec.MQ.renormStep_A
+#print axioms JPEG2000.Spec.MQ.renormLoop_bit15
+#print axioms JPEG2000.Spec.MQ.renormd_fuel_suffices
+#print axioms JPEG2000.Spec.MQ.lpsExchange_A
+#print axioms JPEG2000.Spec.MQ.decode_A_range

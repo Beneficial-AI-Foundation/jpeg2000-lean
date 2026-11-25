@@ -1,3 +1,5 @@
+import Spec.MQ
+
 /-!
 # Executable specifications
 
