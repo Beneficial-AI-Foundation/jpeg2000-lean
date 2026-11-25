@@ -182,6 +182,68 @@ allocation-free column loops), then the DWT column pass layout (store/lift), the
 dequantisation and tile blit. The sample is small (50 samples), so only the order of
 magnitude is reliable.
 
+### 2026-11-25: allocation-free MQ decisions (task 8.2a, based on `aeebe86`)
+
+Command: `scripts/bench.sh --runs 3` before (at `aeebe86`) and after, same sandbox, other
+agents building in parallel (load average 1.2-2.9, so +-3% noise). Method as in 8.1.
+
+| file | Tier-1 ms before | Tier-1 ms after | Tier-1 speed-up | total ms before | total ms after | total / OpenJPEG before | total / OpenJPEG after |
+|---|---|---|---|---|---|---|---|
+| p0_07.j2k | 2492.7 | 2137.4 | 1.17x | 3729.5 | 3430.1 | 4.53 | 4.16 |
+| p0_08.j2k | 1203.1 | 989.3 | 1.22x | 1688.6 | 1489.8 | 4.20 | 3.71 |
+| p1_03.j2k | 331.2 | 305.2 | 1.09x | 668.2 | 644.1 | 5.57 | 5.37 |
+| zoo1.jp2 | 1375.1 | 1158.5 | 1.19x | 3448.3 | 3288.1 | 5.32 | 5.07 |
+| Bretagne2.j2k | 1539.0 | 1299.5 | 1.18x | 3152.7 | 2990.8 | 4.38 | 4.15 |
+| kodak_2layers_lrcp.j2c | 717.9 | 603.3 | 1.19x | 1861.9 | 1771.3 | 5.33 | 5.08 |
+| 123.j2c | 771.8 | 654.4 | 1.18x | 1112.0 | 985.4 | 4.16 | 3.69 |
+| movie_00000.j2k | 55.5 | 47.7 | 1.16x | 574.3 | 571.9 | 7.87 | 7.83 |
+| _00042.j2k | 37.0 | 32.0 | 1.16x | 640.9 | 664.2 | 8.32 | 8.63 |
+| test_lossless.j2k | 240.5 | 207.1 | 1.16x | 345.8 | 305.1 | 3.97 | 3.51 |
+| pacs.ge.j2k | 60.0 | 50.2 | 1.20x | 85.7 | 77.0 | 4.08 | 3.67 |
+| buxI.j2k | 46.0 | 38.3 | 1.20x | 75.8 | 69.6 | 4.46 | 4.09 |
+| issue208.jp2 | 29.7 | 25.9 | 1.15x | 446.3 | 450.1 | 9.50 | 9.58 |
+| issue559-eci-090-CIELab.jp2 | 36.0 | 31.1 | 1.16x | 69.8 | 66.1 | 3.17 | 3.00 |
+| cthead1.j2k | 8.8 | 7.2 | 1.22x | 15.5 | 13.8 | 3.87 | 3.45 |
+
+What changed (`JPEG2000/MQ.lean`; proofs in `Spec/MQEquiv.lean`):
+
+* `MQ.Dec.decode` allocated a fresh `Dec` on 4 of its 5 paths (the compiler only reused the
+  record on one branch) plus a `Bool × Dec` pair per decision, and `RENORMD` updated the
+  record once per shift. Now `decode` is an `@[inline]` wrapper `(d.step i).bit, d.step i`
+  around `Dec.step`, which stores the decision in a new field `Dec.bit` (so the pair is
+  built and destructured at every call site and the compiler removes it); `step` folds the
+  five flowchart paths into scalar selections and calls `Dec.renormS`, which runs `RENORMD`
+  (with `BYTEIN`, reading bytes only when `CT = 0`) on unboxed local registers as a C loop
+  and ends with one in-place record update (registers, context byte, decision). The
+  generated C of `step`/`renormS` has no allocation on any path (only the `reuseFailAlloc`
+  fallbacks for a shared `Dec`), and the Tier-1 hot functions no longer allocate per
+  decision. C2: `renormS_eq` (scalar loop = `renormLoop` on the updated record) and
+  `step_eq_ref` (`step` = the path-by-path `stepRef`, i.e. the old `decode`); `decode_sim`
+  is reproved through them with its statement unchanged; Tier-1 proofs (C3, Tier1Wire, C9)
+  build unchanged.
+* MQ throughput (`lake exe bench-mq`, same data as the 2.6 table below): 135.6 / 102.6 /
+  80.8 / 72.8 M decisions/s at p(LPS) 0.02 / 0.1 / 0.3 / 0.5 and 180.2 M/s on T.88 H.2
+  (2.6: 85.8 / 73.3 / 62.0 / 51.0 / 93.2). `lake exe tests`: Tier-1 fast throughput
+  3.9 M coefficients/s, 43 M MQ decisions/s on dense 64x64 K=12 (3.4a: 3.1 M, 34 M).
+
+Tried and reverted (measured slower): `@[inline]` on `step` (no gain, more code);
+`clearVisFrom` writing only words with `VIS` set (+4% Tier-1, branch cost); passing the
+Tier-1 state `St` through `colRows` instead of its three components (+8%: the compiler then
+allocates per coefficient, as noted in 3.4a).
+
+Where Tier-1 time still goes (callgrind on `pacs.ge.j2k`, instruction counts): the MQ
+decoder is now ~1/3 of Tier-1; the rest is the pass loops (`scanCols`/`colRowsU`
+specialisations), `clearVisFrom` (~11% of Tier-1: a full sweep of boxed `Array UInt32` per
+bit-plane) and one `St` allocation + free per stripe column (`colRowsU` returns the state;
+~7%). These are inherent to the current representation: flag words and magnitudes as boxed
+`Array UInt32` with `Nat` indices (every `fset` checks ownership and drops the old element),
+and the column loop returning a 3-field state. The next steps (larger, proof-affecting):
+flags/magnitudes in a `ByteArray`-backed `UInt32` buffer with `USize` indices (the
+`fget`/`fset` lemma interface in `Spec/Tier1Equiv/Basic.lean` is the seam), a fused
+stripe loop (columns and rows in one tail-recursive function) so no state record is returned
+per column, and clearing `VIS` inside the cleanup pass. Tier-1 is still 2.1 s of 3.4 s on
+`p0_07`; the inverse DWT (outside this task) is the other large stage.
+
 ## MQ decoder throughput
 
 Task 2.6, 2026-11-25, on top of `182e722` (phase-1-headers), same machine as above
