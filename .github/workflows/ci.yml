@@ -138,6 +138,12 @@ jobs:
         if: runner.os == 'Linux'
         run: python3 -I scripts/diff-segments.py
 
+      # Fuzz smoke run (task 9.1): 300 deterministic mutations of the corpus streams through
+      # JPEG2000.decode under tight limits, no opj. Fails on a limit escape. Linux only.
+      - name: Fuzz smoke
+        if: runner.os == 'Linux'
+        run: scripts/fuzz.sh --iters 300 --limits tight
+
       - name: Proof hygiene guard
         run: scripts/check-hygiene.sh
 
