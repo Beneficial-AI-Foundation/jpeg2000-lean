@@ -17,7 +17,6 @@ Design document: Plan.md
   becomes current. Proof tasks name their theorem IDs from Plan.md §4 (S1–S6, C1–C10).
 
 ## Current wave
-Wave 9: 3.3 (wt), 3.4a (new), 3.5 (new), 4.3 (new)
 
 ## Branches and PRs
 | Phase | Branch | Base | PR | State |
@@ -83,11 +82,11 @@ Plan.md §7 row 3, §5.2 "Tier-1", Annex D. Exit: **M3**: C3 proved for plain mo
 |---|---|---|---|---|---|
 | 3.1 | (landed on `phase-1-headers`) Spec context tables D.1–D.3 (zero coding, sign coding, magnitude refinement) as data | 2.1 | `Spec/Tier1/Context.lean` | new | | done (2026-11-25) |
 | 3.2 | (landed on `phase-1-headers`) Spec Tier-1 decoder, plain mode: per-coefficient state, significance propagation / magnitude refinement / cleanup passes, run-length coding | 3.1 | `Spec/Tier1/Decode.lean`, `Tests/Tier1Spec.lean` | new | | done (2026-11-25) |
-| 3.3 | Spec modes: reset, termall, vertically causal, segmentation symbols, predictable termination, bypass (raw) | 3.2 | `Spec/Tier1/Modes.lean`, `Spec/Tier1/Decode.lean`, `Tests/Tier1Spec.lean` | wt | doing (2026-11-25) |
+| 3.3 | Spec modes: reset, termall, vertically causal, segmentation symbols, predictable termination, bypass (raw) | 3.2 | `Spec/Tier1/Modes.lean`, `Spec/Tier1/Decode.lean`, `Tests/Tier1Spec.lean` | wt | done (2026-11-25) |
 | 3.4 | Fast Tier-1 | — | — | — | split (into 3.4a, 3.4b) |
-| 3.4a | Fast Tier-1, plain mode: 32-bit flag word per coefficient (significance, sign, visited, refined + pre-merged neighbourhood bits), stripe scan, zero-stripe skipping, `Int32` output plane; tested = spec on random blocks | 3.2, 2.3 | `JPEG2000/Tier1/`, `Tests/Tier1Fast.lean` | new | doing (2026-11-25) |
+| 3.4a | Fast Tier-1, plain mode: 32-bit flag word per coefficient (significance, sign, visited, refined + pre-merged neighbourhood bits), stripe scan, zero-stripe skipping, `Int32` output plane; tested = spec on random blocks | 3.2, 2.3 | `JPEG2000/Tier1/`, `Tests/Tier1Fast.lean` | new | done (2026-11-25) |
 | 3.4b | Fast Tier-1, other modes (reset, termall, causal, segsym, predictable termination, bypass) = 3.3's spec | 3.3, 3.4a | `JPEG2000/Tier1/`, `Tests/Tier1Fast.lean` | wt | todo |
-| 3.5 | Reference Tier-1 encoder, plain mode | 3.2, 2.2 | `Encode/Tier1.lean`, `Tests/Tier1Enc.lean` | new | doing (2026-11-25) |
+| 3.5 | Reference Tier-1 encoder, plain mode | 3.2, 2.2 | `Encode/Tier1.lean`, `Tests/Tier1Enc.lean` | new | done (2026-11-25) |
 | 3.6 | C3 for plain mode: simulation relation flag words ↔ spec state, preserved by each pass | 3.4a | `Spec/Tier1Equiv.lean` | new | todo |
 | 3.7 | Tests: every mode combination fast = spec on random code-blocks; T.803 code-blocks vs OpenJPEG | 3.3, 3.4b, 3.5, 4.4 | `Tests/Tier1.lean`, `scripts/diff-codeblocks.py` | new | todo |
 | 3.8 | M3 check | 3.1–3.7 | — | solo | todo |
@@ -99,8 +98,8 @@ Plan.md §7 row 4, §5.2 "Tier-2", Annex B. Exit: **M4**: C4, C5 proved; every T
 |---|---|---|---|---|---|
 | 4.1 | (landed on `phase-1-headers`) Tag trees (B.10.2): decoder, reference encoder, C4 | 1.1 | `JPEG2000/TagTree.lean`, `Spec/TagTree.lean`, `Tests/TagTree.lean` | new | | done (2026-11-25) |
 | 4.2 | (landed on `phase-1-headers`) Geometry (B.5–B.7): tile-components, resolutions, sub-bands, precincts, code-blocks, with `Limits` checks | 1.5 | `JPEG2000/Tier2/Geometry.lean`, `Tests/Geometry.lean` | new | | done (2026-11-25) |
-| 4.3 | Progression orders LRCP/RLCP/RPCL/PCRL/CPRL + POC as explicit iterators; C5 (bijection onto the packet set) | 4.2 | `JPEG2000/Progression.lean`, `Spec/Progression.lean`, `Tests/Progression.lean` | new | doing (2026-11-25) |
-| 4.4 | Packet headers (B.10): zero-length packets, inclusion, zero bit-planes, passes, `Lblock`, segment lengths per mode; layer accumulation into per-code-block segments; SOP/EPH | 4.1, 4.2, 4.3 | `JPEG2000/Tier2/Packet.lean` | new | todo |
+| 4.3 | Progression orders LRCP/RLCP/RPCL/PCRL/CPRL + POC as explicit iterators; C5 (bijection onto the packet set) | 4.2 | `JPEG2000/Progression.lean`, `Spec/Progression.lean`, `Tests/Progression.lean` | new | done (2026-11-25) |
+| 4.4 | Packet headers (B.10): zero-length packets, inclusion, zero bit-planes, passes, `Lblock`, segment lengths per mode (`Spec.Tier1.segmentPasses`); layer accumulation into per-code-block segments; SOP/EPH; check `Progression.iterationWork` against `Limits` | 4.1, 4.2, 4.3 | `JPEG2000/Tier2/Packet.lean` | new | todo |
 | 4.5 | PPM/PPT header sourcing and tile-part ordering | 4.4 | `JPEG2000/Tier2/Headers.lean` | new | todo |
 | 4.6 | Differential: per-code-block segments vs OpenJPEG on every T.803 stream | 4.5, 0.5 | `Tests/Tier2.lean`, `scripts/diff-segments.py` | new | todo |
 | 4.7 | M4 check | 4.1–4.6 | — | solo | todo |
@@ -216,6 +215,11 @@ Exit criterion checked: [ ]
 * Tag trees: fast decoder generic over its bit source (`decodeWith`) so fast = spec is proved on bit lists; the BitReader un-stuffing link is tested, not proved. `Array.setIfInBounds` frame lemmas: `getElem?_setIfInBounds_ne`/`_self_of_lt`, `getD_eq_getD_getElem?`. After `cases` on a structure literal, `dsimp only at h ⊢` before `omega`. Write `(show k + 1 ≤ k' by omega)` rather than `Nat.succ_le_of_lt`.
 * Finite `UInt8` facts: one `decide +kernel` lemma. `simpa [ByteArray.size]` can hit max recursion — `rw [Array.length_toList]`. A structure literal as a continuation-line argument fails to parse — bind it with `let`. `List.length_filter_le … |>.trans` fails — use `Nat.le_trans`. v4.36 total array ops: `Array.setIfInBounds`, `Array.replicate`, `Array.getD`.
 
+* Tier-1 segments (3.3): `Spec.Tier1.CodeBlock` takes `segments : List Segment` (`Segment := {data : List UInt8, passes : Nat}`); `Segment.single n data`, `CodeBlock.ofData`; `segmentPasses mode numPasses firstPass` gives the codeword-segment split (termall: 1 per pass; bypass: 10, then 2/1 alternating = OpenJPEG `opj_t2_init_seg`; else one) — Tier-2 (4.4) must use it. `Geom` has a 4th field `vertCausal` — build it with named fields, not `⟨w, h, o⟩`. Test helper `Tests.Tier1Spec.plainTrace b n` gives the plain-mode MQ trace.
+* Fast Tier-1 (3.4a): flag word bits 0–7 neighbour significance (N W E S NW NE SW SE), 8–11 neighbour signs (N W E S), 12–15 own SIG/NEG/VIS/REF; 1-coefficient border; refuses K > 31 coded bit-planes (Int32 output) — C3 (3.6) assumes K ≤ 31. ~3.1 M coefficients/s, 34 M MQ decisions/s on dense 64×64 K=12 — far below OpenJPEG; ~30 % in `MQ.Dec.decode`, which allocates a fresh `Dec` on 4 of 5 paths + a tuple per decision (Phase 8). Passing loop state as separate arguments instead of a 3-field struct removed per-coefficient allocation (~8 %). `Array.map` on `Array UInt32` goes through `Id` closures — hand-written loops with `fget`/`fset` are leaner.
+* Compiled timing of a new suite without touching the main checkout: copy the repo with `.lake` into the scratchpad, register the module there, `lake build tests` reuses existing `.olean`s. Interpreted `#eval` Tier-1 round trips are ~300× slower than compiled.
+* Proofs: two `if`s with different `Decidable` instances for the same condition — `split <;> rename_i h <;> simp only [h, and_self, ↓reduceIte]` (no `if_congr` in core). Rewrite under a `do` bind continuation with `simp only [lemma args]`, not `rw`. Lex order on `List Nat`: `List.le_trans/le_total/lt_asymm/le_iff_lt_or_eq/append_left_lt` + `List.pairwise_mergeSort`, `List.mergeSort_perm` → "strictly sorted by key + same members ⇒ equal". `h ▸ hyp` rewrites everywhere — use `have … := by rw [← h]; exact hyp`. A concatenated scratch check can pass while the module build fails (e.g. `split` on a `match` whose scrutinee then needs `simp only [hv]` with `rename_i hv`) — always rebuild after integration.
+
 ## Decisions and deviations from the design document
 * Wave 8 selection: Phases 1–2 have no further parallel work and Phase 3 has one ready task, so the wave is filled with the ready Phase 4 starters 4.1/4.2 (independent files).
 * 0.1: three libraries (`JPEG2000`, `Spec`, `Encode`) with one umbrella each, all default targets; `Tests` is a separate lib built only via `lake build tests`. `.mcp.json` pins `lean-lsp-mcp==0.33.0` with `lean_build` disabled (as bib-lean).
@@ -244,6 +248,11 @@ Exit criterion checked: [ ]
 * 1.10: PPM/PPT records hold byte ranges into the input, so their round trip is "up to relocation": parsing the serialised body yields the same Z index and a range holding exactly the original bytes.
 * PR #2 carries Phase 1 (M1), Phase 2 (M2) and early Phase 3/4 work (3.1, 3.2, 4.1, 4.2). Phases 3–4 continue on `phase-3-tier1`, cut from `phase-1-headers`.
 
+* 3.3: predictable termination has no decoder effect (no check); wrong segmentation symbols are counted (`badSegSymbols`) and tolerated by `decodeCodeBlock` (as OpenJPEG), rejected by `decodeCodeBlockStrict`; end-of-pass order pass → segmentation symbol → context reset; raw reader reads 0xFF past the end and treats 0xFF + byte > 0x8F as all ones (as `opj_mqc_raw_decode`).
+* 3.4a: the fast Tier-1 decoder refuses blocks with K > 31 coded bit-planes when passes are decoded (Int32 coefficients); per-coefficient Nb is recomputed from final flags + last pass (`CodeBlockOut.lsbPlane`), not stored.
+* 3.5: the reference Tier-1 encoder runs all 3K−2 passes in one codeword; per-pass byte counts are a lower bound only (no truncation points) — enough for the one-layer reference Tier-2.
+* 4.3: RPCL/PCRL/CPRL iterate the B.12.1.3 reference positions directly (precincts sorted by position key), not OpenJPEG's minimum-step scan: with sub-sampling factors not powers of two of each other our packet order can differ from OpenJPEG's (deliberately; T.800 is authoritative). C5 and fast = spec assume `Layout.WF` (sub-sampling ≥ 1, B-12 tile-component rectangles), which `Geometry.tileComp` establishes. POC iteration cost ≈ POC entries² × packets is computed (`iterationWork`) but not yet checked against `Limits` — 4.4 adds the check (a new Limits field needs a Decisions entry).
+
 ## Blocked / questions for the human
 
 * Benchmark set (Plan §8.4) lacks a ≥ 20 Mpx stream: openjpeg-data has none that decodes. Where may one come from (a licensable large JP2, or one we generate with `opj_compress` from a public-domain image)? Proceeding with the 15-file set meanwhile.
@@ -261,3 +270,4 @@ Exit criterion checked: [ ]
 * 2026-11-25 — wave 7 (phase 1, PR #2): 1.7 (header-dump + diff-headers.py: 44/44 corpus files identical to opj_dump), 1.9 (TNsot correction), 3.1 (Tier-1 context tables, 20 theorems, = OpenJPEG on all inputs) done; new task 1.10 (tile-part segment round trips); commit "wave 7: 1.7, 1.9, 3.1 — opj_dump differential, TNsot correction, Tier-1 contexts"
 * 2026-11-25 — wave 8 (phase 1, PR #2): 1.10 (tile-part segment round trips, 15 theorems), 3.2 (Tier-1 plain spec, 1600/1600 random round trips), 4.1 (tag trees, C4 proved incl. fast = spec), 4.2 (Tier-2 geometry, 23/23 T.803 consistent) done; 1.8 M1 ticked; tag-tree default cases 500 → 60; commit "wave 8: 1.10, 3.2, 4.1, 4.2 — M1, Tier-1 spec, tag trees, geometry"
 * 2026-11-25 — phase 1 + 2 milestones: PR #2 marked ready for review (CI 6/6 on c480c57)
+* 2026-11-25 — wave 9 (phase 3, PR #3): 3.3 (all six Tier-1 modes in the spec, 64-style round trips), 3.4a (fast plain Tier-1 = spec on random blocks), 3.5 (reference Tier-1 encoder, bytes = test encoder), 4.3 (5 progression orders + POC, C5 and fast = spec proved) done; integration fixed `Geom` constructor uses, test adapters to `segments`, and one `split`/`simp` step in `Spec/Progression.lean`; commit "wave 9: 3.3, 3.4a, 3.5, 4.3 — Tier-1 modes, fast Tier-1, Tier-1 encoder, progression (C5)"

@@ -559,6 +559,11 @@ def encodeBlock (m : Mode) (b : Blk) (n : Nat) : E × List (Bool × List Sym) :=
     (e0, (#[] : Array (Bool × List Sym)))
   (e, acc.toList)
 
+/-- The MQ decision trace of the first `n` plain-mode passes of `b` (all passes are MQ-coded
+in plain mode): the form `Encode.MQ.encodeAll initialStates` takes. -/
+def plainTrace (b : Blk) (n : Nat) : List (Nat × Bool) :=
+  (encodeBlock Mode.plain b n).2.flatMap fun p => mqPairs p.2
+
 /-- OpenJPEG's codeword-segment rule (`opj_t2_init_seg`): `maxpasses` 1 with termall; with
 bypass 10 for the first segment, then 2 after a segment of 1 or 10, else 1; otherwise
 unbounded. Returns the pass counts of the segments holding `n` passes. -/

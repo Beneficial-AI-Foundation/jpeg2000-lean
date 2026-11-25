@@ -247,3 +247,28 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.TagTree.create_rel
 #print axioms JPEG2000.Spec.TagTree.fast_decode_eq
 #print axioms JPEG2000.Spec.TagTree.fast_decodeValue_eq
+
+-- Phase 3, task 3.4a: fast Tier-1 tables (JPEG2000/Tier1/Tables.lean)
+#print axioms JPEG2000.Tier1.zcTable_size
+#print axioms JPEG2000.Tier1.zcFor_eq
+#print axioms JPEG2000.Tier1.zcFor_size
+#print axioms JPEG2000.Tier1.scLut_size
+#print axioms JPEG2000.Encode.Tier1.lt_two_pow_numBits
+
+-- Phase 4, task 4.3: progression orders, C5 (Spec/Progression.lean)
+#print axioms JPEG2000.Spec.Progression.forRange_eq
+#print axioms JPEG2000.Spec.Progression.mem_dedup
+#print axioms JPEG2000.Spec.Progression.nodup_dedup
+#print axioms JPEG2000.Spec.Progression.Axis.cdiv_cdiv
+#print axioms JPEG2000.Spec.Progression.Axis.ref_spec
+#print axioms JPEG2000.Spec.Progression.Axis.col_spec
+#print axioms JPEG2000.Spec.Progression.precAt_some
+#print axioms JPEG2000.Spec.Progression.precAt_ref
+#print axioms JPEG2000.Spec.Progression.sortedPrecincts_eq
+#print axioms JPEG2000.Spec.Progression.c5_volume
+#print axioms JPEG2000.Spec.Progression.c5
+#print axioms JPEG2000.Spec.Progression.c5_perm
+#print axioms JPEG2000.Spec.Progression.c5_poc
+#print axioms JPEG2000.Spec.Progression.packets_noPoc
+#print axioms JPEG2000.Spec.Progression.forVolume_eq_spec
+#print axioms JPEG2000.Spec.Progression.forPackets_eq_spec

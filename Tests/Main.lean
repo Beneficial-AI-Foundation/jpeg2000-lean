@@ -16,6 +16,9 @@ import Tests.TilePartRoundTrip
 import Tests.Tier1Spec
 import Tests.TagTree
 import Tests.Geometry
+import Tests.Tier1Fast
+import Tests.Tier1Enc
+import Tests.Progression
 import Tests.MQRoundTrip
 
 /-!
@@ -53,7 +56,10 @@ def suites : List Suite :=
     { name := "tilepart-roundtrip", run := JPEG2000.Tests.TilePartRoundTrip.run },
     { name := "tier1spec", run := JPEG2000.Tests.Tier1Spec.run },
     { name := "tagtree", run := JPEG2000.Tests.TagTree.run },
-    { name := "geometry", run := JPEG2000.Tests.Geometry.run } ]
+    { name := "geometry", run := JPEG2000.Tests.Geometry.run },
+    { name := "tier1fast", run := JPEG2000.Tests.Tier1Fast.run },
+    { name := "tier1enc", run := JPEG2000.Tests.Tier1Enc.run },
+    { name := "progression", run := JPEG2000.Tests.Progression.run } ]
 
 end JPEG2000.Tests
 
