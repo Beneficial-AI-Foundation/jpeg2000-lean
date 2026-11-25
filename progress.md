@@ -17,7 +17,6 @@ Design document: Plan.md
   becomes current. Proof tasks name their theorem IDs from Plan.md §4 (S1–S6, C1–C10).
 
 ## Current wave
-Wave 13: 5.5 (new), 5.6a (new), 7.2 (new)
 
 ## Branches and PRs
 | Phase | Branch | Base | PR | State |
@@ -116,9 +115,9 @@ Plan.md §7 row 5, §5.2 "DWT", §5.4, Annexes E–H. Exit: **M5**: C6, C7, C8 p
 | 5.2 | (landed on `phase-3-tier1`) 5/3 inverse DWT: Annex F spec over `Int` with symmetric extension, in-place lifting on `Int32` planes, C6 | 1.1 | `Spec/DWT53.lean`, `JPEG2000/DWT53.lean`, `Tests/DWT53.lean` | new | | done (2026-11-25) |
 | 5.3 | (landed on `phase-3-tier1`) 9/7 inverse DWT: `Rat` spec, fixed-point lifting (fractional bits chosen from the C8 bound; Plan §10 open question), C8 for DWT | 5.2 | `Spec/DWT97.lean`, `JPEG2000/DWT97.lean`, `Tests/DWT97.lean` | new | | done (2026-11-25) |
 | 5.4 | (landed on `phase-3-tier1`) RCT/ICT, DC shift, clamping; C7, C8 for ICT | 1.1 | `JPEG2000/MCT.lean`, `Spec/MCT.lean`, `Tests/MCT.lean` | new | | done (2026-11-25) |
-| 5.5 | Assembly and pipeline: tiles, sub-sampling, reduced resolution, `JPEG2000.decodeCodestream` | 3.4b, 4.5, 5.1–5.4 | `JPEG2000/Assemble.lean`, `JPEG2000/Decode.lean`, `Tests/Decode.lean` | new | doing (2026-11-25) |
+| 5.5 | Assembly and pipeline: tiles, sub-sampling, reduced resolution, `JPEG2000.decodeCodestream` | 3.4b, 4.5, 5.1–5.4 | `JPEG2000/Assemble.lean`, `JPEG2000/Decode.lean`, `Tests/Decode.lean` | new | done (2026-11-25) |
 | 5.6 | T.803 conformance runner | — | — | — | split (into 5.6a, 5.6b) |
-| 5.6a | Reference-decode reader (PGX; the JP2 reference TIFFs if needed) + metrics (peak error, MSE per component) + per-stream class thresholds from `corpus/manifest.json`, independent of the decoder | 0.5 | `Tests/Pgx.lean`, `Tests/ConformanceData.lean` | new | doing (2026-11-25) |
+| 5.6a | Reference-decode reader (PGX; the JP2 reference TIFFs if needed) + metrics (peak error, MSE per component) + per-stream class thresholds from `corpus/manifest.json`, independent of the decoder | 0.5 | `Tests/Pgx.lean`, `Tests/ConformanceData.lean` | new | done (2026-11-25) |
 | 5.6b | T.803 conformance runner: decode every p0/p1 stream with `decodeCodestream`, compare against the reference decodes at class 0 and 1 thresholds; `lake exe conformance` + CI | 5.5, 5.6a | `Tests/Conformance.lean`, `lakefile.lean`, `.github/workflows/ci.yml` | wt | todo |
 | 5.7 | M5 check | 5.1–5.5, 5.6b | — | solo | todo |
 Exit criterion checked: [ ]
@@ -138,7 +137,7 @@ Plan.md §7 row 7, §4, §5.3. Exit: **M7**: C9, C10, S2, S3 proved; `#print axi
 | ID | Task | Needs | Owns | Par | Status |
 |---|---|---|---|---|---|
 | 7.1 | `Spec.decode` composed from the stage specs; C9 from the stage theorems | 6.2 | `Spec/Decode.lean`, `Spec/Equiv.lean` | new | todo |
-| 7.2 | Reference encoder end to end (one tile, one layer, LRCP, plain mode, 5/3 + RCT; 9/7 variant) | 3.5, 4.1, 1.6 | `Encode/Encode.lean`, `Encode/Tier2.lean`, `Tests/Encode.lean` | new | doing (2026-11-25) |
+| 7.2 | (landed on `phase-5-reconstruction`) Reference encoder end to end (one tile, one layer, LRCP, plain mode, 5/3 + RCT; 9/7 variant) | 3.5, 4.1, 1.6 | `Encode/Encode.lean`, `Encode/Tier2.lean`, `Tests/Encode.lean` | new | done (2026-11-25) |
 | 7.3 | C10: `decode (encode img) = img` for the lossless encoder | 7.1, 7.2 | `Spec/RoundTrip.lean` | new | todo |
 | 7.4 | S2 totality and S3 resource bounds as theorems over `Limits` | 7.1 | `Spec/Resources.lean` | new | todo |
 | 7.5 | M7 check (axioms) | 7.1–7.4 | — | solo | todo |
@@ -239,6 +238,10 @@ Exit criterion checked: [ ]
 * Colour (6.1): `JPEG2000.Color.resolve L data hdr? sizComponents` → `Info` (space, mapping, formats, layout); `CmapEntry ⟨cmp, mtyp, pcol⟩`. Lean `Int64 /` truncates toward zero (like C); `Float.toInt64` truncates. `syccToRgb` copies one zero plane three times (Phase 8).
 * MCT (5.4): unannotated `2 ^ F / 2` inside an `Int` expression may elaborate as a Nat cast — write `(2 : Int) ^ F`. Variable `Int64` shift: `(x >>> Int64.ofNat k).toInt = x.toInt / 2^k` (k < 64) is `JPEG2000.MCT.shrK`. `omega` fails on conjunctions containing a literal `True`. `grind` with large Rat literals and `.abs` → kernel deep recursion; `generalize` the `.abs` terms first. Useful: `Int64.lt_iff_toInt_lt`, `Int64.toInt_toInt32` + `Int.bmod_eq_of_le`, `Int64.toInt_ofInt_of_le`. `map1_get`/`map3_get` prove plane loops cell-wise.
 
+* Pipeline (5.5): `JPEG2000.decodeCodestream (L) (data) (reduce := 0) : Except Error DecodedImage` (per component on its own grid, Int32 planes; colour composition is 6.2's). `Assemble.decodeTile` chains Tier-1 (Mb + roiShift) → `dequantBlock` → `idwt53`/`idwt97` → RCT/ICT → DC shift/clamp. Keep planes in their own array (not inside a record still used later) so they stay uniquely owned. `meta` is a keyword in v4.36. `opj_decompress` converts 3-component sub-sampled images to RGB even from a bare codestream (file3), writes PGX sign as `- 4` (refs: `-4`), names one-component output `x_0.pgx`, and fails on `p1_06 -r 2`. `Tests/Decode.lean` skips p0_05, p0_07, p0_08, p1_03, file1–9 unless `JPEG2000_DECODE_ALL=1` (16.6 s).
+* Reference data (5.6a): `Tests.ConformanceData.load` (run from repo root) → 87 `RefEntry`s (class 0: 26, class 1: 52, TIFF: 9; 32 streams); `Tests.Pgx.parse/readFile/compare/Metrics.within`, `parseTiff` (LZW + predictor; 7 of 9 jp2_N.tif are LZW). PGX headers vary (`+8`, `-4`, `+ 8`, none; CRLF); signed samples are two's complement at storage width. `String.split` returns `Std.Iter String.Slice` in v4.36 — `.toList.map (·.toString)`. Metric semantics (peak = max |a−b|, MSE = Σ²/n per component) follow the manifest note; confirm against OpenJPEG's `compare_images` in 5.6b.
+* Encoder (7.2): `JPEG2000.Encode.encode : Params → Image → Except Error ByteArray`, `encodeDetailed`; band step index `Spec.Quant.bandIndex r b = 3(r−1) + b.index` (HL is 1) — lossless tests can't catch an off-by-one there, lossy can. Inside `namespace JPEG2000.Encode`, `Tier1.`/`Tier2.` resolve to the encoder's namespaces (write `JPEG2000.Tier2.Packet.…`). Don't filter imports with `grep -v Tier2` when concatenating (drops `JPEG2000.Tier2.Packet`).
+
 ## Decisions and deviations from the design document
 * Wave 10: 3.4b and 3.6 run together; 3.4b must leave every plain-path definition of `JPEG2000/Tier1/Decode.lean` unchanged (modes go in new definitions + a dispatching entry point) so 3.6 proves against a stable target. 5.2 is pulled forward (independent files).
 * Wave 8 selection: Phases 1–2 have no further parallel work and Phase 3 has one ready task, so the wave is filled with the ready Phase 4 starters 4.1/4.2 (independent files).
@@ -286,6 +289,9 @@ Exit criterion checked: [ ]
 * 5.4: C7 = `Spec.MCT.rctInv_rctFwd` (and `rctFwd_rctInv`: RCT is a bijection of ℤ³); ICT with T.800's decimal constants is not exactly invertible (`ictInv_ictFwd_ne`); C8 for ICT = `MCT.ict_c8` (gain 2.772, rounding 5/2 ulps); combined 9/7 + ICT bound `(2.772·En nl 0 + 2.5)/2^F`. Components > 31-bit unsigned / 32-bit signed are `unsupported` in the fast path (Int32 planes; spec only) — revisit in 5.5/6.2. Exact halves round up (`roundFix`); OpenJPEG `lrintf` rounds half to even — only exact ties differ.
 * 3.7 is satisfied by 3.3 + 3.4b + 4.6b (no separate task work); M3 and M4 ticked together.
 
+* 5.5: missing tiles decode as zero coefficients with the main-header parameters (every sample = DC offset); `reduce` > a tile-component's NL is `unsupported` (as OpenJPEG) and `reduce` is checked against `maxDecompLevels` first; under the ICT components 0–2 share F = fracBits of their largest depth; dequantisation saturation is counted in `DecodedImage.saturatedBlocks`, not an error. Results: every 5/3 component of every T.803 p0/p1 stream and file1–9 (except file3, which OpenJPEG converts) bit-identical to `opj_decompress`; 9/7 within 1; every p0/p1 stream within class-1 thresholds of the T.803 reference decodes. ROI (Decision 5.1) resolved in favour of T.800: p0_03/p0_13/p0_15 identical across ours, OpenJPEG and the reference; p0_06 comp 0 (9/7 + ROI) ours MSE 2514.6 vs OpenJPEG 2645.8 against the reference (both within 635/11287).
+* 7.2: the lossy 9/7 encoder rounds each level's input down to a multiple of 2^−32 (keeps exact fractions small) instead of calling `Spec.DWT97.sdMulti` directly; the lossless path uses `Spec.DWT53.sdMulti` unchanged. Lossless: 2 guard bits, per-band exponent raised to fit; lossy: exponent fixed by the step, guard bits raised (error above 7). The Tier-2 writer is tested (our decoder + OpenJPEG), not proved to invert `Tier2.Packet`.
+
 ## Blocked / questions for the human
 
 * Benchmark set (Plan §8.4) lacks a ≥ 20 Mpx stream: openjpeg-data has none that decodes. Where may one come from (a licensable large JP2, or one we generate with `opj_compress` from a public-domain image)? Proceeding with the 15-file set meanwhile.
@@ -308,3 +314,4 @@ Exit criterion checked: [ ]
 * 2026-11-25 — wave 11 (phase 3, PR #3): 4.5 (PPM/PPT header streams in the decoder; 32 corpus files), 4.6a (instrumented OpenJPEG dump tool, 54 061 code-blocks dumped), 5.1 (dequantisation + ROI, kernels proved), 5.3 (9/7 Rat spec + fixed point, C8 for the DWT proved) done; commit "wave 11: 4.5, 4.6a, 5.1, 5.3 — PPM/PPT, OpenJPEG dump tool, dequantisation, 9/7 DWT (C8)"
 * 2026-11-25 — wave 12 (phase 3, PR #3): 4.6b (segment-dump + diff-segments.py: 32/32 files, 54 061 code-blocks, segments and coefficients identical to OpenJPEG), 5.4 (RCT/ICT, DC shift, C7 and C8-ICT proved), 6.1 (JP2 colour, palette, cmap, cdef, sYCC; METH 3 decided) done; 3.7, 3.8, 4.7 done; M3 and M4 ticked; commit "wave 12: 4.6b, 5.4, 6.1 — OpenJPEG differential (M3, M4), RCT/ICT (C7, C8), JP2 colour"
 * 2026-11-25 — phase 3 + 4 milestones: PR #3 marked ready for review (CI 6/6 on b0aa015)
+* 2026-11-25 — wave 13 (phase 5, PR #4): 5.5 (full pipeline `decodeCodestream`: 5/3 bit-exact vs OpenJPEG, all p0/p1 within class-1 thresholds, ROI favours T.800), 5.6a (PGX/TIFF reference reader, metrics, 87-entry threshold table), 7.2 (reference encoder 5/3+RCT and 9/7+ICT; lossless round trips bit-exact through OpenJPEG and our decoder) done; commit "wave 13: 5.5, 5.6a, 7.2 — full decode pipeline, reference data, reference encoder"
