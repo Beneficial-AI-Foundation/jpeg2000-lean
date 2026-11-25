@@ -50,6 +50,8 @@ import Spec.HeaderWF
 import Spec.C9
 import Spec.RoundTrip.Tier1
 import Spec.RoundTrip.Tier2Bits
+import Spec.RoundTrip.Tier2
+import Spec.RoundTrip.Header
 import Spec.RoundTrip
 import Spec.Resources
 import Spec.Resources.BlockPasses
