@@ -21,7 +21,7 @@ Design document: Plan.md
 ## Branches and PRs
 | Phase | Branch | Base | PR | State |
 |---|---|---|---|---|
-| 0 | `phase-0-infra` | `origin/main` | [#1](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/1) | draft |
+| 0 | `phase-0-infra` | `origin/main` | [#1](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/1) | ready (2026-11-25) |
 | 1 | `phase-1-headers` | `phase-0-infra` | — | none |
 | 2 | `phase-2-mq` | `phase-1-headers` | — | none |
 | 3 | `phase-3-tier1` | `phase-2-mq` | — | none |
@@ -44,8 +44,8 @@ Plan.md §7 row 0, §3 ground rules, §8, §12, §13 "First steps". Exit: **M0**
 | 0.4 | CI on Linux + macOS: pinned actions and elan, build, tests, hygiene guard, Python lint; corpus fetch + verify as a separate cached job | 0.1 | `.github/workflows/ci.yml` | new | done (2026-11-25) |
 | 0.5 | Corpus: `corpus/manifest.json` (T.803 profile-0/1 codestreams + reference decodes from `openjpeg-data`, pinned commit, SHA-256 per file, licence noted; a benchmark set per Plan §8.4), `scripts/fetch-corpus.py` (stdlib only, verifies every hash, `--check`), `docs/corpus.md` (sources, licences, what is committed) | — | `corpus/manifest.json`, `scripts/fetch-corpus.py`, `docs/corpus.md` | new | done (2026-11-25) |
 | 0.6 | OpenJPEG baseline: `scripts/bench-openjpeg.sh` (single- and multi-threaded `opj_decompress` timings over the benchmark set, median of N runs, machine info), first numbers recorded in `docs/performance.md` as the Plan §6 targets | 0.5 | `scripts/bench-openjpeg.sh`, `docs/performance.md` | new | | done (2026-11-25) |
-| 0.7 | M0 check: CI green on the PR, `fetch-corpus.py --check` passes, baselines in `docs/performance.md` | 0.1–0.6 | — | solo | todo |
-Exit criterion checked: [ ]
+| 0.7 | M0 check: CI green on the PR, `fetch-corpus.py --check` passes, baselines in `docs/performance.md` | 0.1–0.6 | — | solo | done (2026-11-25) |
+Exit criterion checked: [x] (2026-11-25 on 7835815: CI 6/6 checks pass on PR #1 (build ubuntu+macOS, corpus); `python3 -I scripts/fetch-corpus.py --check`: 132 files verified, 0 failed; OpenJPEG 2.5.3 baseline for 15/15 benchmark files in `docs/performance.md`)
 
 ## Phase 1 — Containers and headers
 Plan.md §7 row 1, §3, Annex A/I. Exit: **M1**: every T.803 stream and every corpus file parses to a header identical to OpenJPEG's dump; parse ∘ serialise round trip proved for marker segments.
@@ -200,3 +200,5 @@ Exit criterion checked: [ ]
 * 2026-11-25 — wave 1 (phase 0, PR #1): 0.1 done (solo: Lake skeleton, CLAUDE.md, test runner; `lake build && lake build tests && lake exe tests` green); commit "wave 1: 0.1 — Lake skeleton and CLAUDE.md"
 * 2026-11-25 — wave 2 (phase 0, PR #1): 0.2, 0.3, 0.4, 0.5 done (Limits/Error + 4 theorems, hygiene guard, CI Linux+macOS, corpus 132 files verified); commit "wave 2: 0.2–0.5 — limits, guard, CI, corpus"
 * 2026-11-25 — wave 3 (phase 0, PR #1): 0.6 done (OpenJPEG 2.5.3 baseline, 15/15 files), 1.1 done (Bytes: Reader/BitReader/Plane, 20 theorems; landed on phase-0 branch); commit "wave 3: 0.6, 1.1 — OpenJPEG baseline, byte/bit readers"
+* 2026-11-25 — wave 3 (phase 0, PR #1): 0.7 done, M0 ticked
+* 2026-11-25 — phase 0 milestone: PR #1 marked ready for review
