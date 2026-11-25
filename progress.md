@@ -39,10 +39,10 @@ Plan.md §7 row 0, §3 ground rules, §8, §12, §13 "First steps". Exit: **M0**
 | ID | Task | Needs | Owns | Par | Status |
 |---|---|---|---|---|---|
 | 0.1 | Lake skeleton adapted from safe-pdf: `lean-toolchain` (v4.36.0), `lakefile.lean` (lib `JPEG2000`, lib `Spec`, lib `Encode`, lib `Tests` by globs, exe `tests`; `autoImplicit = false`), umbrella `JPEG2000.lean`/`Spec.lean`/`Encode.lean`, `Tests/Main.lean` runner (suite list, nonzero exit on failure), `.gitignore` (`.lake/`, `corpus/*` except manifest), `CLAUDE.md` (commands, concurrency, registries, conventions, Lean MCP rule, attribution), `.mcp.json` | — | `lean-toolchain`, `lakefile.lean`, `JPEG2000.lean`, `Spec.lean`, `Encode.lean`, `Tests/Main.lean`, `.gitignore`, `CLAUDE.md`, `.mcp.json` | solo | done (2026-11-25) |
-| 0.2 | `Limits` (image area, components, tiles, tile-parts, code-blocks, layers, decomposition levels, bytes, per-stage work) with documented defaults, and `Error` (`truncated`, `malformed`, `unsupported`, `limitExceeded`, … with a location/stage) + a unit suite | 0.1 | `JPEG2000/Limits.lean`, `JPEG2000/Error.lean`, `Tests/Basic.lean` | new | todo |
-| 0.3 | Hygiene guard adapted from safe-pdf: forbidden constructs in `JPEG2000/`, `Spec/` (Plan §3 rule 1), `sorry` anywhere; `#print axioms` check over the theorems listed in `scripts/axioms.lean` | 0.1 | `scripts/check-hygiene.sh`, `scripts/hygiene.py`, `scripts/axioms.lean` | new | todo |
-| 0.4 | CI on Linux + macOS: pinned actions and elan, build, tests, hygiene guard, Python lint; corpus fetch + verify as a separate cached job | 0.1 | `.github/workflows/ci.yml` | new | todo |
-| 0.5 | Corpus: `corpus/manifest.json` (T.803 profile-0/1 codestreams + reference decodes from `openjpeg-data`, pinned commit, SHA-256 per file, licence noted; a benchmark set per Plan §8.4), `scripts/fetch-corpus.py` (stdlib only, verifies every hash, `--check`), `docs/corpus.md` (sources, licences, what is committed) | — | `corpus/manifest.json`, `scripts/fetch-corpus.py`, `docs/corpus.md` | new | todo |
+| 0.2 | `Limits` (image area, components, tiles, tile-parts, code-blocks, layers, decomposition levels, bytes, per-stage work) with documented defaults, and `Error` (`truncated`, `malformed`, `unsupported`, `limitExceeded`, … with a location/stage) + a unit suite | 0.1 | `JPEG2000/Limits.lean`, `JPEG2000/Error.lean`, `Tests/Basic.lean` | new | done (2026-11-25) |
+| 0.3 | Hygiene guard adapted from safe-pdf: forbidden constructs in `JPEG2000/`, `Spec/` (Plan §3 rule 1), `sorry` anywhere; `#print axioms` check over the theorems listed in `scripts/axioms.lean` | 0.1 | `scripts/check-hygiene.sh`, `scripts/hygiene.py`, `scripts/axioms.lean` | new | done (2026-11-25) |
+| 0.4 | CI on Linux + macOS: pinned actions and elan, build, tests, hygiene guard, Python lint; corpus fetch + verify as a separate cached job | 0.1 | `.github/workflows/ci.yml` | new | done (2026-11-25) |
+| 0.5 | Corpus: `corpus/manifest.json` (T.803 profile-0/1 codestreams + reference decodes from `openjpeg-data`, pinned commit, SHA-256 per file, licence noted; a benchmark set per Plan §8.4), `scripts/fetch-corpus.py` (stdlib only, verifies every hash, `--check`), `docs/corpus.md` (sources, licences, what is committed) | — | `corpus/manifest.json`, `scripts/fetch-corpus.py`, `docs/corpus.md` | new | done (2026-11-25) |
 | 0.6 | OpenJPEG baseline: `scripts/bench-openjpeg.sh` (single- and multi-threaded `opj_decompress` timings over the benchmark set, median of N runs, machine info), first numbers recorded in `docs/performance.md` as the Plan §6 targets | 0.5 | `scripts/bench-openjpeg.sh`, `docs/performance.md` | new | todo |
 | 0.7 | M0 check: CI green on the PR, `fetch-corpus.py --check` passes, baselines in `docs/performance.md` | 0.1–0.6 | — | solo | todo |
 Exit criterion checked: [ ]
@@ -169,11 +169,24 @@ Exit criterion checked: [ ]
 * From safe-pdf (same toolchain, same rules): compiled `<<<` and `^` on `Nat` call GMP — hot code uses `UInt32`/`UInt64`/`Int32`/`Int64` (Plan §6.1).
 * Sandbox: egress is limited to GitHub and the Lean release host (+ Debian apt mirrors); loogle/leansearch are blocked — use `lean_local_search` and `exact?`. OpenJPEG tools come from apt (`libopenjp2-tools`).
 
+* A new module importing another new, unbuilt module can't be checked alone with `lake env lean` (missing `.olean`); concatenate the files (drop the `import` lines) into one scratch file and check that.
+* `Except` has no `BEq`; tests compare results through a helper like `err? : Except ε α → Option ε`.
+* Hygiene guard: every non-private `theorem` in `JPEG2000/` and `Spec/` must be listed in `scripts/axioms.lean` or the guard fails — subagents report the `#print axioms` lines, the orchestrator adds them. `axiom` and `native_decide` are forbidden (in v4.36 `native_decide` adds `<thm>._native.native_decide.ax_1_1`). `lake env lean` exits 0 on `sorry` (warning only); the axioms parse is what catches it.
+* Lean MCP (`lean_*`) tools were not available to subagents in this session (server not registered for this checkout yet); they fall back to `lake env lean`.
+* Corpus: raw.githubusercontent.com and `gh api` work through the sandbox proxy. `p0_03` = `p0_15` byte-identical (T.803 erratum); `p0_13` has 257 components (OpenJPEG compares only 4). Class-0 thresholds in OpenJPEG's conformance CMake are commented out (it only runs class 1).
+
 ## Decisions and deviations from the design document
 * 0.1: three libraries (`JPEG2000`, `Spec`, `Encode`) with one umbrella each, all default targets; `Tests` is a separate lib built only via `lake build tests`. `.mcp.json` pins `lean-lsp-mcp==0.33.0` with `lean_build` disabled (as bib-lean).
 
+* 0.2: `Error.Stage` gains `decode` (argument checks before any stage). Defaults that are judgement calls, not T.800 bounds: image side 2^17, 2^22 code-blocks/precincts, 255 passes per code-block, box nesting 8 — revisit against the corpus.
+* 0.3: the guard also forbids `axiom` declarations and `native_decide`, and fails on unlisted theorems in `JPEG2000/`, `Spec/` (not `Encode/`).
+* 0.5 (Plan §10 open question "Licensing of conformance files", resolved for M0): fetch-only. The T.803 files carry a 2002 non-assertion notice limited to conformance testing (not an open licence; `COPYRIGHT` is fetched alongside); openjpeg-data nonregression files have no stated licence. Only `corpus/manifest.json` is committed. Source pinned at `uclouvain/openjpeg-data@39524bd`, thresholds from `uclouvain/openjpeg@8314119` `tests/conformance/CMakeLists.txt`.
+
 ## Blocked / questions for the human
+
+* Benchmark set (Plan §8.4) lacks a ≥ 20 Mpx stream: openjpeg-data has none that decodes. Where may one come from (a licensable large JP2, or one we generate with `opj_compress` from a public-domain image)? Proceeding with the 15-file set meanwhile.
 
 ## Log (append-only; one line per integrated wave)
 * 2026-11-25 — wave 0 (phase 0, PR #1): ledger bootstrapped from Plan.md §7; draft PR #1 opened; commit "wave 0: ledger"
 * 2026-11-25 — wave 1 (phase 0, PR #1): 0.1 done (solo: Lake skeleton, CLAUDE.md, test runner; `lake build && lake build tests && lake exe tests` green); commit "wave 1: 0.1 — Lake skeleton and CLAUDE.md"
+* 2026-11-25 — wave 2 (phase 0, PR #1): 0.2, 0.3, 0.4, 0.5 done (Limits/Error + 4 theorems, hygiene guard, CI Linux+macOS, corpus 132 files verified); commit "wave 2: 0.2–0.5 — limits, guard, CI, corpus"

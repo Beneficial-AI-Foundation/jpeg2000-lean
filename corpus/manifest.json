@@ -1,0 +1,3449 @@
+{
+ "version": 1,
+ "description": "jpeg2000-lean test corpus (Plan.md section 8.1 conformance, 8.4 benchmark). Fetch-only: files are downloaded into git-ignored corpus/files/<path>; only this manifest is committed. See docs/corpus.md.",
+ "sources": {
+  "openjpeg-data": {
+   "repository": "https://github.com/uclouvain/openjpeg-data",
+   "commit": "39524bd3a601d90ed8e0177559400d23945f96a9",
+   "commit_date": "2024-11-13T15:25:39Z",
+   "url_prefix": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/",
+   "licence": {
+    "conformance": "ITU-T T.803 | ISO/IEC 15444-4 test files, Copyright (c) 2002 Algo Vision Technology GmbH, Aware Inc., Kodak Inc., Ricoh Innovations Inc.; holders do not assert copyright against use for testing/claiming JPEG 2000 conformance; no right granted for non-JPEG-2000 uses; the notice must accompany copies (input/conformance/COPYRIGHT, fetched as role 'notice'). Not redistributed here.",
+    "nonregression": "no licence stated (repository has no LICENSE; README only says the files serve the OpenJPEG test suite; input/nonregression/README.txt traces several files to bug reports and mailing lists). Treated as all rights reserved by their authors; fetched by URL, never redistributed."
+   }
+  }
+ },
+ "thresholds_source": {
+  "repository": "https://github.com/uclouvain/openjpeg",
+  "commit": "8314119b067c0fc77834731168daaebd379fdb12",
+  "file": "tests/conformance/CMakeLists.txt",
+  "note": "peak = maximum absolute sample error, mse = mean squared error, per component, as passed to OpenJPEG's compare_images (-p/-m). Class-0 values come from a block that is commented out upstream."
+ },
+ "files": [
+  {
+   "path": "openjpeg-data/input/conformance/COPYRIGHT",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/conformance/COPYRIGHT",
+   "sha256": "fc966f48724e4dc48a49c6aa8df54f780e1dd5a089e1bc5b6dcb70d47a593e5e",
+   "size": 1250,
+   "git_blob_sha1": "de760eef50d6f5d24d164883351a524fcd864d59",
+   "roles": [
+    "notice"
+   ],
+   "licence": "conformance"
+  },
+  {
+   "path": "openjpeg-data/input/conformance/p0_01.j2k",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/conformance/p0_01.j2k",
+   "sha256": "a61ea8d21ad0f7f9b76796e0f841c3e125240f83e308e3b8d626f4356b9a1113",
+   "size": 7390,
+   "git_blob_sha1": "3b55be11d630104bd919a475363c7a31db18a738",
+   "roles": [
+    "conformance-stream"
+   ],
+   "licence": "conformance",
+   "profile": 0,
+   "test": "p0_01",
+   "components_compared": 1,
+   "codestream": {
+    "rsiz": 1,
+    "width": 128,
+    "height": 128,
+    "components": 1,
+    "bit_depths": [
+     8
+    ],
+    "signed": false,
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "RLCP",
+    "layers": 1,
+    "mct": 0,
+    "levels": 3,
+    "code_block": "64x64",
+    "cblk_style": 0,
+    "wavelet": "5-3 reversible",
+    "megapixels": 0.02
+   }
+  },
+  {
+   "path": "openjpeg-data/input/conformance/p0_02.j2k",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/conformance/p0_02.j2k",
+   "sha256": "150c8554b827c25b48029f3455b43ce3c029a26bea06eea2c60076c868bb07be",
+   "size": 6183,
+   "git_blob_sha1": "a173c994f4e3e40b1ccd81d1c6f9d6d5cbf9a45e",
+   "roles": [
+    "conformance-stream"
+   ],
+   "licence": "conformance",
+   "profile": 0,
+   "test": "p0_02",
+   "components_compared": 1,
+   "codestream": {
+    "rsiz": 1,
+    "width": 127,
+    "height": 126,
+    "components": 1,
+    "bit_depths": [
+     8
+    ],
+    "signed": false,
+    "subsampling": [
+     "2x1"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 6,
+    "mct": 0,
+    "levels": 3,
+    "code_block": "64x64",
+    "cblk_style": 52,
+    "wavelet": "9-7 irreversible",
+    "megapixels": 0.02
+   }
+  },
+  {
+   "path": "openjpeg-data/input/conformance/p0_03.j2k",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/conformance/p0_03.j2k",
+   "sha256": "0aa26db75e8414d554e1fa93a0c7e101f16bb203f1fe06983fdd0c01fa61ddee",
+   "size": 12845,
+   "git_blob_sha1": "d226efb4a709c3ad0c647389c71a4d9416ce58ff",
+   "roles": [
+    "conformance-stream"
+   ],
+   "licence": "conformance",
+   "profile": 0,
+   "test": "p0_03",
+   "components_compared": 1,
+   "codestream": {
+    "rsiz": 1,
+    "width": 256,
+    "height": 256,
+    "components": 1,
+    "bit_depths": [
+     4
+    ],
+    "signed": true,
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 4,
+    "progression": "PCRL",
+    "layers": 8,
+    "mct": 0,
+    "levels": 1,
+    "code_block": "64x64",
+    "cblk_style": 0,
+    "wavelet": "5-3 reversible",
+    "megapixels": 0.07
+   }
+  },
+  {
+   "path": "openjpeg-data/input/conformance/p0_04.j2k",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/conformance/p0_04.j2k",
+   "sha256": "3d35a4eeffb00e150bb69611afec80fba9570d5fca18a04c4e644badfd052c6f",
+   "size": 264635,
+   "git_blob_sha1": "276ba12a49ce9943e05efef05afe938f34afb6ff",
+   "roles": [
+    "conformance-stream"
+   ],
+   "licence": "conformance",
+   "profile": 0,
+   "test": "p0_04",
+   "components_compared": 3,
+   "codestream": {
+    "rsiz": 1,
+    "width": 640,
+    "height": 480,
+    "components": 3,
+    "bit_depths": [
+     8
+    ],
+    "signed": false,
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "RLCP",
+    "layers": 20,
+    "mct": 1,
+    "levels": 6,
+    "code_block": "64x64",
+    "cblk_style": 4,
+    "wavelet": "9-7 irreversible",
+    "megapixels": 0.31
+   }
+  },
+  {
+   "path": "openjpeg-data/input/conformance/p0_05.j2k",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/conformance/p0_05.j2k",
+   "sha256": "35f3840030802898d5ff2fc6ff39eea3b8080cad65db859830b869d48579cf9f",
+   "size": 1310767,
+   "git_blob_sha1": "04755cb71a818bea4c954393695afae8b6a5a940",
+   "roles": [
+    "conformance-stream"
+   ],
+   "licence": "conformance",
+   "profile": 0,
+   "test": "p0_05",
+   "components_compared": 4,
+   "codestream": {
+    "rsiz": 1,
+    "width": 1024,
+    "height": 1024,
+    "components": 4,
+    "bit_depths": [
+     8
+    ],
+    "signed": false,
+    "subsampling": [
+     "1x1",
+     "2x2"
+    ],
+    "tiles": 1,
+    "progression": "PCRL",
+    "layers": 7,
+    "mct": 0,
+    "levels": 6,
+    "code_block": "32x32",
+    "cblk_style": 0,
+    "wavelet": "9-7 irreversible",
+    "megapixels": 1.05
+   }
+  },
+  {
+   "path": "openjpeg-data/input/conformance/p0_06.j2k",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/conformance/p0_06.j2k",
+   "sha256": "8a98292f29c4f04ef57c9a2974a1c254cca8297ce270c8baeb911bfe975c013d",
+   "size": 33826,
+   "git_blob_sha1": "4877b0d138dbb6532b97f6670640340b0ba32281",
+   "roles": [
+    "conformance-stream"
+   ],
+   "licence": "conformance",
+   "profile": 0,
+   "test": "p0_06",
+   "components_compared": 4,
+   "codestream": {
+    "rsiz": 2,
+    "width": 513,
+    "height": 129,
+    "components": 4,
+    "bit_depths": [
+     12
+    ],
+    "signed": false,
+    "subsampling": [
+     "1x1",
+     "1x2",
+     "2x1",
+     "2x2"
+    ],
+    "tiles": 1,
+    "progression": "RPCL",
+    "layers": 4,
+    "mct": 0,
+    "levels": 6,
+    "code_block": "64x64",
+    "cblk_style": 0,
+    "wavelet": "9-7 irreversible",
+    "megapixels": 0.07
+   }
+  },
+  {
+   "path": "openjpeg-data/input/conformance/p0_07.j2k",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/conformance/p0_07.j2k",
+   "sha256": "46c4f5d64880a2df20d3faa22f6697384a6599dedb1b283e41a2efb1009cd9d1",
+   "size": 7885684,
+   "git_blob_sha1": "314d65e968d4fa6506c4968ac87875a50a4bf283",
+   "roles": [
+    "conformance-stream",
+    "benchmark"
+   ],
+   "licence": "conformance",
+   "profile": 0,
+   "test": "p0_07",
+   "components_compared": 3,
+   "codestream": {
+    "rsiz": 1,
+    "width": 2048,
+    "height": 2048,
+    "components": 3,
+    "bit_depths": [
+     12
+    ],
+    "signed": true,
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 256,
+    "progression": "RLCP",
+    "layers": 8,
+    "mct": 0,
+    "levels": 3,
+    "code_block": "64x64",
+    "cblk_style": 0,
+    "wavelet": "5-3 reversible",
+    "megapixels": 4.19
+   }
+  },
+  {
+   "path": "openjpeg-data/input/conformance/p0_08.j2k",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/conformance/p0_08.j2k",
+   "sha256": "4eb4eb2b356e16640ee94a24327fb66385c387657863072d774d633cf4379ef8",
+   "size": 3820794,
+   "git_blob_sha1": "634cc5cd4877d342e49012a6be06e1d5a6480730",
+   "roles": [
+    "conformance-stream",
+    "benchmark"
+   ],
+   "licence": "conformance",
+   "profile": 0,
+   "test": "p0_08",
+   "components_compared": 3,
+   "codestream": {
+    "rsiz": 1,
+    "width": 513,
+    "height": 3072,
+    "components": 3,
+    "bit_depths": [
+     12
+    ],
+    "signed": true,
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "CPRL",
+    "layers": 30,
+    "mct": 0,
+    "levels": 7,
+    "code_block": "64x64",
+    "cblk_style": 0,
+    "wavelet": "5-3 reversible",
+    "megapixels": 1.58
+   }
+  },
+  {
+   "path": "openjpeg-data/input/conformance/p0_09.j2k",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/conformance/p0_09.j2k",
+   "sha256": "409c62a227497e7f2fc7e49055c02530cce742b6b385800b8a5aa4ae5bfab1a4",
+   "size": 594,
+   "git_blob_sha1": "ac98b5d5176e5fccc298700c6895b197dbb9a2e0",
+   "roles": [
+    "conformance-stream"
+   ],
+   "licence": "conformance",
+   "profile": 0,
+   "test": "p0_09",
+   "components_compared": 1,
+   "codestream": {
+    "rsiz": 0,
+    "width": 17,
+    "height": 37,
+    "components": 1,
+    "bit_depths": [
+     8
+    ],
+    "signed": false,
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 1,
+    "mct": 0,
+    "levels": 5,
+    "code_block": "64x64",
+    "cblk_style": 0,
+    "wavelet": "9-7 irreversible",
+    "megapixels": 0.0
+   }
+  },
+  {
+   "path": "openjpeg-data/input/conformance/p0_10.j2k",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/conformance/p0_10.j2k",
+   "sha256": "0146480434740e7580ec5a413fd19654a2f1273dd7db25dc5d0b75ab98a9d706",
+   "size": 14131,
+   "git_blob_sha1": "350786d16a4e1258182a29e7d5483d2d1ef6ec63",
+   "roles": [
+    "conformance-stream"
+   ],
+   "licence": "conformance",
+   "profile": 0,
+   "test": "p0_10",
+   "components_compared": 3,
+   "codestream": {
+    "rsiz": 1,
+    "width": 256,
+    "height": 256,
+    "components": 3,
+    "bit_depths": [
+     8
+    ],
+    "signed": false,
+    "subsampling": [
+     "4x4"
+    ],
+    "tiles": 4,
+    "progression": "LRCP",
+    "layers": 2,
+    "mct": 1,
+    "levels": 3,
+    "code_block": "64x64",
+    "cblk_style": 0,
+    "wavelet": "5-3 reversible",
+    "megapixels": 0.07
+   }
+  },
+  {
+   "path": "openjpeg-data/input/conformance/p0_11.j2k",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/conformance/p0_11.j2k",
+   "sha256": "d20d8a13b570ef4adb0c8d4166568b043d00124c2db652ce7f78d85ac1d77b62",
+   "size": 233,
+   "git_blob_sha1": "3743ad1c07298bd7c04e1057005ebbd20ea261e6",
+   "roles": [
+    "conformance-stream"
+   ],
+   "licence": "conformance",
+   "profile": 0,
+   "test": "p0_11",
+   "components_compared": 1,
+   "codestream": {
+    "rsiz": 1,
+    "width": 128,
+    "height": 1,
+    "components": 1,
+    "bit_depths": [
+     8
+    ],
+    "signed": false,
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 1,
+    "mct": 0,
+    "levels": 0,
+    "code_block": "64x64",
+    "cblk_style": 32,
+    "wavelet": "5-3 reversible",
+    "megapixels": 0.0
+   }
+  },
+  {
+   "path": "openjpeg-data/input/conformance/p0_12.j2k",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/conformance/p0_12.j2k",
+   "sha256": "741885b801b7b8a901b61792f52e0d67d05b7a87a7fc2a718c92cb6c969416fc",
+   "size": 285,
+   "git_blob_sha1": "581e7d330b6fc7492caf896fed2aa923a5bccb92",
+   "roles": [
+    "conformance-stream"
+   ],
+   "licence": "conformance",
+   "profile": 0,
+   "test": "p0_12",
+   "components_compared": 1,
+   "codestream": {
+    "rsiz": 1,
+    "width": 3,
+    "height": 5,
+    "components": 1,
+    "bit_depths": [
+     8
+    ],
+    "signed": false,
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 1,
+    "mct": 0,
+    "levels": 3,
+    "code_block": "32x32",
+    "cblk_style": 4,
+    "wavelet": "5-3 reversible",
+    "megapixels": 0.0
+   }
+  },
+  {
+   "path": "openjpeg-data/input/conformance/p0_13.j2k",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/conformance/p0_13.j2k",
+   "sha256": "12463d0c67e803fac6637d384263abbb6b546826419ecb725aed18fd45bcabb0",
+   "size": 2486,
+   "git_blob_sha1": "94386b0cb5b4bc5883af4ab2198d64edec56faa5",
+   "roles": [
+    "conformance-stream"
+   ],
+   "licence": "conformance",
+   "profile": 0,
+   "test": "p0_13",
+   "components_compared": 4,
+   "codestream": {
+    "rsiz": 1,
+    "width": 1,
+    "height": 1,
+    "components": 257,
+    "bit_depths": [
+     8
+    ],
+    "signed": false,
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "RLCP",
+    "layers": 1,
+    "mct": 1,
+    "levels": 1,
+    "code_block": "32x32",
+    "cblk_style": 16,
+    "wavelet": "5-3 reversible",
+    "megapixels": 0.0
+   }
+  },
+  {
+   "path": "openjpeg-data/input/conformance/p0_14.j2k",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/conformance/p0_14.j2k",
+   "sha256": "3e8df4a1dc7e5edcd9478d2e5d350e16f802ef8da3161d63a979f94906440e54",
+   "size": 1634,
+   "git_blob_sha1": "87413cfbbf6b7afa28ec85f5b18a4de65512a42d",
+   "roles": [
+    "conformance-stream"
+   ],
+   "licence": "conformance",
+   "profile": 0,
+   "test": "p0_14",
+   "components_compared": 3,
+   "codestream": {
+    "rsiz": 0,
+    "width": 49,
+    "height": 49,
+    "components": 3,
+    "bit_depths": [
+     8
+    ],
+    "signed": false,
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 1,
+    "mct": 1,
+    "levels": 5,
+    "code_block": "64x64",
+    "cblk_style": 0,
+    "wavelet": "5-3 reversible",
+    "megapixels": 0.0
+   }
+  },
+  {
+   "path": "openjpeg-data/input/conformance/p0_15.j2k",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/conformance/p0_15.j2k",
+   "sha256": "0aa26db75e8414d554e1fa93a0c7e101f16bb203f1fe06983fdd0c01fa61ddee",
+   "size": 12845,
+   "git_blob_sha1": "d226efb4a709c3ad0c647389c71a4d9416ce58ff",
+   "roles": [
+    "conformance-stream"
+   ],
+   "licence": "conformance",
+   "profile": 0,
+   "test": "p0_15",
+   "components_compared": 1,
+   "codestream": {
+    "rsiz": 1,
+    "width": 256,
+    "height": 256,
+    "components": 1,
+    "bit_depths": [
+     4
+    ],
+    "signed": true,
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 4,
+    "progression": "PCRL",
+    "layers": 8,
+    "mct": 0,
+    "levels": 1,
+    "code_block": "64x64",
+    "cblk_style": 0,
+    "wavelet": "5-3 reversible",
+    "megapixels": 0.07
+   }
+  },
+  {
+   "path": "openjpeg-data/input/conformance/p0_16.j2k",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/conformance/p0_16.j2k",
+   "sha256": "853d78ff805eff1aa9d6b97cea42ea4975d334b0d4d6b36f217baa0bc1314d27",
+   "size": 7407,
+   "git_blob_sha1": "dba9db2754090987572ea458346bf17246ae0022",
+   "roles": [
+    "conformance-stream"
+   ],
+   "licence": "conformance",
+   "profile": 0,
+   "test": "p0_16",
+   "components_compared": 1,
+   "codestream": {
+    "rsiz": 0,
+    "width": 128,
+    "height": 128,
+    "components": 1,
+    "bit_depths": [
+     8
+    ],
+    "signed": false,
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "RLCP",
+    "layers": 3,
+    "mct": 0,
+    "levels": 3,
+    "code_block": "64x64",
+    "cblk_style": 0,
+    "wavelet": "5-3 reversible",
+    "megapixels": 0.02
+   }
+  },
+  {
+   "path": "openjpeg-data/input/conformance/p1_01.j2k",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/conformance/p1_01.j2k",
+   "sha256": "26919bf56968ab57137bb478badb0bde8d2d53dfa26233935eecfbd40f235b81",
+   "size": 4761,
+   "git_blob_sha1": "47d0f50415618a37f528453774ed198773d099f7",
+   "roles": [
+    "conformance-stream"
+   ],
+   "licence": "conformance",
+   "profile": 1,
+   "test": "p1_01",
+   "components_compared": 1,
+   "codestream": {
+    "rsiz": 2,
+    "width": 122,
+    "height": 99,
+    "components": 1,
+    "bit_depths": [
+     8
+    ],
+    "signed": false,
+    "subsampling": [
+     "2x1"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 5,
+    "mct": 0,
+    "levels": 3,
+    "code_block": "64x64",
+    "cblk_style": 52,
+    "wavelet": "9-7 irreversible",
+    "megapixels": 0.01
+   }
+  },
+  {
+   "path": "openjpeg-data/input/conformance/p1_02.j2k",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/conformance/p1_02.j2k",
+   "sha256": "9fb9a26fbd769ea4fce1ca450ed605764af9931783eba49b3551b3a37b7a6f87",
+   "size": 263090,
+   "git_blob_sha1": "4418dcb3e60c461deb0864874efa19427a20aa6f",
+   "roles": [
+    "conformance-stream"
+   ],
+   "licence": "conformance",
+   "profile": 1,
+   "test": "p1_02",
+   "components_compared": 3,
+   "codestream": {
+    "rsiz": 2,
+    "width": 640,
+    "height": 480,
+    "components": 3,
+    "bit_depths": [
+     8
+    ],
+    "signed": false,
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 19,
+    "mct": 1,
+    "levels": 6,
+    "code_block": "64x64",
+    "cblk_style": 10,
+    "wavelet": "9-7 irreversible",
+    "megapixels": 0.31
+   }
+  },
+  {
+   "path": "openjpeg-data/input/conformance/p1_03.j2k",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/conformance/p1_03.j2k",
+   "sha256": "0ff5572be1d0411550ceaf3b935f2c9f100bbd0399efbb8d48143add8d56ffb7",
+   "size": 1410721,
+   "git_blob_sha1": "e156fe6a4ed12943113d2cfc9e3e77fdc119b575",
+   "roles": [
+    "conformance-stream",
+    "benchmark"
+   ],
+   "licence": "conformance",
+   "profile": 1,
+   "test": "p1_03",
+   "components_compared": 4,
+   "codestream": {
+    "rsiz": 2,
+    "width": 1024,
+    "height": 1024,
+    "components": 4,
+    "bit_depths": [
+     8
+    ],
+    "signed": false,
+    "subsampling": [
+     "1x1",
+     "2x2"
+    ],
+    "tiles": 1,
+    "progression": "PCRL",
+    "layers": 10,
+    "mct": 0,
+    "levels": 6,
+    "code_block": "32x32",
+    "cblk_style": 5,
+    "wavelet": "9-7 irreversible",
+    "megapixels": 1.05
+   }
+  },
+  {
+   "path": "openjpeg-data/input/conformance/p1_04.j2k",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/conformance/p1_04.j2k",
+   "sha256": "fbbe812a6ce6abfc5d1eef02c2e3838c023c24f0ff0b1dcd79c4e1d018b3351f",
+   "size": 101844,
+   "git_blob_sha1": "66ee0b61708bfe32717e39540bcd3cb3295d2694",
+   "roles": [
+    "conformance-stream"
+   ],
+   "licence": "conformance",
+   "profile": 1,
+   "test": "p1_04",
+   "components_compared": 1,
+   "codestream": {
+    "rsiz": 2,
+    "width": 1024,
+    "height": 1024,
+    "components": 1,
+    "bit_depths": [
+     12
+    ],
+    "signed": false,
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 64,
+    "progression": "LRCP",
+    "layers": 1,
+    "mct": 0,
+    "levels": 3,
+    "code_block": "64x64",
+    "cblk_style": 0,
+    "wavelet": "9-7 irreversible",
+    "megapixels": 1.05
+   }
+  },
+  {
+   "path": "openjpeg-data/input/conformance/p1_05.j2k",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/conformance/p1_05.j2k",
+   "sha256": "6b1eb070cb40585a9c0ce8569a957dcdbb1948e6129c0af50ec38ee9c0cef994",
+   "size": 282505,
+   "git_blob_sha1": "11dde3dd9e19528c44b66958fc27693dbc70f942",
+   "roles": [
+    "conformance-stream"
+   ],
+   "licence": "conformance",
+   "profile": 1,
+   "test": "p1_05",
+   "components_compared": 3,
+   "codestream": {
+    "rsiz": 2,
+    "width": 512,
+    "height": 512,
+    "components": 3,
+    "bit_depths": [
+     8
+    ],
+    "signed": false,
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 225,
+    "progression": "PCRL",
+    "layers": 2,
+    "mct": 1,
+    "levels": 7,
+    "code_block": "8x64",
+    "cblk_style": 25,
+    "wavelet": "9-7 irreversible",
+    "megapixels": 0.26
+   }
+  },
+  {
+   "path": "openjpeg-data/input/conformance/p1_06.j2k",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/conformance/p1_06.j2k",
+   "sha256": "08a7fb96ba93bb3cd57183eee56ee92e91cb58193a378c6a4208d8cf1877459b",
+   "size": 3356,
+   "git_blob_sha1": "490c1e413de29ac8379062f2fc03cd7f027ed4ff",
+   "roles": [
+    "conformance-stream"
+   ],
+   "licence": "conformance",
+   "profile": 1,
+   "test": "p1_06",
+   "components_compared": 3,
+   "codestream": {
+    "rsiz": 2,
+    "width": 12,
+    "height": 12,
+    "components": 3,
+    "bit_depths": [
+     8
+    ],
+    "signed": false,
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 16,
+    "progression": "PCRL",
+    "layers": 1,
+    "mct": 1,
+    "levels": 4,
+    "code_block": "64x32",
+    "cblk_style": 40,
+    "wavelet": "9-7 irreversible",
+    "megapixels": 0.0
+   }
+  },
+  {
+   "path": "openjpeg-data/input/conformance/p1_07.j2k",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/conformance/p1_07.j2k",
+   "sha256": "59576c42568098e4e5d9967eefb0a59b0002fedd7776c201c2c9f9aeb3cf1949",
+   "size": 569,
+   "git_blob_sha1": "6d0d1c8512c3b4c9a58a3d4e7cd162e0ef58dc07",
+   "roles": [
+    "conformance-stream"
+   ],
+   "licence": "conformance",
+   "profile": 1,
+   "test": "p1_07",
+   "components_compared": 2,
+   "codestream": {
+    "rsiz": 2,
+    "width": 8,
+    "height": 12,
+    "components": 2,
+    "bit_depths": [
+     8
+    ],
+    "signed": false,
+    "subsampling": [
+     "1x1",
+     "4x1"
+    ],
+    "tiles": 1,
+    "progression": "RPCL",
+    "layers": 1,
+    "mct": 0,
+    "levels": 1,
+    "code_block": "64x64",
+    "cblk_style": 0,
+    "wavelet": "5-3 reversible",
+    "megapixels": 0.0
+   }
+  },
+  {
+   "path": "openjpeg-data/input/conformance/file1.jp2",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/conformance/file1.jp2",
+   "sha256": "4e3d51df7bc66cf367162acfff88b0889d2b2c79ea8d99d93b2d2bd165398deb",
+   "size": 650678,
+   "git_blob_sha1": "e41b5c71499ece73cf93193f750945993260224d",
+   "roles": [
+    "jp2"
+   ],
+   "licence": "conformance",
+   "test": "file1",
+   "codestream": {
+    "rsiz": 1,
+    "width": 768,
+    "height": 512,
+    "components": 3,
+    "bit_depths": [
+     8
+    ],
+    "signed": false,
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 1,
+    "mct": 1,
+    "levels": 5,
+    "code_block": "64x64",
+    "cblk_style": 0,
+    "wavelet": "5-3 reversible",
+    "megapixels": 0.39
+   },
+   "jp2_boxes": {
+    "colr": "enumerated:16"
+   }
+  },
+  {
+   "path": "openjpeg-data/input/conformance/file2.jp2",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/conformance/file2.jp2",
+   "sha256": "c87b78e7c3298ddb5e2c4b9a27485ae52ed0906184ae4eecf13b7525ad160960",
+   "size": 452004,
+   "git_blob_sha1": "fd60c6d53c444d1dfcef620170a3ad77d79b32e0",
+   "roles": [
+    "jp2"
+   ],
+   "licence": "conformance",
+   "test": "file2",
+   "codestream": {
+    "rsiz": 1,
+    "width": 480,
+    "height": 640,
+    "components": 3,
+    "bit_depths": [
+     8
+    ],
+    "signed": false,
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 1,
+    "mct": 0,
+    "levels": 5,
+    "code_block": "64x64",
+    "cblk_style": 0,
+    "wavelet": "5-3 reversible",
+    "megapixels": 0.31
+   },
+   "jp2_boxes": {
+    "colr": "enumerated:18",
+    "boxes": [
+     "cdef"
+    ]
+   }
+  },
+  {
+   "path": "openjpeg-data/input/conformance/file3.jp2",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/conformance/file3.jp2",
+   "sha256": "fe922461d6928f9b9c86c222a133c42c19d119351400d5e8dd6a1e60db437e66",
+   "size": 242213,
+   "git_blob_sha1": "18c130a4cedcb1056811d8e89be2597fff36bcd7",
+   "roles": [
+    "jp2"
+   ],
+   "licence": "conformance",
+   "test": "file3",
+   "codestream": {
+    "rsiz": 1,
+    "width": 480,
+    "height": 640,
+    "components": 3,
+    "bit_depths": [
+     8
+    ],
+    "signed": false,
+    "subsampling": [
+     "1x1",
+     "2x2"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 1,
+    "mct": 0,
+    "levels": 5,
+    "code_block": "64x64",
+    "cblk_style": 0,
+    "wavelet": "5-3 reversible",
+    "megapixels": 0.31
+   },
+   "jp2_boxes": {
+    "colr": "enumerated:18"
+   }
+  },
+  {
+   "path": "openjpeg-data/input/conformance/file4.jp2",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/conformance/file4.jp2",
+   "sha256": "b3474f23bcf622f4f82c8ede5c473a4a1bae1c287b713fbd8447442e37edcee0",
+   "size": 220443,
+   "git_blob_sha1": "a895c64a37650eab41db34fb3f44fae0d1bbd158",
+   "roles": [
+    "jp2"
+   ],
+   "licence": "conformance",
+   "test": "file4",
+   "codestream": {
+    "rsiz": 1,
+    "width": 768,
+    "height": 512,
+    "components": 1,
+    "bit_depths": [
+     8
+    ],
+    "signed": false,
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 1,
+    "mct": 0,
+    "levels": 5,
+    "code_block": "64x64",
+    "cblk_style": 0,
+    "wavelet": "5-3 reversible",
+    "megapixels": 0.39
+   },
+   "jp2_boxes": {
+    "colr": "enumerated:17"
+   }
+  },
+  {
+   "path": "openjpeg-data/input/conformance/file5.jp2",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/conformance/file5.jp2",
+   "sha256": "b47d7d162d6f31b7b159b6df8a60c24146f6893d14a4043a570c6ece99c063d3",
+   "size": 586560,
+   "git_blob_sha1": "345bbf78cc92824b718fa7c0238903e34249b938",
+   "roles": [
+    "jp2"
+   ],
+   "licence": "conformance",
+   "test": "file5",
+   "codestream": {
+    "rsiz": 1,
+    "width": 768,
+    "height": 512,
+    "components": 3,
+    "bit_depths": [
+     8
+    ],
+    "signed": false,
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 1,
+    "mct": 1,
+    "levels": 5,
+    "code_block": "64x64",
+    "cblk_style": 0,
+    "wavelet": "5-3 reversible",
+    "megapixels": 0.39
+   },
+   "jp2_boxes": {
+    "colr": "enumerated:21"
+   }
+  },
+  {
+   "path": "openjpeg-data/input/conformance/file6.jp2",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/conformance/file6.jp2",
+   "sha256": "78ae553dc97b22352a2417aba739160e3b6c5b187b2efb867fb50f9814f1bc67",
+   "size": 394542,
+   "git_blob_sha1": "f59e33e4c81f4a7d26ab1682108f59f2f3c0c81a",
+   "roles": [
+    "jp2"
+   ],
+   "licence": "conformance",
+   "test": "file6",
+   "codestream": {
+    "rsiz": 1,
+    "width": 768,
+    "height": 512,
+    "components": 1,
+    "bit_depths": [
+     12
+    ],
+    "signed": false,
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 1,
+    "mct": 0,
+    "levels": 5,
+    "code_block": "64x64",
+    "cblk_style": 0,
+    "wavelet": "5-3 reversible",
+    "megapixels": 0.39
+   },
+   "jp2_boxes": {
+    "colr": "enumerated:17"
+   }
+  },
+  {
+   "path": "openjpeg-data/input/conformance/file7.jp2",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/conformance/file7.jp2",
+   "sha256": "c9e6c845fde3db494035b9be8728239da45791b3269687a043a1fcedd8d11dbf",
+   "size": 1368095,
+   "git_blob_sha1": "0bc6280fab134bbd4a42f61cbcb5437a005a190c",
+   "roles": [
+    "jp2"
+   ],
+   "licence": "conformance",
+   "test": "file7",
+   "codestream": {
+    "rsiz": 1,
+    "width": 480,
+    "height": 640,
+    "components": 3,
+    "bit_depths": [
+     16
+    ],
+    "signed": false,
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 1,
+    "mct": 1,
+    "levels": 5,
+    "code_block": "64x64",
+    "cblk_style": 0,
+    "wavelet": "5-3 reversible",
+    "megapixels": 0.31
+   },
+   "jp2_boxes": {
+    "colr": "enumerated:20"
+   }
+  },
+  {
+   "path": "openjpeg-data/input/conformance/file8.jp2",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/conformance/file8.jp2",
+   "sha256": "81e8a8bae1e3d7e632091a120a8a6650a04636b2276a550889b153290348eb01",
+   "size": 150619,
+   "git_blob_sha1": "17497763e0de4ea7e186d7a9f73fb76e424c623f",
+   "roles": [
+    "jp2"
+   ],
+   "licence": "conformance",
+   "test": "file8",
+   "codestream": {
+    "rsiz": 1,
+    "width": 700,
+    "height": 400,
+    "components": 1,
+    "bit_depths": [
+     8
+    ],
+    "signed": false,
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 1,
+    "mct": 0,
+    "levels": 5,
+    "code_block": "64x64",
+    "cblk_style": 0,
+    "wavelet": "5-3 reversible",
+    "megapixels": 0.28
+   },
+   "jp2_boxes": {
+    "colr": "icc"
+   }
+  },
+  {
+   "path": "openjpeg-data/input/conformance/file9.jp2",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/conformance/file9.jp2",
+   "sha256": "6dfea011b013b62353fedcce9520e7c061dbbe8bf0c06d9edad4ac8889274b91",
+   "size": 300208,
+   "git_blob_sha1": "c25091ad78afe430e2c31dd26b723c00659cd4db",
+   "roles": [
+    "jp2"
+   ],
+   "licence": "conformance",
+   "test": "file9",
+   "codestream": {
+    "rsiz": 1,
+    "width": 768,
+    "height": 512,
+    "components": 1,
+    "bit_depths": [
+     8
+    ],
+    "signed": false,
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 1,
+    "mct": 0,
+    "levels": 5,
+    "code_block": "64x64",
+    "cblk_style": 0,
+    "wavelet": "5-3 reversible",
+    "megapixels": 0.39
+   },
+   "jp2_boxes": {
+    "boxes": [
+     "pclr",
+     "cmap"
+    ],
+    "colr": "enumerated:16"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c0p0_01.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c0p0_01.pgx",
+   "sha256": "268a50614b74bb375092d11aa21594069666568a73fe0b83f3ca9cfbda389139",
+   "size": 16402,
+   "git_blob_sha1": "37ed0962de18c4a0d2e9bc7ae1aa22d20296830b",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_01.j2k",
+   "class": 0,
+   "profile": 0,
+   "component": 0,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (class-0 block, commented out upstream; T.803 Table C.1)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c0p0_02.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c0p0_02.pgx",
+   "sha256": "7d7924248477c4368eadd508234545acca9f790e5cd2f888651de44b0ae9e9f9",
+   "size": 8081,
+   "git_blob_sha1": "f1132c517bdeff16bf2ac468e7f24e27528c5f8a",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_02.j2k",
+   "class": 0,
+   "profile": 0,
+   "component": 0,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (class-0 block, commented out upstream; T.803 Table C.1)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c0p0_03r0.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c0p0_03r0.pgx",
+   "sha256": "29aa1042c71b3868bf607e4e3b29436604f512c392131925523a060554aea9f5",
+   "size": 16402,
+   "git_blob_sha1": "509f14ed02507371d535529fc80aa9a988f3b85c",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_03.j2k",
+   "class": 0,
+   "profile": 0,
+   "component": 0,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (class-0 block, commented out upstream; T.803 Table C.1)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c0p0_03r1.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c0p0_03r1.pgx",
+   "sha256": "3e3e2055b0b7783d16a339447a0dcc50d6ddb2381ac5d2769d3bd4206f30a68d",
+   "size": 16402,
+   "git_blob_sha1": "18a049cff676ba35ea5b5459eff559ef3dc35261",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_03.j2k",
+   "class": 0,
+   "profile": 0,
+   "component": 0,
+   "reduce": 1,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (class-0 block, commented out upstream; T.803 Table C.1)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c0p0_04.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c0p0_04.pgx",
+   "sha256": "3bd0ba5ab481a5415e7272fd03a5c8463ffc223c09b3954ead086c7556502cea",
+   "size": 4814,
+   "git_blob_sha1": "fba4c8f87303142dc376c266258551b21b1889b3",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_04.j2k",
+   "class": 0,
+   "profile": 0,
+   "component": 0,
+   "reduce": 3,
+   "thresholds": {
+    "peak": 33,
+    "mse": 55.8,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (class-0 block, commented out upstream; T.803 Table C.1)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c0p0_05.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c0p0_05.pgx",
+   "sha256": "008e9c31c4409706048d59d3dd9f79c87db0ea8c45eb49d53449c56c8919a2df",
+   "size": 16400,
+   "git_blob_sha1": "352d4d6e467b8d1302df5267d413d214125ffd0b",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_05.j2k",
+   "class": 0,
+   "profile": 0,
+   "component": 0,
+   "reduce": 3,
+   "thresholds": {
+    "peak": 54,
+    "mse": 68,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (class-0 block, commented out upstream; T.803 Table C.1)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c0p0_06.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c0p0_06.pgx",
+   "sha256": "2a2c37396620bc14f37c578c74b2894ecfeb5e20bd30dc67fc0e8db4bbfb592b",
+   "size": 1119,
+   "git_blob_sha1": "d7d0440075af27971027b3f0654eb52212fef653",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_06.j2k",
+   "class": 0,
+   "profile": 0,
+   "component": 0,
+   "reduce": 3,
+   "thresholds": {
+    "peak": 109,
+    "mse": 743,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (class-0 block, commented out upstream; T.803 Table C.1)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c0p0_07.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c0p0_07.pgx",
+   "sha256": "55ee08494d259e5879aa4695d8c9d1afca4f4bb0be65bde61b55c7120d425d38",
+   "size": 16401,
+   "git_blob_sha1": "0b91931bc3d56dc8da45161a81eb387385e8c29f",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_07.j2k",
+   "class": 0,
+   "profile": 0,
+   "component": 0,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 10,
+    "mse": 0.34,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (class-0 block, commented out upstream; T.803 Table C.1)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c0p0_08.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c0p0_08.pgx",
+   "sha256": "ad58ffadc846fc3ce72d1280ef3f2300c3697bfa754c6eb292167f9f835716a6",
+   "size": 1647,
+   "git_blob_sha1": "86d9c00671d40ab221bdb6e2a457a4d02cd68358",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_08.j2k",
+   "class": 0,
+   "profile": 0,
+   "component": 0,
+   "reduce": 5,
+   "thresholds": {
+    "peak": 7,
+    "mse": 6.72,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (class-0 block, commented out upstream; T.803 Table C.1)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c0p0_09.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c0p0_09.pgx",
+   "sha256": "ce4dcf09fbd8076527f8d3ea83d9a6c23e24c8aa50f74ac7cd943695f59c875a",
+   "size": 63,
+   "git_blob_sha1": "4eaab0ba043f0fe3d97ee73b3c1731acbd2802d4",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_09.j2k",
+   "class": 0,
+   "profile": 0,
+   "component": 0,
+   "reduce": 2,
+   "thresholds": {
+    "peak": 4,
+    "mse": 1.47,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (class-0 block, commented out upstream; T.803 Table C.1)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c0p0_10.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c0p0_10.pgx",
+   "sha256": "c58b9eb2901a78519af6eec0946a38a9ebb01bc9bb429fb3ea7cc4fc7e9a0bfb",
+   "size": 4110,
+   "git_blob_sha1": "43750e48dd4022a40c97c376f98b3d394e100528",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_10.j2k",
+   "class": 0,
+   "profile": 0,
+   "component": 0,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 10,
+    "mse": 2.84,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (class-0 block, commented out upstream; T.803 Table C.1)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c0p0_11.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c0p0_11.pgx",
+   "sha256": "4a4457e31466d9a78d332fea16237da57cd4b2f3d4fa6dee0074fa568b282765",
+   "size": 144,
+   "git_blob_sha1": "5ab59a0ec541c482857bd4fbc26ad5f4d86172ff",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_11.j2k",
+   "class": 0,
+   "profile": 0,
+   "component": 0,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (class-0 block, commented out upstream; T.803 Table C.1)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c0p0_12.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c0p0_12.pgx",
+   "sha256": "69a27310574c9849c6af457de29ba5eec34fd2b2037cd96e6ac7eca0a4fa40e9",
+   "size": 29,
+   "git_blob_sha1": "543691159debba44a203b4d104ec04b8bd6dd978",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_12.j2k",
+   "class": 0,
+   "profile": 0,
+   "component": 0,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (class-0 block, commented out upstream; T.803 Table C.1)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c0p0_13.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c0p0_13.pgx",
+   "sha256": "7f2bc12d19df4b2dd7b651c48d87c419ba8caa0cb7ec76424f672ba0ab53261c",
+   "size": 15,
+   "git_blob_sha1": "8700874c42487ce8c31bce6104f9b5d303ef5f60",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_13.j2k",
+   "class": 0,
+   "profile": 0,
+   "component": 0,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (class-0 block, commented out upstream; T.803 Table C.1)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c0p0_14.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c0p0_14.pgx",
+   "sha256": "c556ab741f9b7d0a519830d9d609fd68366d7af200a9c2dd740e18218ced8fba",
+   "size": 184,
+   "git_blob_sha1": "fdc04a92bb118818380aa25fc76eb84bf718948e",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_14.j2k",
+   "class": 0,
+   "profile": 0,
+   "component": 0,
+   "reduce": 2,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (class-0 block, commented out upstream; T.803 Table C.1)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c0p0_15r0.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c0p0_15r0.pgx",
+   "sha256": "12e00c98f9ad94527542d99c0763955614352ece12f22afa8e418c77fdcb9d35",
+   "size": 16401,
+   "git_blob_sha1": "bdec0e82e2d5ce49678dd58087d4c5c5929b5740",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_15.j2k",
+   "class": 0,
+   "profile": 0,
+   "component": 0,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (class-0 block, commented out upstream; T.803 Table C.1)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c0p0_15r1.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c0p0_15r1.pgx",
+   "sha256": "b95be5fbc4272595678af5955805ea073decb7bbb4e60708eaf41853c5c1311a",
+   "size": 16401,
+   "git_blob_sha1": "1a48be8a97e53ae9a7a2c152627342c1bb1a377c",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_15.j2k",
+   "class": 0,
+   "profile": 0,
+   "component": 0,
+   "reduce": 1,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (class-0 block, commented out upstream; T.803 Table C.1)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c0p0_16.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c0p0_16.pgx",
+   "sha256": "48876e9905a149b70299072d8f148bf697589c6c5aa15b328af8566bb4daecf5",
+   "size": 16401,
+   "git_blob_sha1": "99857b5570b10509a2410612ced9c11afa4af04a",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_16.j2k",
+   "class": 0,
+   "profile": 0,
+   "component": 0,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (class-0 block, commented out upstream; T.803 Table C.1)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c0p1_01.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c0p1_01.pgx",
+   "sha256": "00bdf8d02daa6eafb36a4563dd6c0f6125e2df75b2eb66f38b122a1c105849db",
+   "size": 6054,
+   "git_blob_sha1": "2d9029b9313f637e3a791fcb0f3fa2bec943f0b1",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p1_01.j2k",
+   "class": 0,
+   "profile": 1,
+   "component": 0,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (class-0 block, commented out upstream; T.803 Table C.4)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c0p1_02.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c0p1_02.pgx",
+   "sha256": "23b2f1215dc6581c3f7014224f02f208ae7b05bc977300bc75a516160e4c7f27",
+   "size": 4814,
+   "git_blob_sha1": "978193f078f790b35ed2f9b7e3b6bc6469eb1d19",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p1_02.j2k",
+   "class": 0,
+   "profile": 1,
+   "component": 0,
+   "reduce": 3,
+   "thresholds": {
+    "peak": 35,
+    "mse": 74,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (class-0 block, commented out upstream; T.803 Table C.4)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c0p1_03.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c0p1_03.pgx",
+   "sha256": "d3836ed021026ec9b5b13ad0d0cbc00446318134143a8dcba32ba6b5f6d78d6f",
+   "size": 16400,
+   "git_blob_sha1": "bd8b92ecf74cddacba68e164ff1c3ee5a4c08cb6",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p1_03.j2k",
+   "class": 0,
+   "profile": 1,
+   "component": 0,
+   "reduce": 3,
+   "thresholds": {
+    "peak": 28,
+    "mse": 18.8,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (class-0 block, commented out upstream; T.803 Table C.4)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c0p1_04r0.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c0p1_04r0.pgx",
+   "sha256": "63cc22c9b256116fae5976fdce1f7254f9743cba571dc2b4f5ddba1b11883a6a",
+   "size": 16400,
+   "git_blob_sha1": "7bda321d0b2b4502ce542c8f87c4a9270f005a56",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p1_04.j2k",
+   "class": 0,
+   "profile": 1,
+   "component": 0,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 2,
+    "mse": 0.55,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (class-0 block, commented out upstream; T.803 Table C.4)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c0p1_04r3.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c0p1_04r3.pgx",
+   "sha256": "caddf11fa88f7ca8bc80ad11188203e69496d1437f7edb3930370b862cfd5489",
+   "size": 16400,
+   "git_blob_sha1": "51338eb84be5dbb71103afd53b0f674faad69323",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p1_04.j2k",
+   "class": 0,
+   "profile": 1,
+   "component": 0,
+   "reduce": 3,
+   "thresholds": {
+    "peak": 2,
+    "mse": 0.55,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (class-0 block, commented out upstream; T.803 Table C.4)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c0p1_05.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c0p1_05.pgx",
+   "sha256": "06595f8b3d171dbb5538bba8c9ba701e4e8e6c50d2208a28623d01a02d65a279",
+   "size": 1039,
+   "git_blob_sha1": "26c3f03059f6a1b5de891c663be2ec04f4e6df80",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p1_05.j2k",
+   "class": 0,
+   "profile": 1,
+   "component": 0,
+   "reduce": 4,
+   "thresholds": {
+    "peak": 128,
+    "mse": 16384,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (class-0 block, commented out upstream; T.803 Table C.4)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c0p1_06.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c0p1_06.pgx",
+   "sha256": "25053fa746c9c552ab67b7da59b60384b6e1b8aba688d0314550beb5ba561f80",
+   "size": 49,
+   "git_blob_sha1": "b3eca30a7ebcc6ba506b75af79f282798f69e74a",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p1_06.j2k",
+   "class": 0,
+   "profile": 1,
+   "component": 0,
+   "reduce": 1,
+   "thresholds": {
+    "peak": 128,
+    "mse": 16384,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (class-0 block, commented out upstream; T.803 Table C.4)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c0p1_07.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c0p1_07.pgx",
+   "sha256": "ee0f0dd90be110241c60dbed84e03c94ff4f83d5cbdae603db9182f24cf5f8a4",
+   "size": 38,
+   "git_blob_sha1": "ae445cad554862b8c3562a67f40e2ecf1acdeb2a",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p1_07.j2k",
+   "class": 0,
+   "profile": 1,
+   "component": 0,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (class-0 block, commented out upstream; T.803 Table C.4)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p0_01_0.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p0_01_0.pgx",
+   "sha256": "d1c24494c873c6c6bf84021bcbbf4606ade7c1755f9bf4ee0c2fd999ce9ae211",
+   "size": 16401,
+   "git_blob_sha1": "0a45fa858ddeabfb494c10cfaf1e5e04e41ffe80",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_01.j2k",
+   "class": 1,
+   "profile": 0,
+   "component": 0,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.6)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p0_02_0.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p0_02_0.pgx",
+   "sha256": "f8928b6d8d200c7dbc56e754c1826caf773d99e52c2c1bc4bbfdea7bc1e0d236",
+   "size": 8080,
+   "git_blob_sha1": "a4753052466c229e1b8f6310044bac4a3db2df75",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_02.j2k",
+   "class": 1,
+   "profile": 0,
+   "component": 0,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.6)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p0_03_0.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p0_03_0.pgx",
+   "sha256": "edbdfc559b314d6ec3b3f75d94c50ba2b65040cf02ef0017a97ba92e9fedaa86",
+   "size": 65553,
+   "git_blob_sha1": "5db68017f2fa6ee98434102d8733a2ee43b24300",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_03.j2k",
+   "class": 1,
+   "profile": 0,
+   "component": 0,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.6)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p0_04_0.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p0_04_0.pgx",
+   "sha256": "51705f9c5e9a0abf2890a6d05d8e5cc509bc0dedc46a590acf04255318e25001",
+   "size": 307216,
+   "git_blob_sha1": "a1302314c95e22fba48fdcfb77bd2caafeb135dc",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_04.j2k",
+   "class": 1,
+   "profile": 0,
+   "component": 0,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 5,
+    "mse": 0.776,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.6)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p0_04_1.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p0_04_1.pgx",
+   "sha256": "9949ce4c13203132f6200926fec8c24ccb2381b8888ade607d9b73f403ee6c42",
+   "size": 307216,
+   "git_blob_sha1": "28e8f79344efc6bbee49e8921618c38789f9d6c8",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_04.j2k",
+   "class": 1,
+   "profile": 0,
+   "component": 1,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 4,
+    "mse": 0.626,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.6)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p0_04_2.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p0_04_2.pgx",
+   "sha256": "81c8dda3f54ac601b0e9a4e18d7556ec69fddbb7997ae8aed75e3b512e6cbd60",
+   "size": 307216,
+   "git_blob_sha1": "1406ed1d819f257e09c07ede2a5ca05a436a80ab",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_04.j2k",
+   "class": 1,
+   "profile": 0,
+   "component": 2,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 6,
+    "mse": 1.07,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.6)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p0_05_0.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p0_05_0.pgx",
+   "sha256": "87122bc8f4a15c2b507d3d766c91b3fee54142c1935c0cdef43444a319f0a77f",
+   "size": 1048594,
+   "git_blob_sha1": "dba60622e61eef910f9f5b1a9c6fa9e3fc5c2844",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_05.j2k",
+   "class": 1,
+   "profile": 0,
+   "component": 0,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 2,
+    "mse": 0.302,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.6)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p0_05_1.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p0_05_1.pgx",
+   "sha256": "92876bda577d5ea7b2ba7c4c2c2a646251043f681f9e3cbf4f92260fac3ee3b7",
+   "size": 1048594,
+   "git_blob_sha1": "92b182bc437077af4533ea0733195066af6e1d43",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_05.j2k",
+   "class": 1,
+   "profile": 0,
+   "component": 1,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 2,
+    "mse": 0.307,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.6)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p0_05_2.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p0_05_2.pgx",
+   "sha256": "8183c2a7682d34b62cb09a747ab803207282f882590f5a533e61a9d6b1922511",
+   "size": 262160,
+   "git_blob_sha1": "cfe32c941c33469fd384dff5fa4994fe176f07ef",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_05.j2k",
+   "class": 1,
+   "profile": 0,
+   "component": 2,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 2,
+    "mse": 0.269,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.6)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p0_05_3.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p0_05_3.pgx",
+   "sha256": "1d52fc3949c1110036d7f478f378a11bc7d91a2d02743d6c5eccde72e345cc6f",
+   "size": 262160,
+   "git_blob_sha1": "4983559c36860906c4b89f48ca91e0ab40f55341",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_05.j2k",
+   "class": 1,
+   "profile": 0,
+   "component": 3,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.6)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p0_06_0.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p0_06_0.pgx",
+   "sha256": "8e4fe489e03fd5579f28c527bb966526a4cbc8bd2957277f9ef71f4d366ad286",
+   "size": 132371,
+   "git_blob_sha1": "11d889d5f179e9678890716d05a9472da01fe010",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_06.j2k",
+   "class": 1,
+   "profile": 0,
+   "component": 0,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 635,
+    "mse": 11287,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.6)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p0_06_1.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p0_06_1.pgx",
+   "sha256": "37cd7cbb59d8a8a6868d90b458fe7f1c1ca9cc8c3d1aaeb3279401cdac0a007f",
+   "size": 66323,
+   "git_blob_sha1": "4c85bd8268af976f1d0ac793e7856174bdbe5778",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_06.j2k",
+   "class": 1,
+   "profile": 0,
+   "component": 1,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 403,
+    "mse": 6124,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.6)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p0_06_2.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p0_06_2.pgx",
+   "sha256": "37da1bfb1f6fc90e65ecb62efab284daaf8828235e808bb3f1dcc819e242a87f",
+   "size": 66706,
+   "git_blob_sha1": "008d4f9ef73316165b4516499c89ef2d87245b74",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_06.j2k",
+   "class": 1,
+   "profile": 0,
+   "component": 2,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 378,
+    "mse": 3968,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.6)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p0_06_3.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p0_06_3.pgx",
+   "sha256": "e3a2ddfc7a37a16dde4c51d4bca43bc07fe65505d1d03986f9516713e6527f57",
+   "size": 33426,
+   "git_blob_sha1": "d2bb16be4d5b33b7f1dbf92c1189d0b538d608b8",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_06.j2k",
+   "class": 1,
+   "profile": 0,
+   "component": 3,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.6)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p0_07_0.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p0_07_0.pgx",
+   "sha256": "2f59fff782b20c1648b68019ce6069960aac5efb2bf98a4df509ad4ba5a72b3b",
+   "size": 8388628,
+   "git_blob_sha1": "b7bad78185f53882c27235db4dcfba9ae04c9b0e",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_07.j2k",
+   "class": 1,
+   "profile": 0,
+   "component": 0,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.6)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p0_07_1.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p0_07_1.pgx",
+   "sha256": "967181e82d33e3442160bf0ae3e5ffa6db99a21584e6736acb2719030ad1e412",
+   "size": 8388628,
+   "git_blob_sha1": "7bf235815a8337b4df09e326b45cc6a9403807f1",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_07.j2k",
+   "class": 1,
+   "profile": 0,
+   "component": 1,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.6)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p0_07_2.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p0_07_2.pgx",
+   "sha256": "2d8d2ae1d2e33a486c3187206599944856b8a75525a165069042f4cfc295dc74",
+   "size": 8388628,
+   "git_blob_sha1": "4ddf8b68a5d8572e87eb12f27755fee01fb0e97d",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_07.j2k",
+   "class": 1,
+   "profile": 0,
+   "component": 2,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.6)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p0_08_0.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p0_08_0.pgx",
+   "sha256": "69a2af90074593b007d50c96b1c5e4ecb1e591e265dc4f2ab5a230359ab2c87d",
+   "size": 789523,
+   "git_blob_sha1": "4b53881b1c21b1d5120126e365d4739d81271f9f",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_08.j2k",
+   "class": 1,
+   "profile": 0,
+   "component": 0,
+   "reduce": 1,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.6)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p0_08_1.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p0_08_1.pgx",
+   "sha256": "fa2598b68dde7613b50caa1e5692dcecec934b33e2eb8327f44a274869bc3025",
+   "size": 789523,
+   "git_blob_sha1": "d2c0fd796594ffbb47d46e5a530ad200442e1fa3",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_08.j2k",
+   "class": 1,
+   "profile": 0,
+   "component": 1,
+   "reduce": 1,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.6)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p0_08_2.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p0_08_2.pgx",
+   "sha256": "7c3c05a5c5d4fe8efa55975e1b6d24869b3e1bf140db2b32b5dd14e42d65f77e",
+   "size": 789523,
+   "git_blob_sha1": "e7bbb77e696fd2b9cd0a04abfcd48964318b220b",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_08.j2k",
+   "class": 1,
+   "profile": 0,
+   "component": 2,
+   "reduce": 1,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.6)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p0_09_0.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p0_09_0.pgx",
+   "sha256": "174557fca48a83f7a474d2307984051326350266fec1acf623466e8f92bc8a29",
+   "size": 644,
+   "git_blob_sha1": "d184ab517aa5bd926f47b11083c4a165b2c439c5",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_09.j2k",
+   "class": 1,
+   "profile": 0,
+   "component": 0,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.6)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p0_10_0.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p0_10_0.pgx",
+   "sha256": "feee51c4c4519bd4ddbd53fb9e8186ddc95c4e64b42ffc9681d65d26172f76c4",
+   "size": 4111,
+   "git_blob_sha1": "49d25ac57ff1094cf04df27a66097987a5247962",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_10.j2k",
+   "class": 1,
+   "profile": 0,
+   "component": 0,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.6)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p0_10_1.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p0_10_1.pgx",
+   "sha256": "4857f0f3247bac8bef2354dc88727cece95bb5713cbe1e83c346601c8cd395d1",
+   "size": 4111,
+   "git_blob_sha1": "e42203fbc94e0fb04f370494913cb3d1683e1943",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_10.j2k",
+   "class": 1,
+   "profile": 0,
+   "component": 1,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.6)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p0_10_2.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p0_10_2.pgx",
+   "sha256": "460dede2e04d2be3f2c74334784b58bac59bd640c2f2fbad64489e788d2c511a",
+   "size": 4111,
+   "git_blob_sha1": "ff5eedb42bec3276166f42025f485b0a7183ffa1",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_10.j2k",
+   "class": 1,
+   "profile": 0,
+   "component": 2,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.6)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p0_11_0.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p0_11_0.pgx",
+   "sha256": "2255812746edf02b988b0efefedf99ad2a9c1e01f2260a223490480d53e69c99",
+   "size": 143,
+   "git_blob_sha1": "e878b000676e6c2b65be7a31b765d855c064740a",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_11.j2k",
+   "class": 1,
+   "profile": 0,
+   "component": 0,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.6)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p0_12_0.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p0_12_0.pgx",
+   "sha256": "2336f73b2596e62ce5fd46a09813c4e88f2b57eabdfa5178008f8ef6982de8bd",
+   "size": 28,
+   "git_blob_sha1": "0e9480f146a676659cfe37f8a8682fd70c8229d3",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_12.j2k",
+   "class": 1,
+   "profile": 0,
+   "component": 0,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.6)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p0_13_0.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p0_13_0.pgx",
+   "sha256": "a3250795aa7c31d0caf0a9ad706e21652060768b404210624e5dd695787dbc07",
+   "size": 14,
+   "git_blob_sha1": "958caee33b4af666eebe5a480fa81d752e23279e",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_13.j2k",
+   "class": 1,
+   "profile": 0,
+   "component": 0,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.6)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p0_13_1.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p0_13_1.pgx",
+   "sha256": "ff079e7fe2ca5fd542f6b85bda838fa9f11428a59d7584f6523cb649cb8b79c7",
+   "size": 14,
+   "git_blob_sha1": "c4392c6ebfb8eac395847f16584df0b13320d053",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_13.j2k",
+   "class": 1,
+   "profile": 0,
+   "component": 1,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.6)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p0_13_2.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p0_13_2.pgx",
+   "sha256": "83d2079dcfaee85fcd75e8a23d6dd69686b966ba334d2c8ca9a25b2bbc7079b0",
+   "size": 14,
+   "git_blob_sha1": "4158ba9a4693abd8d207a353a3cfce23532b4ce7",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_13.j2k",
+   "class": 1,
+   "profile": 0,
+   "component": 2,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.6)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p0_13_3.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p0_13_3.pgx",
+   "sha256": "d1bb447c46cf81b0673ff570eb5d5f940aeebd8e6fee68f21e061c6d5cb064ae",
+   "size": 14,
+   "git_blob_sha1": "f7d0adef4122b5a34e8c8f515e54be9cb8475acb",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_13.j2k",
+   "class": 1,
+   "profile": 0,
+   "component": 3,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.6)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p0_14_0.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p0_14_0.pgx",
+   "sha256": "c4e96524ccf8f0520e92f335dc4bf968c74187ab491660992fff4740e6a1cd63",
+   "size": 2416,
+   "git_blob_sha1": "f193376969e86236a3a8b1916fa77dc92d600f9d",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_14.j2k",
+   "class": 1,
+   "profile": 0,
+   "component": 0,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.6)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p0_14_1.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p0_14_1.pgx",
+   "sha256": "b1e1b60cda396c16803da500f8b3006a2bf7375f39f1c79cf79f827881bbd714",
+   "size": 2416,
+   "git_blob_sha1": "d754c182f01580de975f26c8f31b1590724fcc78",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_14.j2k",
+   "class": 1,
+   "profile": 0,
+   "component": 1,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.6)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p0_14_2.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p0_14_2.pgx",
+   "sha256": "c4e96524ccf8f0520e92f335dc4bf968c74187ab491660992fff4740e6a1cd63",
+   "size": 2416,
+   "git_blob_sha1": "f193376969e86236a3a8b1916fa77dc92d600f9d",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_14.j2k",
+   "class": 1,
+   "profile": 0,
+   "component": 2,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.6)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p0_15_0.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p0_15_0.pgx",
+   "sha256": "edbdfc559b314d6ec3b3f75d94c50ba2b65040cf02ef0017a97ba92e9fedaa86",
+   "size": 65553,
+   "git_blob_sha1": "5db68017f2fa6ee98434102d8733a2ee43b24300",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_15.j2k",
+   "class": 1,
+   "profile": 0,
+   "component": 0,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.6)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p0_16_0.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p0_16_0.pgx",
+   "sha256": "48876e9905a149b70299072d8f148bf697589c6c5aa15b328af8566bb4daecf5",
+   "size": 16401,
+   "git_blob_sha1": "99857b5570b10509a2410612ced9c11afa4af04a",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p0_16.j2k",
+   "class": 1,
+   "profile": 0,
+   "component": 0,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.6)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p1_01_0.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p1_01_0.pgx",
+   "sha256": "fd1730adccecdfa90c31e895ea58083670ccedbe6fe053b20c3bb7c7cf8fb96b",
+   "size": 6054,
+   "git_blob_sha1": "366c774f7db250bea58f806467aba7033a2cbbb0",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p1_01.j2k",
+   "class": 1,
+   "profile": 1,
+   "component": 0,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.7)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p1_02_0.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p1_02_0.pgx",
+   "sha256": "0ed11a110b40f1f7174546decf075a12ba201e1d5bbba18dcfa638d6b320bc3f",
+   "size": 307216,
+   "git_blob_sha1": "93165e7d61767bc499e247d54898204793666084",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p1_02.j2k",
+   "class": 1,
+   "profile": 1,
+   "component": 0,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 5,
+    "mse": 0.765,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.7)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p1_02_1.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p1_02_1.pgx",
+   "sha256": "23551bc04b229de63344f7a7f4b0cc19d8512681ad3fbd5d7b3fbd55d23228dc",
+   "size": 307216,
+   "git_blob_sha1": "a40329eaa954a657f611205c7536225f6695ee1c",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p1_02.j2k",
+   "class": 1,
+   "profile": 1,
+   "component": 1,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 4,
+    "mse": 0.616,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.7)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p1_02_2.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p1_02_2.pgx",
+   "sha256": "46349e1ccb1df738b58ce7d0f706bd6c2937eb6457596e9ec9f858ed0d9b47a4",
+   "size": 307216,
+   "git_blob_sha1": "119704a549e43957dace7dc877dd9711f6dfca5e",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p1_02.j2k",
+   "class": 1,
+   "profile": 1,
+   "component": 2,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 6,
+    "mse": 1.051,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.7)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p1_03_0.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p1_03_0.pgx",
+   "sha256": "416ff6c9b3d917ff20d3bd6405e224049137d04ed80dec9f8f42dfa070deb794",
+   "size": 1048594,
+   "git_blob_sha1": "dc7231aa3b4e0a849379decc01f0d46df742a212",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p1_03.j2k",
+   "class": 1,
+   "profile": 1,
+   "component": 0,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 2,
+    "mse": 0.3,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.7)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p1_03_1.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p1_03_1.pgx",
+   "sha256": "9cfbc8ebb61d6447cc4fc98d8cca63016a288037a4609b7424685fd72a984ca1",
+   "size": 1048594,
+   "git_blob_sha1": "c1d091969e01a90332ce8907d6a1f4abd8ce0dcb",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p1_03.j2k",
+   "class": 1,
+   "profile": 1,
+   "component": 1,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 2,
+    "mse": 0.21,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.7)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p1_03_2.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p1_03_2.pgx",
+   "sha256": "71fd301fb0da107998a8805a46faff754c14316d1544e4159778b43055b210a5",
+   "size": 262160,
+   "git_blob_sha1": "7d889e65534449a80c3777d23934bfe8a015c2e3",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p1_03.j2k",
+   "class": 1,
+   "profile": 1,
+   "component": 2,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 1,
+    "mse": 0.2,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.7)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p1_03_3.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p1_03_3.pgx",
+   "sha256": "1d52fc3949c1110036d7f478f378a11bc7d91a2d02743d6c5eccde72e345cc6f",
+   "size": 262160,
+   "git_blob_sha1": "4983559c36860906c4b89f48ca91e0ab40f55341",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p1_03.j2k",
+   "class": 1,
+   "profile": 1,
+   "component": 3,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.7)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p1_04_0.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p1_04_0.pgx",
+   "sha256": "46208571732cee8d274ec11629da785c6358599a040ddeb3d5e8f0b76e38594a",
+   "size": 2097171,
+   "git_blob_sha1": "ff7ba857123a30b4be4c1873b71c7aeb01c551b8",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p1_04.j2k",
+   "class": 1,
+   "profile": 1,
+   "component": 0,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 624,
+    "mse": 3080,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.7)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p1_05_0.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p1_05_0.pgx",
+   "sha256": "e60798e11ca7af7fba5af5805f0cdb0682d903f698b4f4fc3f2bceab56331ad0",
+   "size": 262160,
+   "git_blob_sha1": "d3eb5ded84e49af8a398b10808ac1455fb477b81",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p1_05.j2k",
+   "class": 1,
+   "profile": 1,
+   "component": 0,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 40,
+    "mse": 8.458,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.7)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p1_05_1.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p1_05_1.pgx",
+   "sha256": "c9858b293f37c4c831cec4c7fc21cae83493b6f60995ddd8cfe67e5f7c85c1c1",
+   "size": 262160,
+   "git_blob_sha1": "5da4646b1416e6db680ff42c4984628f09bed6f5",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p1_05.j2k",
+   "class": 1,
+   "profile": 1,
+   "component": 1,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 40,
+    "mse": 9.816,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.7)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p1_05_2.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p1_05_2.pgx",
+   "sha256": "c9279428c9c879a590fe70e991ddc76ab41a9441b43c349020a1b8582fb2671a",
+   "size": 262160,
+   "git_blob_sha1": "b9aa9b7c5f24a983fa759b60cd65cda3b3f86e00",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p1_05.j2k",
+   "class": 1,
+   "profile": 1,
+   "component": 2,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 40,
+    "mse": 10.154,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.7)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p1_06_0.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p1_06_0.pgx",
+   "sha256": "5f1fea232444c1afa6f1e06738a64910436d122f2fe69b0bf5ea59a55ac7f66e",
+   "size": 158,
+   "git_blob_sha1": "c601e37ffc37e4aa1655b39e6bc3e987303e48e2",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p1_06.j2k",
+   "class": 1,
+   "profile": 1,
+   "component": 0,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 2,
+    "mse": 0.6,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.7)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p1_06_1.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p1_06_1.pgx",
+   "sha256": "52acc2a2c4374dcdcdf4b795c430fef1e632e5fc35590401c7c0a618935f6749",
+   "size": 158,
+   "git_blob_sha1": "871c2b2d0d6f2709ab632b981682f98822e6bf8d",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p1_06.j2k",
+   "class": 1,
+   "profile": 1,
+   "component": 1,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 2,
+    "mse": 0.6,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.7)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p1_06_2.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p1_06_2.pgx",
+   "sha256": "01cb2817388ee05f1f4524b0420f86580e62e098ac17680f18ec53cf7f470fc0",
+   "size": 158,
+   "git_blob_sha1": "c6460d472bb4ec6b7f60684a21eca65b8450d417",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p1_06.j2k",
+   "class": 1,
+   "profile": 1,
+   "component": 2,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 2,
+    "mse": 0.6,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.7)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p1_07_0.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p1_07_0.pgx",
+   "sha256": "ee0f0dd90be110241c60dbed84e03c94ff4f83d5cbdae603db9182f24cf5f8a4",
+   "size": 38,
+   "git_blob_sha1": "ae445cad554862b8c3562a67f40e2ecf1acdeb2a",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p1_07.j2k",
+   "class": 1,
+   "profile": 1,
+   "component": 0,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.7)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/c1p1_07_1.pgx",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/c1p1_07_1.pgx",
+   "sha256": "b72f60a12ec7dcb1360cc9adfd86bfb2e81d929262df5e0167d00c02e61b4df4",
+   "size": 110,
+   "git_blob_sha1": "a28a94970c1a8f1513e2f4be8a10f7daf634e619",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/p1_07.j2k",
+   "class": 1,
+   "profile": 1,
+   "component": 1,
+   "reduce": 0,
+   "thresholds": {
+    "peak": 0,
+    "mse": 0,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (T.803 Table C.7)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/jp2_1.tif",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/jp2_1.tif",
+   "sha256": "1d88f16d47e304affde8fdb3a593a18b328dfa28c04884ac6c889cdefa154d19",
+   "size": 907984,
+   "git_blob_sha1": "1d7404bb262a30fd043aab2bf418be83c13663a5",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/file1.jp2",
+   "component": "all (RGB, 8-bit)",
+   "reduce": 0,
+   "thresholds": {
+    "peak": 4,
+    "mse": 1,
+    "per_component": true,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (JP2 block: 'Tolerances given by Part 4 - Table G.1, Peak is set to 4 only'; decoded with -p 8S -force-rgb)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/jp2_2.tif",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/jp2_2.tif",
+   "sha256": "9850a8d54b227dcb931f43c96e3522fcf106629c60e9126381f3b39009c40c91",
+   "size": 766348,
+   "git_blob_sha1": "dcae0c02ce95648c7713529b92002fe6c6ab244b",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/file2.jp2",
+   "component": "all (RGB, 8-bit)",
+   "reduce": 0,
+   "thresholds": {
+    "peak": 4,
+    "mse": 1,
+    "per_component": true,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (JP2 block: 'Tolerances given by Part 4 - Table G.1, Peak is set to 4 only'; decoded with -p 8S -force-rgb)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/jp2_3.tif",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/jp2_3.tif",
+   "sha256": "512a8827b98d71051c3cba52b96a323e879870ba90dc254016befaa1aa90dbd5",
+   "size": 638064,
+   "git_blob_sha1": "b9405c6aee13654092e1c393b00e79809e3b653c",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/file3.jp2",
+   "component": "all (RGB, 8-bit)",
+   "reduce": 0,
+   "thresholds": {
+    "peak": 4,
+    "mse": 1,
+    "per_component": true,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (JP2 block: 'Tolerances given by Part 4 - Table G.1, Peak is set to 4 only'; decoded with -p 8S -force-rgb)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/jp2_4.tif",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/jp2_4.tif",
+   "sha256": "97395ed8d03798ef25ab7e53d904c288a37c8a07d1510ec1e897cdd923cf8eb1",
+   "size": 474368,
+   "git_blob_sha1": "13d7c88f157c953b9218da4b00fa448ec1395177",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/file4.jp2",
+   "component": "all (RGB, 8-bit)",
+   "reduce": 0,
+   "thresholds": {
+    "peak": 4,
+    "mse": 1,
+    "per_component": true,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (JP2 block: 'Tolerances given by Part 4 - Table G.1, Peak is set to 4 only'; decoded with -p 8S -force-rgb)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/jp2_5.tif",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/jp2_5.tif",
+   "sha256": "434b199ca176bb87de22d3e7413bf791602a7d0c21056745fb052d395dd52751",
+   "size": 1184280,
+   "git_blob_sha1": "bd69584dcf8c0e42ba169b7d0fa480710c372549",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/file5.jp2",
+   "component": "all (RGB, 8-bit)",
+   "reduce": 0,
+   "thresholds": {
+    "peak": 4,
+    "mse": 1,
+    "per_component": true,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (JP2 block: 'Tolerances given by Part 4 - Table G.1, Peak is set to 4 only'; decoded with -p 8S -force-rgb)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/jp2_6.tif",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/jp2_6.tif",
+   "sha256": "927541305c4f46e1eb43e5e551260bfee8b0c395b5ffba95a77483b0216bd2c6",
+   "size": 474368,
+   "git_blob_sha1": "b99fa85edfc07222d1213088290ff3452432cd6a",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/file6.jp2",
+   "component": "all (RGB, 8-bit)",
+   "reduce": 0,
+   "thresholds": {
+    "peak": 4,
+    "mse": 1,
+    "per_component": true,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (JP2 block: 'Tolerances given by Part 4 - Table G.1, Peak is set to 4 only'; decoded with -p 8S -force-rgb)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/jp2_7.tif",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/jp2_7.tif",
+   "sha256": "65972c102d9277fbc901fbc60ee2253542f665b558c4548f986834a5488d6ed8",
+   "size": 756792,
+   "git_blob_sha1": "cf9b4ccaac3b787f7599467ae4b5884c06dd317b",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/file7.jp2",
+   "component": "all (RGB, 8-bit)",
+   "reduce": 0,
+   "thresholds": {
+    "peak": 4,
+    "mse": 1,
+    "per_component": true,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (JP2 block: 'Tolerances given by Part 4 - Table G.1, Peak is set to 4 only'; decoded with -p 8S -force-rgb)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/jp2_8.tif",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/jp2_8.tif",
+   "sha256": "4f0187ac2cf3ab95739f642cafcf96fcb1f42d0de9a0ce92464d7b10f80d4b31",
+   "size": 844840,
+   "git_blob_sha1": "bd50ba3a38dbc31c35c11581e64cd5fc55f70e26",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/file8.jp2",
+   "component": "all (RGB, 8-bit)",
+   "reduce": 0,
+   "thresholds": {
+    "peak": 4,
+    "mse": 1,
+    "per_component": true,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (JP2 block: 'Tolerances given by Part 4 - Table G.1, Peak is set to 4 only'; decoded with -p 8S -force-rgb)"
+   }
+  },
+  {
+   "path": "openjpeg-data/baseline/conformance/jp2_9.tif",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/baseline/conformance/jp2_9.tif",
+   "sha256": "f092ba8dcffe34f289dbb258de2c3c22eb1eab7bd511096eacf812c29c2883fb",
+   "size": 658544,
+   "git_blob_sha1": "34de87a2d6370cb0752d832dad0457365bcecc02",
+   "roles": [
+    "reference-decode"
+   ],
+   "licence": "conformance",
+   "stream": "openjpeg-data/input/conformance/file9.jp2",
+   "component": "all (RGB, 8-bit)",
+   "reduce": 0,
+   "thresholds": {
+    "peak": 4,
+    "mse": 1,
+    "per_component": true,
+    "source": "openjpeg@8314119b067c0fc77834731168daaebd379fdb12 tests/conformance/CMakeLists.txt (JP2 block: 'Tolerances given by Part 4 - Table G.1, Peak is set to 4 only'; decoded with -p 8S -force-rgb)"
+   }
+  },
+  {
+   "path": "openjpeg-data/input/conformance/zoo1.jp2",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/conformance/zoo1.jp2",
+   "sha256": "42e767e42436649b3ee0dc3589af02501cf4592b81ff7d70201cc10b223bbc00",
+   "size": 4280781,
+   "git_blob_sha1": "61c2676ae755f4b884b9f65b2c11a480374ba313",
+   "roles": [
+    "benchmark"
+   ],
+   "licence": "conformance",
+   "note": "Richter JP2 test file in openjpeg-data input/conformance (not a T.803 profile stream)",
+   "codestream": {
+    "rsiz": 0,
+    "width": 3906,
+    "height": 2602,
+    "components": 3,
+    "bit_depths": [
+     8
+    ],
+    "signed": false,
+    "subsampling": [
+     "1x1",
+     "2x2"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 6,
+    "mct": 0,
+    "levels": 5,
+    "code_block": "64x64",
+    "cblk_style": 0,
+    "wavelet": "9-7 irreversible",
+    "megapixels": 10.16
+   },
+   "jp2_boxes": {
+    "colr": "enumerated:18"
+   }
+  },
+  {
+   "path": "openjpeg-data/input/nonregression/Bretagne2.j2k",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/nonregression/Bretagne2.j2k",
+   "sha256": "94a94669d839b13292340cbbdec6b96c81475eb1e1f6158c55245a7355437290",
+   "size": 5386631,
+   "git_blob_sha1": "7f53addb49a16152b4a7255500a8ecfd8a92aab1",
+   "roles": [
+    "benchmark"
+   ],
+   "licence": "nonregression",
+   "note": "multi-tile (25) RGB, 5-3 reversible, 3 layers, 5 Mpx",
+   "codestream": {
+    "rsiz": 0,
+    "width": 2592,
+    "height": 1944,
+    "components": 3,
+    "bit_depths": [
+     8
+    ],
+    "signed": false,
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 25,
+    "progression": "LRCP",
+    "layers": 3,
+    "mct": 1,
+    "levels": 5,
+    "code_block": "32x32",
+    "cblk_style": 0,
+    "wavelet": "5-3 reversible",
+    "megapixels": 5.04
+   }
+  },
+  {
+   "path": "openjpeg-data/input/nonregression/kodak_2layers_lrcp.j2c",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/nonregression/kodak_2layers_lrcp.j2c",
+   "sha256": "66375e570f12ec7cdac02d384052cdae8c511101f72494020d22661066d0ac0a",
+   "size": 3363991,
+   "git_blob_sha1": "bc96a05fe22e84a56273fadae6288b6527ee38e7",
+   "roles": [
+    "benchmark"
+   ],
+   "licence": "nonregression",
+   "note": "12-bit RGB 9/7, 2 layers (byte-identical to issue135.j2k)",
+   "codestream": {
+    "rsiz": 0,
+    "width": 2048,
+    "height": 1556,
+    "components": 3,
+    "bit_depths": [
+     12
+    ],
+    "signed": false,
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 2,
+    "mct": 1,
+    "levels": 5,
+    "code_block": "32x32",
+    "cblk_style": 0,
+    "wavelet": "9-7 irreversible",
+    "megapixels": 3.19
+   }
+  },
+  {
+   "path": "openjpeg-data/input/nonregression/123.j2c",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/nonregression/123.j2c",
+   "sha256": "3b467f5f31292b6861df18d52f2ce79bd959640398308a5028a87058f1093247",
+   "size": 2892586,
+   "git_blob_sha1": "988f1a91bcfa2653a110e60a508764e9dcdaa3c2",
+   "roles": [
+    "benchmark"
+   ],
+   "licence": "nonregression",
+   "note": "16-bit grey, 5-3 reversible, 11 decomposition levels",
+   "codestream": {
+    "rsiz": 0,
+    "width": 1800,
+    "height": 1800,
+    "components": 1,
+    "bit_depths": [
+     16
+    ],
+    "signed": false,
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 1,
+    "mct": 1,
+    "levels": 11,
+    "code_block": "64x64",
+    "cblk_style": 0,
+    "wavelet": "5-3 reversible",
+    "megapixels": 3.24
+   }
+  },
+  {
+   "path": "openjpeg-data/input/nonregression/movie_00000.j2k",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/nonregression/movie_00000.j2k",
+   "sha256": "eb8004faec95841818e22f3cf740b16c319c525189d9de22b24b5fd6c00756c7",
+   "size": 99360,
+   "git_blob_sha1": "2b11f460965f686a6f9b57316cdca12745aabb8d",
+   "roles": [
+    "benchmark"
+   ],
+   "licence": "nonregression",
+   "note": "1080p RGB, 5-3 reversible but only ~1.6% of raw size (rate-truncated, so not lossless), 1 layer",
+   "codestream": {
+    "rsiz": 0,
+    "width": 1920,
+    "height": 1080,
+    "components": 3,
+    "bit_depths": [
+     8
+    ],
+    "signed": false,
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 1,
+    "mct": 1,
+    "levels": 5,
+    "code_block": "64x64",
+    "cblk_style": 0,
+    "wavelet": "5-3 reversible",
+    "megapixels": 2.07
+   }
+  },
+  {
+   "path": "openjpeg-data/input/nonregression/_00042.j2k",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/nonregression/_00042.j2k",
+   "sha256": "b7d8680050f1f51679c77888620b7ba92b71cb4f79438fc85eff2dbc697eddf3",
+   "size": 75301,
+   "git_blob_sha1": "b16349ddf300dcf1e0ba18546f0e544e971c005c",
+   "roles": [
+    "benchmark"
+   ],
+   "licence": "nonregression",
+   "note": "DCI 2K cinema profile (Rsiz 3), 12-bit 9/7, CPRL, tile-parts",
+   "codestream": {
+    "rsiz": 3,
+    "width": 1920,
+    "height": 1080,
+    "components": 3,
+    "bit_depths": [
+     12
+    ],
+    "signed": false,
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "CPRL",
+    "layers": 1,
+    "mct": 1,
+    "levels": 5,
+    "code_block": "32x32",
+    "cblk_style": 0,
+    "wavelet": "9-7 irreversible",
+    "megapixels": 2.07
+   }
+  },
+  {
+   "path": "openjpeg-data/input/nonregression/test_lossless.j2k",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/nonregression/test_lossless.j2k",
+   "sha256": "3d802613b69f9c88ace4f084ff9eaa0b982b5cab20dc7063333cf3b0a690e371",
+   "size": 918284,
+   "git_blob_sha1": "5e6a2689243b6f10062e86ca719470850985eb60",
+   "roles": [
+    "benchmark"
+   ],
+   "licence": "nonregression",
+   "note": "12-bit grey, 5-3 reversible, 1 Mpx",
+   "codestream": {
+    "rsiz": 0,
+    "width": 1024,
+    "height": 1024,
+    "components": 1,
+    "bit_depths": [
+     12
+    ],
+    "signed": false,
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 1,
+    "mct": 0,
+    "levels": 5,
+    "code_block": "64x64",
+    "cblk_style": 0,
+    "wavelet": "5-3 reversible",
+    "megapixels": 1.05
+   }
+  },
+  {
+   "path": "openjpeg-data/input/nonregression/pacs.ge.j2k",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/nonregression/pacs.ge.j2k",
+   "sha256": "ccfd9275c7ed007e71a9139aee0db5889504bcdfec2092e9b85d80bdec0375a5",
+   "size": 201410,
+   "git_blob_sha1": "f891162e60596829f07f904f7ef09f1c224a0bc5",
+   "roles": [
+    "benchmark"
+   ],
+   "licence": "nonregression",
+   "note": "16-bit signed grey, 5-3 reversible, 16 layers (medical)",
+   "codestream": {
+    "rsiz": 0,
+    "width": 512,
+    "height": 512,
+    "components": 1,
+    "bit_depths": [
+     16
+    ],
+    "signed": true,
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 16,
+    "mct": 0,
+    "levels": 5,
+    "code_block": "64x64",
+    "cblk_style": 0,
+    "wavelet": "5-3 reversible",
+    "megapixels": 0.26
+   }
+  },
+  {
+   "path": "openjpeg-data/input/nonregression/buxI.j2k",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/nonregression/buxI.j2k",
+   "sha256": "8fb4b026f66764894c1050c3d13b659e12d952be1a262b89280c41f91733440b",
+   "size": 155101,
+   "git_blob_sha1": "3010cda474424d003f5587334753e33a75fe9566",
+   "roles": [
+    "benchmark"
+   ],
+   "licence": "nonregression",
+   "note": "16-bit grey 9/7 lossy, 2 layers",
+   "codestream": {
+    "rsiz": 0,
+    "width": 512,
+    "height": 512,
+    "components": 1,
+    "bit_depths": [
+     16
+    ],
+    "signed": false,
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 2,
+    "mct": 0,
+    "levels": 5,
+    "code_block": "64x64",
+    "cblk_style": 0,
+    "wavelet": "9-7 irreversible",
+    "megapixels": 0.26
+   }
+  },
+  {
+   "path": "openjpeg-data/input/nonregression/issue208.jp2",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/nonregression/issue208.jp2",
+   "sha256": "3804a6e937c353a835d058f6d9ffeddce4c4d9c43ee95f5ebf2b5fff27c7905f",
+   "size": 618889,
+   "git_blob_sha1": "a1e5b88ac60e96e7c392cdddc290d93f44a8b59e",
+   "roles": [
+    "benchmark"
+   ],
+   "licence": "nonregression",
+   "note": "4-component (CMYK colr) 9/7, 20 tiles, tile-parts",
+   "codestream": {
+    "rsiz": 0,
+    "width": 842,
+    "height": 1249,
+    "components": 4,
+    "bit_depths": [
+     8
+    ],
+    "signed": false,
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 20,
+    "progression": "RLCP",
+    "layers": 1,
+    "mct": 1,
+    "levels": 5,
+    "code_block": "32x32",
+    "cblk_style": 0,
+    "wavelet": "9-7 irreversible",
+    "megapixels": 1.05
+   },
+   "jp2_boxes": {
+    "colr": "enumerated:12"
+   }
+  },
+  {
+   "path": "openjpeg-data/input/nonregression/issue559-eci-090-CIELab.jp2",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/nonregression/issue559-eci-090-CIELab.jp2",
+   "sha256": "f4443b3de1b73c17ce9ea2edc9035152606a25c190f82a3e586106d013790b67",
+   "size": 121364,
+   "git_blob_sha1": "ff06d0666d9fcad9399dba20a41cf7c4b0331883",
+   "roles": [
+    "benchmark"
+   ],
+   "licence": "nonregression",
+   "note": "16-bit 3-component CIELab 9/7, 8 tiles, 6 layers",
+   "codestream": {
+    "rsiz": 0,
+    "width": 424,
+    "height": 212,
+    "components": 3,
+    "bit_depths": [
+     16
+    ],
+    "signed": false,
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 8,
+    "progression": "RLCP",
+    "layers": 6,
+    "mct": 0,
+    "levels": 5,
+    "code_block": "32x32",
+    "cblk_style": 0,
+    "wavelet": "9-7 irreversible",
+    "megapixels": 0.09
+   },
+   "jp2_boxes": {
+    "colr": "enumerated:14"
+   }
+  },
+  {
+   "path": "openjpeg-data/input/nonregression/cthead1.j2k",
+   "url": "https://raw.githubusercontent.com/uclouvain/openjpeg-data/39524bd3a601d90ed8e0177559400d23945f96a9/input/nonregression/cthead1.j2k",
+   "sha256": "ddd373f030dd066b596595009754b1a2c764764a97c2265fc6689bc54440aae4",
+   "size": 26443,
+   "git_blob_sha1": "78dd64cc80dd0b950cc2978e1667909201a50478",
+   "roles": [
+    "benchmark"
+   ],
+   "licence": "nonregression",
+   "note": "small 256x256 8-bit grey, 5-3 reversible (medical)",
+   "codestream": {
+    "rsiz": 0,
+    "width": 256,
+    "height": 256,
+    "components": 1,
+    "bit_depths": [
+     8
+    ],
+    "signed": false,
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 1,
+    "mct": 0,
+    "levels": 5,
+    "code_block": "64x64",
+    "cblk_style": 0,
+    "wavelet": "5-3 reversible",
+    "megapixels": 0.07
+   }
+  }
+ ]
+}

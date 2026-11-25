@@ -11,7 +11,7 @@ A formally verified, fast JPEG 2000 decoder in Lean 4. The design document is
 | Build (libraries `JPEG2000`, `Spec`, `Encode`) | `lake build` |
 | Build the test executable | `lake build tests` |
 | Tests | `lake exe tests` |
-| Guard: proof hygiene | `scripts/check-hygiene.sh` (once task 0.3 lands) |
+| Guard: proof hygiene | `scripts/check-hygiene.sh` (after `lake build`; self-test: `python3 -I scripts/hygiene.py --self-test`) |
 | Corpus fetch / verify | `python3 -I scripts/fetch-corpus.py` / `--check` (once task 0.5 lands) |
 | Single-file check | `lake env lean <path/to/File.lean>` |
 
