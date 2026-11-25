@@ -109,3 +109,41 @@ itself gains from 8 threads.
 
 (Empty. Later waves append dated entries: our decoder's numbers against these targets,
 changes of method, re-baselines.)
+
+## MQ decoder throughput
+
+Task 2.6, 2026-11-25, on top of `182e722` (phase-1-headers), same machine as above
+(aarch64 sandbox, 8 cores, other agents building in parallel: expect some noise).
+Command: `lake build bench-mq && lake exe bench-mq` (source `Bench/MQ.lean`; the target is
+not in the default build).
+
+Method: the input is produced by the reference encoder `Encode.MQ.encodeAll`, never random
+bytes (random bytes soon hit a marker and the decoder stops consuming input). Four data sets
+of random decisions over the 19 Tier-1 contexts in their T.800 Table D.7 initial states,
+`p(LPS)` ∈ {0.02, 0.1, 0.3, 0.5}, in segments of 16 384 decisions (about one 64×64
+code-block), at most 1 MB of coded bytes or 8 M decisions per set (2.68 MB in total); and
+the T.88 H.2 vector (30 bytes, 256 decisions) repeated 20 000 times with one `Dec.init` per
+copy, which shows the per-segment overhead. The fast decoder (`JPEG2000.MQ.Dec.decode` in a
+tail-recursive loop, one `Dec.init` per segment) decodes each set 5 times; the table gives
+the median. Every run checks the number of `1` decisions against the generated data. The
+last two rows compare the flowchart spec `Spec.MQ.decodeAll` (lists and `Nat`; its `byteAt`
+is linear in the position, so it degrades on long segments) with the fast decoder's list
+API on one 20 000-decision segment. MB = 10^6 coded bytes.
+
+| data | decisions | coded bytes | bits/decision | ms | M decisions/s | MB/s |
+|---|---|---|---|---|---|---|
+| fast, p(LPS) 0.02, 19 ctx | 8011776 | 213665 | 0.21 | 93.3 | 85.8 | 2.3 |
+| fast, p(LPS) 0.1, 19 ctx | 8011776 | 538438 | 0.54 | 109.4 | 73.3 | 4.9 |
+| fast, p(LPS) 0.3, 19 ctx | 8011776 | 926654 | 0.93 | 129.2 | 62.0 | 7.2 |
+| fast, p(LPS) 0.5, 19 ctx | 7634944 | 1001640 | 1.05 | 149.7 | 51.0 | 6.7 |
+| fast, T.88 H.2 x 20000 (init per segment) | 5120000 | 600000 | 0.94 | 54.9 | 93.2 | 10.9 |
+| spec `Spec.MQ.decodeAll`, p(LPS) 0.1, 1 segment | 20000 | 1307 | 0.52 | 4.2 | 4.8 | 0.3 |
+| fast list API `MQ.decodeAll`, same segment | 20000 | 1307 | 0.52 | 0.4 | 45.2 | 3.0 |
+
+Reading: the fast decoder runs at 51–86 M decisions/s on realistic skewed data (the slower
+rows have more LPS and renormalisation work per decision), about 15–18× the spec decoder on
+a small segment (the spec gets relatively slower as segments grow). The MB/s figures are
+low because skewed data packs many decisions per byte; decisions/s is the figure that
+matters for Tier-1. The reference encoder generates data at about 7 M decisions/s. The
+10^6-case random round-trip run (`JPEG2000_MQ_ROUNDTRIPS=1000000 lake exe tests`, suite
+`mq-roundtrip`: encoder → spec and fast decoders, 113 M decisions) takes about 46 s.

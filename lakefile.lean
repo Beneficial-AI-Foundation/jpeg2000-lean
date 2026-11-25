@@ -36,3 +36,11 @@ lean_lib Tests where
 /-- The test runner: `lake exe tests`. -/
 lean_exe tests where
   root := `Tests.Main
+
+/-- Benchmarks: every module under `Bench/` (not a default target). -/
+lean_lib Bench where
+  globs := #[.submodules `Bench]
+
+/-- MQ decoder throughput benchmark (task 2.6): `lake exe bench-mq`. -/
+lean_exe «bench-mq» where
+  root := `Bench.MQ
