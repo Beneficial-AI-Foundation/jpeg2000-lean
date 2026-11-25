@@ -4,6 +4,7 @@ import Spec.MarkerRoundTrip
 import Spec.MQEquiv
 import Spec.MQRoundTrip
 import Spec.Tier1.Context
+import Spec.Tier1.Modes
 import Spec.Tier1.Decode
 import Spec.TagTree
 import Spec.TilePartRoundTrip

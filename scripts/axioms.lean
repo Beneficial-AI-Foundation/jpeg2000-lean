@@ -220,6 +220,21 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.Tier1.stripeColumn_length_le
 #print axioms JPEG2000.Spec.Tier1.mem_scanOrder
 
+-- Phase 3, task 3.3: Tier-1 code-block styles (Spec/Tier1/Modes.lean, Spec/Tier1/Decode.lean;
+-- passKind_cycle and passPlane_group above moved to Modes.lean)
+#print axioms JPEG2000.Spec.Tier1.segmentRuns_sum
+#print axioms JPEG2000.Spec.Tier1.segmentPasses_sum
+#print axioms JPEG2000.Spec.Tier1.segmentRuns_pos
+#print axioms JPEG2000.Spec.Tier1.segmentPasses_pos
+#print axioms JPEG2000.Spec.Tier1.segmentRuns_noTerm
+#print axioms JPEG2000.Spec.Tier1.segmentPasses_plain
+#print axioms JPEG2000.Spec.Tier1.segmentRuns_termAll
+#print axioms JPEG2000.Spec.Tier1.segmentPasses_termAll
+#print axioms JPEG2000.Spec.Tier1.isRawPass_noBypass
+#print axioms JPEG2000.Spec.Tier1.runPassM_plain
+#print axioms JPEG2000.Spec.Tier1.decodeState_plain
+#print axioms JPEG2000.Spec.Tier1.geom_vertCausal_plain
+
 -- Phase 4, task 4.1: tag trees, C4 (Spec/TagTree.lean)
 #print axioms JPEG2000.Spec.TagTree.value_monotone
 #print axioms JPEG2000.Spec.TagTree.inv_init
