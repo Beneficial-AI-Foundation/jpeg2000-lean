@@ -29,6 +29,8 @@ import Tests.Color
 import Tests.Pgx
 import Tests.Decode
 import Tests.Encode
+import Tests.Image
+import Tests.SpecDecode
 import Tests.MQRoundTrip
 import Tests.Conformance
 
@@ -81,6 +83,8 @@ def suites : List Suite :=
     { name := "pgx", run := JPEG2000.Tests.Pgx.run },
     { name := "decode", run := JPEG2000.Tests.Decode.run },
     { name := "encode", run := JPEG2000.Tests.Encode.run },
+    { name := "image", run := JPEG2000.Tests.Image.run },
+    { name := "spec-decode", run := JPEG2000.Tests.SpecDecode.run },
     { name := "conformance", run := JPEG2000.Tests.Conformance.run } ]
 
 end JPEG2000.Tests
