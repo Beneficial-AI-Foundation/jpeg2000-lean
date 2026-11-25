@@ -35,6 +35,15 @@ import Spec.QuantBlock.Write
 import Spec.QuantBlock.Step
 import Spec.QuantBlock
 import Spec.Tier2Wire
+import Spec.Tier1Equiv.Modes.Rel
+import Spec.Tier1Equiv.Modes.Sig
+import Spec.Tier1Equiv.Modes.Steps
+import Spec.Tier1Equiv.Modes.Pass
+import Spec.Tier1Equiv.Modes.Segs
+import Spec.Tier1Equiv.Modes.Inv
+import Spec.Tier1Equiv.Modes
+import Spec.Tier1Equiv.Modes.Strict
+import Spec.Resources
 import Spec.Tier1Equiv.Basic
 import Spec.Tier1Equiv.Rel
 import Spec.Tier1Equiv.Nb
