@@ -4401,9 +4401,6 @@
     "mct": 0,
     "levels": 5,
     "wavelet": "5-3 reversible"
-   },
-   "known_deviations": {
-    "jp2": "Malformed pclr: it declares 4-bit palette columns (Bi = 3) but stores 8-bit values (0xFF, 0xBF, ...). Our palette keeps the low Bi+1 bits of each entry (task 6.1, JPEG2000/Color.lean), OpenJPEG passes the byte through (and then writes values up to 255 in a PGX declared 4-bit). PDF rendering is unaffected: the image dictionary's /ColorSpace /Indexed overrides the JPX colour information, so a PDF reader uses the codestream index plane, which is bit-exact."
    }
   },
   {
@@ -5416,9 +5413,6 @@
     "mct": 0,
     "levels": 0,
     "wavelet": "5-3 reversible"
-   },
-   "known_deviations": {
-    "codestream": "Odd image origin (XOsiz = YOsiz = 1) with 2x2 sub-sampled chroma, converted sYCC->RGB by OpenJPEG's heuristic. Our up-sampling replicates chroma on the reference grid (T.800 B.2; task 6.1 decision), OpenJPEG's sycc420_to_rgb aligns it differently for odd origins: 30 of 1024 pixels differ, all in row 0 and in column 0 (odd rows). Our decoded components are identical to those of jpx_subsampling-10 (the same data at origin 0), where ours and OpenJPEG agree exactly."
    }
   },
   {
