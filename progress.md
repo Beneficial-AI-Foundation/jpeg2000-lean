@@ -17,6 +17,7 @@ Design document: Plan.md
   becomes current. Proof tasks name their theorem IDs from Plan.md §4 (S1–S6, C1–C10).
 
 ## Current wave
+Wave 13: 5.5 (new), 5.6a (new), 7.2 (new)
 
 ## Branches and PRs
 | Phase | Branch | Base | PR | State |
@@ -26,7 +27,7 @@ Design document: Plan.md
 | 2 | (none: all Phase 2 tasks landed on `phase-1-headers`) | — | [#2](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/2) | M2 reached 2026-11-25; ships with PR #2 |
 | 3 | `phase-3-tier1` | `phase-1-headers` | [#3](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/3) | ready (2026-11-25) |
 | 4 | (shares `phase-3-tier1`) | — | [#3](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/3) | ready (2026-11-25, with phase 3) |
-| 5 | `phase-5-reconstruction` | `phase-3-tier1` | — | none |
+| 5 | `phase-5-reconstruction` | `phase-3-tier1` | [#4](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/4) | draft |
 | 6 | `phase-6-jp2-output` | `phase-5-reconstruction` | — | none |
 | 7 | `phase-7-equivalence` | `phase-6-jp2-output` | — | none |
 | 8 | `phase-8-speed` | `phase-7-equivalence` | — | none |
@@ -115,9 +116,11 @@ Plan.md §7 row 5, §5.2 "DWT", §5.4, Annexes E–H. Exit: **M5**: C6, C7, C8 p
 | 5.2 | (landed on `phase-3-tier1`) 5/3 inverse DWT: Annex F spec over `Int` with symmetric extension, in-place lifting on `Int32` planes, C6 | 1.1 | `Spec/DWT53.lean`, `JPEG2000/DWT53.lean`, `Tests/DWT53.lean` | new | | done (2026-11-25) |
 | 5.3 | (landed on `phase-3-tier1`) 9/7 inverse DWT: `Rat` spec, fixed-point lifting (fractional bits chosen from the C8 bound; Plan §10 open question), C8 for DWT | 5.2 | `Spec/DWT97.lean`, `JPEG2000/DWT97.lean`, `Tests/DWT97.lean` | new | | done (2026-11-25) |
 | 5.4 | (landed on `phase-3-tier1`) RCT/ICT, DC shift, clamping; C7, C8 for ICT | 1.1 | `JPEG2000/MCT.lean`, `Spec/MCT.lean`, `Tests/MCT.lean` | new | | done (2026-11-25) |
-| 5.5 | Assembly and pipeline: tiles, sub-sampling, reduced resolution, `JPEG2000.decodeCodestream` | 3.4b, 4.5, 5.1–5.4 | `JPEG2000/Assemble.lean`, `JPEG2000/Decode.lean` | new | todo |
-| 5.6 | T.803 conformance runner (peak error / MSE per class) | 5.5, 0.5 | `Tests/Conformance.lean`, `scripts/conformance.py` | new | todo |
-| 5.7 | M5 check | 5.1–5.6 | — | solo | todo |
+| 5.5 | Assembly and pipeline: tiles, sub-sampling, reduced resolution, `JPEG2000.decodeCodestream` | 3.4b, 4.5, 5.1–5.4 | `JPEG2000/Assemble.lean`, `JPEG2000/Decode.lean`, `Tests/Decode.lean` | new | doing (2026-11-25) |
+| 5.6 | T.803 conformance runner | — | — | — | split (into 5.6a, 5.6b) |
+| 5.6a | Reference-decode reader (PGX; the JP2 reference TIFFs if needed) + metrics (peak error, MSE per component) + per-stream class thresholds from `corpus/manifest.json`, independent of the decoder | 0.5 | `Tests/Pgx.lean`, `Tests/ConformanceData.lean` | new | doing (2026-11-25) |
+| 5.6b | T.803 conformance runner: decode every p0/p1 stream with `decodeCodestream`, compare against the reference decodes at class 0 and 1 thresholds; `lake exe conformance` + CI | 5.5, 5.6a | `Tests/Conformance.lean`, `lakefile.lean`, `.github/workflows/ci.yml` | wt | todo |
+| 5.7 | M5 check | 5.1–5.5, 5.6b | — | solo | todo |
 Exit criterion checked: [ ]
 
 ## Phase 6 — JP2/JPX output
@@ -135,7 +138,7 @@ Plan.md §7 row 7, §4, §5.3. Exit: **M7**: C9, C10, S2, S3 proved; `#print axi
 | ID | Task | Needs | Owns | Par | Status |
 |---|---|---|---|---|---|
 | 7.1 | `Spec.decode` composed from the stage specs; C9 from the stage theorems | 6.2 | `Spec/Decode.lean`, `Spec/Equiv.lean` | new | todo |
-| 7.2 | Reference encoder end to end (one tile, one layer, LRCP, plain mode, 5/3 + RCT; 9/7 variant) | 3.5, 4.1, 1.6 | `Encode/Encode.lean` | new | todo |
+| 7.2 | Reference encoder end to end (one tile, one layer, LRCP, plain mode, 5/3 + RCT; 9/7 variant) | 3.5, 4.1, 1.6 | `Encode/Encode.lean`, `Encode/Tier2.lean`, `Tests/Encode.lean` | new | doing (2026-11-25) |
 | 7.3 | C10: `decode (encode img) = img` for the lossless encoder | 7.1, 7.2 | `Spec/RoundTrip.lean` | new | todo |
 | 7.4 | S2 totality and S3 resource bounds as theorems over `Limits` | 7.1 | `Spec/Resources.lean` | new | todo |
 | 7.5 | M7 check (axioms) | 7.1–7.4 | — | solo | todo |
