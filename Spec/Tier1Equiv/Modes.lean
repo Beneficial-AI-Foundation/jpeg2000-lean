@@ -7,10 +7,12 @@ Plan.md §4 (C3: "the fast EBCOT decoder equals the spec decoder (Annex D, coeff
 coefficient, pass by pass)"), §5.1, §5.2 "Tier-1 / EBCOT" (staged modes); T.800 Annex D
 (D.2–D.7), Table A.19, E.1.1.2. Task 7.1c (extends `Spec.Tier1Equiv.c3_plain`, task 3.6).
 
-`c3_all`: for every buffer `data`, codeword segments `segs` (byte ranges of `data` with their
+`c3_all_exact` (task 5.8 renamed it, with `c3_all_unsup_exact`; `c3_all` and `c3_all_unsup` in
+`Spec.Tier1Equiv.Clamp` are the same statements for the decoders that first drop passes beyond
+`3K − 2`): for every buffer `data`, codeword segments `segs` (byte ranges of `data` with their
 pass counts), block size, band, code-block style byte, `Mb` and zero bit-planes, with every
 segment range inside the buffer and `K = Mb − zbp ≤ 31` whenever a pass is decoded, the fast
-`JPEG2000.Tier1.decodeCodeBlockSegs` and the spec `Spec.Tier1.decodeCodeBlock` of the block
+`JPEG2000.Tier1.decodeCodeBlockSegsExact` and the spec `Spec.Tier1.decodeCodeBlockExact` of the block
 `specBlockM` (mode `Mode.ofStyle style`, segments `segment data start stop` with their pass
 counts) either both fail with the same error, or both succeed and agree on every coefficient:
 the `Int32` value is the spec `Coeff.value`, `sig` is the spec `sig`, and the recomputed
@@ -18,12 +20,12 @@ the `Int32` value is the spec `Coeff.value`, `sig` is the spec `sig`, and the re
 decoder's two extra checks (`validateSegs`).
 
 Both decoders tolerate bad segmentation symbols (the lenient pair); the strict pair
-(`decodeCodeBlockSegsStrict` / `decodeCodeBlockStrict`) is not covered here.
+(`decodeCodeBlockSegsStrictExact` / `decodeCodeBlockStrictExact`) is not covered here.
 
 Proof:
 * argument checks: `validate_eqM` (the checks coincide under the side conditions);
 * styles that decode as plain (`Style.decodesAsPlain`): the fast decoder calls the plain
-  `decodeCodeBlock`, so `c3_plain` applies, once the spec block of the style is shown to decode
+  `decodeCodeBlockExact`, so `c3_plain` applies, once the spec block of the style is shown to decode
   as the plain block (`decodeCodeBlock_plainLike`);
 * the other styles: the initial states are related (`init_relM`), the segment loop simulates
   `decodeSegments` (`runSegs_rel`, part 5), the spec invariant holds (`decodeSegments_inv`,
@@ -149,7 +151,7 @@ theorem startSegment_plainLike (md : Mode) (hb : md.bypass = false) :
 theorem decodeCodeBlock_plainLike (cb : CodeBlock) (hb : cb.mode.bypass = false)
     (hr : cb.mode.reset = false) (ht : cb.mode.termAll = false)
     (hv : cb.mode.vertCausal = false) (hs : cb.mode.segSymbols = false) :
-    Spec.Tier1.decodeCodeBlock cb = Spec.Tier1.decodeCodeBlock { cb with mode := Mode.plain } := by
+    Spec.Tier1.decodeCodeBlockExact cb = Spec.Tier1.decodeCodeBlockExact { cb with mode := Mode.plain } := by
   have hval : cb.validate = ({ cb with mode := Mode.plain } : CodeBlock).validate := by
     unfold CodeBlock.validate
     rw [Spec.Tier1.segmentPasses_plain _ ht hb, Spec.Tier1.segmentPasses_plain _ rfl rfl]
@@ -172,7 +174,7 @@ theorem decodeCodeBlock_plainLike (cb : CodeBlock) (hb : cb.mode.bypass = false)
       | nil => intro i d; rfl
       | cons sg rest ih => intro i d; simp only [Spec.Tier1.decodeSegments, e1, e2, ih]
     exact this _ _ _
-  unfold Spec.Tier1.decodeCodeBlock
+  unfold Spec.Tier1.decodeCodeBlockExact
   rw [hval, hst]
 
 /-! ## Initial states -/
@@ -322,35 +324,35 @@ theorem out_okM {w h : Nat} {b : Band} {vc : Bool} {start : Nat} {raw : Bool}
 
 /-- The spec decoder of a validated block returns its decoded coefficients. -/
 theorem decodeCodeBlock_ok (cb : CodeBlock) (u : Unit) (h : cb.validate = .ok u) :
-    Spec.Tier1.decodeCodeBlock cb = .ok (Spec.Tier1.decodeState cb).coeffs := by
-  unfold Spec.Tier1.decodeCodeBlock
+    Spec.Tier1.decodeCodeBlockExact cb = .ok (Spec.Tier1.decodeState cb).coeffs := by
+  unfold Spec.Tier1.decodeCodeBlockExact
   rw [h]; rfl
 
 /-- **C3 for every code-block style** (Plan.md §4): the fast Tier-1 decoder
-`decodeCodeBlockSegs` equals the Annex D reference decoder `Spec.Tier1.decodeCodeBlock` on
+`decodeCodeBlockSegsExact` equals the Annex D reference decoder `Spec.Tier1.decodeCodeBlockExact` on
 every code-block of every style (Table A.19: bypass, reset, termall, vertically causal,
 predictable termination, segmentation symbols, in any combination) given as codeword segments
 of one buffer — both fail with the same error, or both succeed and agree coefficient by
 coefficient on the value, the significance and `lsbPlane` (`Agree`). Side conditions: every
 segment lies in the buffer, and at most 31 bit-planes are coded when a pass is decoded (the
 fast decoder's two extra checks). -/
-theorem c3_all (data : ByteArray) (segs : Array JPEG2000.Tier1.Seg) (w h : Nat) (band : Band)
+theorem c3_all_exact (data : ByteArray) (segs : Array JPEG2000.Tier1.Seg) (w h : Nat) (band : Band)
     (style : UInt8) (Mb zbp : Nat)
     (hrange : ∀ sg ∈ segs.toList, sg.start ≤ sg.stop ∧ sg.stop ≤ data.size)
     (hK : 0 < (segs.toList.map (·.passes)).sum → Mb - zbp ≤ 31) :
-    match JPEG2000.Tier1.decodeCodeBlockSegs data segs w h band style Mb zbp,
-      Spec.Tier1.decodeCodeBlock (specBlockM data segs w h band style Mb zbp) with
+    match JPEG2000.Tier1.decodeCodeBlockSegsExact data segs w h band style Mb zbp,
+      Spec.Tier1.decodeCodeBlockExact (specBlockM data segs w h band style Mb zbp) with
     | .error e1, .error e2 => e1 = e2
     | .ok o, .ok cs => Agree w h o cs
     | _, _ => False := by
   have hv := validate_eqM data segs w h band style Mb zbp hrange hK
   have hm := styleRel_ofByte style
-  unfold JPEG2000.Tier1.decodeCodeBlockSegs JPEG2000.Tier1.decodeSegsCore
+  unfold JPEG2000.Tier1.decodeCodeBlockSegsExact JPEG2000.Tier1.decodeSegsCore
   dsimp only
   rw [hv]
   cases hval : (specBlockM data segs w h band style Mb zbp).validate with
   | error e =>
-    unfold Spec.Tier1.decodeCodeBlock
+    unfold Spec.Tier1.decodeCodeBlockExact
     simp [hval, bind, Except.bind, Except.map]
   | ok u =>
     rw [decodeCodeBlock_ok _ u hval]
@@ -384,11 +386,11 @@ theorem c3_all (data : ByteArray) (segs : Array JPEG2000.Tier1.Seg) (w h : Nat) 
         have heq : specBlock data 0 0 w h band Mb zbp 0 =
             { specBlockM data segs w h band style Mb zbp with mode := Mode.plain } := by
           simp [specBlock, CodeBlock.ofData, Spec.Tier1.Segment.single, specBlockM, hl]
-        have C := c3_plain data 0 0 w h band Mb zbp 0 ⟨Nat.le_refl _, Nat.zero_le _⟩
+        have C := c3_plain_exact data 0 0 w h band Mb zbp 0 ⟨Nat.le_refl _, Nat.zero_le _⟩
           (fun h0 => absurd h0 (Nat.lt_irrefl 0))
         rw [heq, ← hpl] at C
         revert C
-        generalize JPEG2000.Tier1.decodeCodeBlock data 0 0 w h band Mb zbp 0 = r
+        generalize JPEG2000.Tier1.decodeCodeBlockExact data 0 0 w h band Mb zbp 0 = r
         intro C
         cases r with
         | error e => exact C
@@ -403,11 +405,11 @@ theorem c3_all (data : ByteArray) (segs : Array JPEG2000.Tier1.Seg) (w h : Nat) 
           have heq : specBlock data sg.start sg.stop w h band Mb zbp sg.passes =
               { specBlockM data segs w h band style Mb zbp with mode := Mode.plain } := by
             simp [specBlock, CodeBlock.ofData, Spec.Tier1.Segment.single, specBlockM, hl, hn0]
-          have C := c3_plain data sg.start sg.stop w h band Mb zbp sg.passes
+          have C := c3_plain_exact data sg.start sg.stop w h band Mb zbp sg.passes
             (hrange sg (by rw [hl]; simp)) (fun hp => hK (by omega))
           rw [heq, ← hpl] at C
           revert C
-          generalize JPEG2000.Tier1.decodeCodeBlock data sg.start sg.stop w h band Mb zbp sg.passes = r
+          generalize JPEG2000.Tier1.decodeCodeBlockExact data sg.start sg.stop w h band Mb zbp sg.passes = r
           intro C
           cases r with
           | error e => exact C
@@ -523,20 +525,20 @@ than 31 bit-planes are coded and a pass is decoded, the fast decoder may (and th
 with `unsupported` where the spec succeeds; every other outcome is as in `c3_all`. Only the
 segment ranges are assumed to lie in the buffer. This is the form a relation that tolerates
 `unsupported` fast errors (`Spec.Equiv.ERel`) consumes. -/
-theorem c3_all_unsup (data : ByteArray) (segs : Array JPEG2000.Tier1.Seg) (w h : Nat)
+theorem c3_all_unsup_exact (data : ByteArray) (segs : Array JPEG2000.Tier1.Seg) (w h : Nat)
     (band : Band) (style : UInt8) (Mb zbp : Nat)
     (hrange : ∀ sg ∈ segs.toList, sg.start ≤ sg.stop ∧ sg.stop ≤ data.size) :
-    match JPEG2000.Tier1.decodeCodeBlockSegs data segs w h band style Mb zbp,
-      Spec.Tier1.decodeCodeBlock (specBlockM data segs w h band style Mb zbp) with
+    match JPEG2000.Tier1.decodeCodeBlockSegsExact data segs w h band style Mb zbp,
+      Spec.Tier1.decodeCodeBlockExact (specBlockM data segs w h band style Mb zbp) with
     | .error e1, .error e2 => e1 = e2
     | .ok o, .ok cs => Agree w h o cs
     | .error e, .ok _ => e = .unsupported JPEG2000.Tier1.tier1Loc "more than 31 coded bit-planes"
     | _, _ => False := by
   by_cases hK : 0 < (segs.toList.map (·.passes)).sum → Mb - zbp ≤ 31
-  · have C := c3_all data segs w h band style Mb zbp hrange hK
+  · have C := c3_all_exact data segs w h band style Mb zbp hrange hK
     revert C
-    generalize JPEG2000.Tier1.decodeCodeBlockSegs data segs w h band style Mb zbp = r1
-    generalize Spec.Tier1.decodeCodeBlock (specBlockM data segs w h band style Mb zbp) = r2
+    generalize JPEG2000.Tier1.decodeCodeBlockSegsExact data segs w h band style Mb zbp = r1
+    generalize Spec.Tier1.decodeCodeBlockExact (specBlockM data segs w h band style Mb zbp) = r2
     intro C
     cases r1 <;> cases r2
     · exact C
@@ -547,8 +549,8 @@ theorem c3_all_unsup (data : ByteArray) (segs : Array JPEG2000.Tier1.Seg) (w h :
       ⟨Classical.byContradiction fun h0 => hK fun h1 => absurd h1 h0,
         Classical.byContradiction fun h0 => hK fun _ => by omega⟩
     have hv := validate_eq_unsup data segs w h band style Mb zbp hrange hK'
-    unfold JPEG2000.Tier1.decodeCodeBlockSegs JPEG2000.Tier1.decodeSegsCore
-      Spec.Tier1.decodeCodeBlock
+    unfold JPEG2000.Tier1.decodeCodeBlockSegsExact JPEG2000.Tier1.decodeSegsCore
+      Spec.Tier1.decodeCodeBlockExact
     dsimp only
     rw [hv]
     cases (specBlockM data segs w h band style Mb zbp).validate with

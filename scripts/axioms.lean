@@ -326,7 +326,7 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.Tier1Equiv.validate_eq
 #print axioms JPEG2000.Spec.Tier1Equiv.specBlock_coeffs
 #print axioms JPEG2000.Spec.Tier1Equiv.out_ok
-#print axioms JPEG2000.Spec.Tier1Equiv.c3_plain
+#print axioms JPEG2000.Spec.Tier1Equiv.c3_plain_exact
 #print axioms JPEG2000.Spec.Tier1Equiv.testBit_lit
 #print axioms JPEG2000.Spec.Tier1Equiv.ite_pos'
 #print axioms JPEG2000.Spec.Tier1Equiv.ite_neg'
@@ -983,9 +983,9 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.Tier1EquivM.val_toIntM
 #print axioms JPEG2000.Spec.Tier1EquivM.out_okM
 #print axioms JPEG2000.Spec.Tier1EquivM.decodeCodeBlock_ok
-#print axioms JPEG2000.Spec.Tier1EquivM.c3_all
+#print axioms JPEG2000.Spec.Tier1EquivM.c3_all_exact
 #print axioms JPEG2000.Spec.Tier1EquivM.validate_eq_unsup
-#print axioms JPEG2000.Spec.Tier1EquivM.c3_all_unsup
+#print axioms JPEG2000.Spec.Tier1EquivM.c3_all_unsup_exact
 #print axioms JPEG2000.Spec.Tier1EquivM.decodeBit_bad
 #print axioms JPEG2000.Spec.Tier1EquivM.becomeSignificant_bad
 #print axioms JPEG2000.Spec.Tier1EquivM.zeroCode_bad
@@ -1003,7 +1003,7 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.Tier1EquivM.runPassesM_both
 #print axioms JPEG2000.Spec.Tier1EquivM.runSegs_both
 #print axioms JPEG2000.Spec.Tier1EquivM.core_bad
-#print axioms JPEG2000.Spec.Tier1EquivM.c3_all_strict
+#print axioms JPEG2000.Spec.Tier1EquivM.c3_all_strict_exact
 
 -- Phase 7, task 7.4: S2/S3 (Spec/Resources.lean); the decoder definitions themselves
 #print axioms JPEG2000.decode
@@ -1050,3 +1050,20 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.Tier1Wire.agree_blockAgree
 #print axioms JPEG2000.Spec.Tier1Wire.tier1Equiv
 #print axioms JPEG2000.Spec.Tier1Wire.c9_of_header
+
+-- Phase 5, task 5.8: passes below bit-plane 0 dropped; C3 for the clamping decoders
+-- (Spec/Tier1Equiv/Clamp.lean)
+#print axioms JPEG2000.Spec.Tier1Equiv.specBlock_clamp
+#print axioms JPEG2000.Spec.Tier1Equiv.c3_plain
+#print axioms JPEG2000.Spec.Tier1EquivM.truncSegments_map
+#print axioms JPEG2000.Spec.Tier1EquivM.mem_truncSegs
+#print axioms JPEG2000.Spec.Tier1EquivM.truncSegs_sum_le
+#print axioms JPEG2000.Spec.Tier1EquivM.specBlockM_clamp
+#print axioms JPEG2000.Spec.Tier1EquivM.clampSegs_range
+#print axioms JPEG2000.Spec.Tier1EquivM.clampSegs_sum_le
+#print axioms JPEG2000.Spec.Tier1EquivM.badRange_false
+#print axioms JPEG2000.Spec.Tier1EquivM.decodeCodeBlockSegs_clamp
+#print axioms JPEG2000.Spec.Tier1EquivM.decodeCodeBlockSegsStrict_clamp
+#print axioms JPEG2000.Spec.Tier1EquivM.c3_all
+#print axioms JPEG2000.Spec.Tier1EquivM.c3_all_unsup
+#print axioms JPEG2000.Spec.Tier1EquivM.c3_all_strict

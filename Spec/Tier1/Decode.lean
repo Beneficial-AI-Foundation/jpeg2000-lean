@@ -29,7 +29,9 @@ unchanged; the other styles wrap it (`runPassM`, `decodeSegments`), and
   pass of bit-plane `K−1`; then each lower bit-plane has a significance propagation, a
   magnitude refinement and a cleanup pass (`passKind`, `passPlane`): `3K − 2` passes in all.
   Tier-2 says how many passes are included; exactly that many are decoded (`decodePasses`),
-  possibly stopping in the middle of a bit-plane.
+  possibly stopping in the middle of a bit-plane. Passes signalled beyond the `3K − 2`-th
+  (the cleanup pass of bit-plane 0) code nothing (no bit-plane is left) and are discarded
+  before decoding (`CodeBlock.clampPasses`, task 5.8; OpenJPEG stops at bit-plane 0 too).
 * **D.3.1 — significance propagation** (`sigPropStep`, `sigPropPass`): a coefficient that is
   not yet significant and has at least one significant neighbour among its eight (current
   state, so including coefficients that became significant earlier in this very pass) is
@@ -536,7 +538,9 @@ def tier1Loc : Location := Location.at .tier1
 
 /-- Argument checks: the code-block size bounds of A.6.1 (width and height ≤ 1024, area ≤
 4096, checked before the coefficient array is allocated), at most `3K − 2` passes (D.2;
-none when `K = 0`), and segments structured as the mode requires (`segmentPasses`). -/
+none when `K = 0`), and segments structured as the mode requires (`segmentPasses`).
+`decodeCodeBlock` validates the block after `clampPasses`, so the pass bound only rejects
+blocks given to `decodeCodeBlockExact`. -/
 def CodeBlock.validate (cb : CodeBlock) : Except Error Unit := do
   if cb.width > 1024 ∨ cb.height > 1024 ∨ cb.width * cb.height > 4096 then
     throw (.malformed tier1Loc "code-block larger than 1024 x 1024 or 4096 coefficients")
@@ -551,20 +555,52 @@ segment this is `decodePasses` on that segment (`decodeState_plain`). -/
 def decodeState (cb : CodeBlock) : DecState :=
   decodeSegments cb.mode cb.geom cb.codedPlanes cb.segments 0 (DecState.init cb.geom [])
 
-/-- Tier-1 decoding of one code-block (T.800 Annex D, every code-block style): the
-coefficient states in raster order. Bad segmentation symbols are tolerated. -/
-def decodeCodeBlock (cb : CodeBlock) : Except Error (Array Coeff) := do
+/-- Tier-1 decoding of one code-block **as signalled** (T.800 Annex D, every code-block style):
+the coefficient states in raster order; more than `3K − 2` passes is `malformed`. Bad
+segmentation symbols are tolerated. `decodeCodeBlock` is this on `CodeBlock.clampPasses`. -/
+def decodeCodeBlockExact (cb : CodeBlock) : Except Error (Array Coeff) := do
   cb.validate
   return (decodeState cb).coeffs
 
-/-- As `decodeCodeBlock`, but a segmentation symbol other than `1010` (D.5) is an error
+/-- As `decodeCodeBlockExact`, but a segmentation symbol other than `1010` (D.5) is an error
 (`malformed`). -/
-def decodeCodeBlockStrict (cb : CodeBlock) : Except Error (Array Coeff) := do
+def decodeCodeBlockStrictExact (cb : CodeBlock) : Except Error (Array Coeff) := do
   cb.validate
   let d := decodeState cb
   if d.badSegSymbols != 0 then
     throw (.malformed tier1Loc "bad segmentation symbol")
   return d.coeffs
+
+/-- The first `m` passes of a segment list: whole segments while they fit, then the first
+segment that reaches `m` cut to the remaining passes (its bytes kept), nothing after it. -/
+def truncSegments : List Segment → Nat → List Segment
+  | [], _ => []
+  | s :: ss, m =>
+    if m = 0 then []
+    else if m ≤ s.passes then [{ s with passes := m }]
+    else s :: truncSegments ss (m - s.passes)
+
+/-- **Passes beyond the last bit-plane are discarded** (task 5.8). A block of `K` coded
+bit-planes has `3K − 2` coding passes (D.2; none when `K = 0`); a Tier-2 pass count above that
+(some encoders signal a few trailing passes, e.g. `kodak_2layers_lrcp.j2c`,
+`test_lossless.j2k`) describes passes below bit-plane 0, which code no coefficient bit. They
+are dropped, with their segments, before validation (`truncSegments`); a block within the
+bound is unchanged. OpenJPEG does the same (`opj_t1_decode_cblk` stops when
+`bpno_plus_one` reaches 0). -/
+def CodeBlock.clampPasses (cb : CodeBlock) : CodeBlock :=
+  if cb.numPasses ≤ 3 * cb.codedPlanes - 2 then cb
+  else { cb with segments := truncSegments cb.segments (3 * cb.codedPlanes - 2) }
+
+/-- Tier-1 decoding of one code-block (T.800 Annex D, every code-block style): the
+coefficient states in raster order. Passes beyond `3K − 2` are discarded first
+(`CodeBlock.clampPasses`); bad segmentation symbols are tolerated. -/
+def decodeCodeBlock (cb : CodeBlock) : Except Error (Array Coeff) :=
+  decodeCodeBlockExact cb.clampPasses
+
+/-- As `decodeCodeBlock`, but a segmentation symbol other than `1010` (D.5) is an error
+(`malformed`). -/
+def decodeCodeBlockStrict (cb : CodeBlock) : Except Error (Array Coeff) :=
+  decodeCodeBlockStrictExact cb.clampPasses
 
 /-- The signed coefficient values `±mag` in raster order (bit-plane `p` weighing `2^p`, no
 reconstruction offset). -/

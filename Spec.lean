@@ -43,6 +43,7 @@ import Spec.Tier1Equiv.Modes.Segs
 import Spec.Tier1Equiv.Modes.Inv
 import Spec.Tier1Equiv.Modes
 import Spec.Tier1Equiv.Modes.Strict
+import Spec.Tier1Equiv.Clamp
 import Spec.Tier1Wire
 import Spec.Resources
 import Spec.Tier1Equiv.Basic

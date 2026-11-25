@@ -358,8 +358,8 @@ def fillRows (g : Geo) (fl mags : Array UInt32) : Nat → Plane → Nat → Plan
 /-- Tier-1 decoding of one plain-mode code-block (T.800 Annex D) whose single codeword
 segment is `data[start, stop)`: `w × h` coefficients of a sub-band of orientation `band`,
 `Mb = numBitPlanes`, `zeroBitPlanes` missing planes (so `K = Mb − zeroBitPlanes` coded
-planes), `numPasses` passes included. -/
-def decodeCodeBlock (data : ByteArray) (start stop : Nat) (w h : Nat) (band : Band)
+planes), exactly `numPasses` passes decoded (more than `3K − 2` is `malformed`). -/
+def decodeCodeBlockExact (data : ByteArray) (start stop : Nat) (w h : Nat) (band : Band)
     (numBitPlanes zeroBitPlanes numPasses : Nat) : Except Error CodeBlockOut := do
   let K := numBitPlanes - zeroBitPlanes
   validate data start stop w h K numPasses
@@ -372,5 +372,15 @@ def decodeCodeBlock (data : ByteArray) (start stop : Nat) (w h : Nat) (band : Ba
   let s := runPasses g K numPasses s 0
   let plane := fillRows g s.flags s.mags h (Plane.zero w h) 0
   return { plane, flags := s.flags, codedPlanes := K, numPasses }
+
+/-- Tier-1 decoding of one plain-mode code-block (T.800 Annex D) whose single codeword
+segment is `data[start, stop)`: `w × h` coefficients of a sub-band of orientation `band`,
+`Mb = numBitPlanes`, `zeroBitPlanes` missing planes (so `K = Mb − zeroBitPlanes` coded
+planes), `numPasses` passes included, of which at most `3K − 2` are decoded: passes below
+bit-plane 0 code nothing and are discarded (`Spec.Tier1.CodeBlock.clampPasses`, task 5.8). -/
+def decodeCodeBlock (data : ByteArray) (start stop : Nat) (w h : Nat) (band : Band)
+    (numBitPlanes zeroBitPlanes numPasses : Nat) : Except Error CodeBlockOut :=
+  decodeCodeBlockExact data start stop w h band numBitPlanes zeroBitPlanes
+    (min numPasses (3 * (numBitPlanes - zeroBitPlanes) - 2))
 
 end JPEG2000.Tier1
