@@ -17,7 +17,7 @@ Design document: Plan.md
   becomes current. Proof tasks name their theorem IDs from Plan.md §4 (S1–S6, C1–C10).
 
 ## Current wave
-Wave 17 (resumed after a session restart): 5.8 (wt, restarted from the saved partial diff)
+Wave 17 (resumed after a session restart): 5.8 (wt, restarted from the saved partial diff), 7.1e (new)
 
 ## Branches and PRs
 | Phase | Branch | Base | PR | State |
@@ -150,7 +150,7 @@ Plan.md §7 row 7, §4, §5.3. Exit: **M7**: C9, C10, S2, S3 proved; `#print axi
 | 7.1f | (landed on `phase-6-jp2-output`) Wire the real Tier-2 spec into C9: `Spec/Decode.lean` `Tier2Spec.decode := Spec.Tier2.decodeWithStream`, spec tile path reads `Spec.Tier2.BlockSt` (rect, zbp, segs); restate `Spec.Equiv.Tier2Equiv` as the ERel with `Spec.Tier2Equiv.image` under non-zero sub-sampling; discharge it with `tier2_equiv_of_siz`; update `c9_of_stages` and the skeletons | 7.1b | `Spec/Decode.lean`, `Spec/Equiv.lean`, `Spec/Tier2Wire.lean` | wt | | done (2026-11-25) |
 | 7.1g | (landed on `phase-6-jp2-output`) `Tier2WF`: `Geometry.precinct` lemma (bands ∈ `bandsOf r`, code-block rects inside the band rect), `initPrecincts` invariant per (component, resolution), decoding never changes band/rect/geom (tools: `forIn_inv`, `bind_ok`, `arrayMapM_inv` in `Spec/Tier2Equiv/Tile.lean`) | 7.1f | `Spec/Tier2WF.lean` | new | | done (2026-11-25) |
 | 7.1h | (landed on `phase-6-jp2-output`) Discharge `Spec.Equiv.Tier1Equiv` from `Spec.Tier1EquivM.c3_all_unsup`: `Assemble.tier1Input` produces the buffer/segments matching the spec's `BlockSt` segments (`decodeBlock_eq_st`, `blockOf_segs`), `Agree ⇒ BlockAgree` | 7.1c, 7.1f | `Spec/Tier1Wire.lean` | new | | done (2026-11-25) |
-| 7.1e | Discharge the remaining C9 hypotheses and state C9 unconditionally (header, tile assembly, ROI, DC shift) | 7.1c, 7.1d, 7.1f, 7.1g, 7.1h | `Spec/Equiv.lean` | wt | todo |
+| 7.1e | Discharge `HeaderWF` (ParamsWF of every tile-component — mantissas < 2^11 etc. — and equal transforms on components 0–2 under MCT, from `Header.parse`'s checks) and state the final C9 theorem `Spec.C9.c9` with no stage hypotheses; document its exact conclusion (the `C9Rel` side conditions: `unsupported` allowance, `saturatedBlocks = 0`, C8 range) in `docs/c9.md` for the human's review | 7.1c, 7.1d, 7.1f, 7.1g, 7.1h | `Spec/HeaderWF.lean`, `Spec/C9.lean`, `docs/c9.md` | new | doing (2026-11-25) |
 | 7.2 | (landed on `phase-5-reconstruction`) Reference encoder end to end (one tile, one layer, LRCP, plain mode, 5/3 + RCT; 9/7 variant) | 3.5, 4.1, 1.6 | `Encode/Encode.lean`, `Encode/Tier2.lean`, `Tests/Encode.lean` | new | done (2026-11-25) |
 | 7.3 | C10: `decode (encode img) = img` for the lossless encoder | 7.1a, 7.2 | `Spec/RoundTrip.lean` | new | todo |
 | 7.4 | (landed on `phase-6-jp2-output`) S2 totality and S3 resource bounds as theorems over `Limits` | 7.1a | `Spec/Resources.lean` | new | | done (2026-11-25) |
