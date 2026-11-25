@@ -12,6 +12,8 @@ import JPEG2000.Tier1.Tables
 import JPEG2000.Tier1.Decode
 import JPEG2000.Tier1.Modes
 import JPEG2000.Progression
+import JPEG2000.Tier2.Packet
+import JPEG2000.DWT53
 
 /-!
 # jpeg2000-lean
