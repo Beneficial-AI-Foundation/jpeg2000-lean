@@ -26,7 +26,7 @@ Design document: Plan.md
 | 2 | (none: all Phase 2 tasks landed on `phase-1-headers`) | — | [#2](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/2) | M2 reached 2026-11-25; ships with PR #2 |
 | 3 | `phase-3-tier1` | `phase-1-headers` | [#3](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/3) | ready (2026-11-25) |
 | 4 | (shares `phase-3-tier1`) | — | [#3](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/3) | ready (2026-11-25, with phase 3) |
-| 5 | `phase-5-reconstruction` | `phase-3-tier1` | [#4](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/4) | draft |
+| 5 | `phase-5-reconstruction` | `phase-3-tier1` | [#4](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/4) | ready (2026-11-25) |
 | 6 | `phase-6-jp2-output` | `phase-5-reconstruction` | — | none |
 | 7 | `phase-7-equivalence` | `phase-6-jp2-output` | — | none |
 | 8 | `phase-8-speed` | `phase-7-equivalence` | — | none |
@@ -331,3 +331,4 @@ Exit criterion checked: [ ]
 * 2026-11-25 — phase 3 + 4 milestones: PR #3 marked ready for review (CI 6/6 on b0aa015)
 * 2026-11-25 — wave 13 (phase 5, PR #4): 5.5 (full pipeline `decodeCodestream`: 5/3 bit-exact vs OpenJPEG, all p0/p1 within class-1 thresholds, ROI favours T.800), 5.6a (PGX/TIFF reference reader, metrics, 87-entry threshold table), 7.2 (reference encoder 5/3+RCT and 9/7+ICT; lossless round trips bit-exact through OpenJPEG and our decoder) done; commit "wave 13: 5.5, 5.6a, 7.2 — full decode pipeline, reference data, reference encoder"
 * 2026-11-25 — wave 14 (phase 5, PR #4): 5.6b (conformance runner: class 1 52/52, 5/3 29/29 bit-exact, class 0 informational), 6.2 (consumer `decode`, interleaved 8/16-bit, 6/9 JP2 references within tolerance, 3 need ICC), 7.1a (`Spec.decode`, `c9_of_stages` from 7 stage hypotheses) done; 5.7 M5 ticked (class-1 reading, question for the human); commit "wave 14: 5.6b, 6.2, 7.1a — T.803 conformance (M5), consumer API, Spec.decode + C9 composition"
+* 2026-11-25 — phase 5 milestone: PR #4 marked ready for review (CI 6/6 on 71ff07c)
