@@ -196,3 +196,39 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.Tier1.scContext_zero
 #print axioms JPEG2000.Spec.Tier1.mrContext_range
 #print axioms JPEG2000.Spec.Tier1.contexts_partition
+
+-- Phase 1, task 1.10: tile-part segment round trip (Spec/TilePartRoundTrip.lean)
+#print axioms JPEG2000.Spec.TilePartRoundTrip.parseSOT_rd
+#print axioms JPEG2000.Spec.TilePartRoundTrip.parseSOT_roundTrip
+#print axioms JPEG2000.Spec.TilePartRoundTrip.parseTLM_rd
+#print axioms JPEG2000.Spec.TilePartRoundTrip.parseTLM_roundTrip
+#print axioms JPEG2000.Spec.TilePartRoundTrip.varintHigh_succ
+#print axioms JPEG2000.Spec.TilePartRoundTrip.readVarints_high
+#print axioms JPEG2000.Spec.TilePartRoundTrip.readVarints_encodeVarint
+#print axioms JPEG2000.Spec.TilePartRoundTrip.readVarints_list
+#print axioms JPEG2000.Spec.TilePartRoundTrip.parsePLT_rd
+#print axioms JPEG2000.Spec.TilePartRoundTrip.parsePLT_roundTrip
+#print axioms JPEG2000.Spec.TilePartRoundTrip.rd_range
+#print axioms JPEG2000.Spec.TilePartRoundTrip.parsePPM_rd
+#print axioms JPEG2000.Spec.TilePartRoundTrip.parsePPT_rd
+#print axioms JPEG2000.Spec.TilePartRoundTrip.parsePPM_roundTrip
+#print axioms JPEG2000.Spec.TilePartRoundTrip.parsePPT_roundTrip
+
+-- Phase 3, task 3.2: Tier-1 spec decoder (Spec/Tier1/Decode.lean)
+#print axioms JPEG2000.Spec.Tier1.passKind_cycle
+#print axioms JPEG2000.Spec.Tier1.passPlane_group
+#print axioms JPEG2000.Spec.Tier1.stripeColumn_length_le
+#print axioms JPEG2000.Spec.Tier1.mem_scanOrder
+
+-- Phase 4, task 4.1: tag trees, C4 (Spec/TagTree.lean)
+#print axioms JPEG2000.Spec.TagTree.value_monotone
+#print axioms JPEG2000.Spec.TagTree.inv_init
+#print axioms JPEG2000.Spec.TagTree.encodeAll_spec
+#print axioms JPEG2000.Spec.TagTree.decodeAll_encodeAll
+#print axioms JPEG2000.Spec.TagTree.decode_encode
+#print axioms JPEG2000.Spec.TagTree.decode_encode_init
+#print axioms JPEG2000.Spec.TagTree.idx_inj
+#print axioms JPEG2000.Spec.TagTree.walk_corr
+#print axioms JPEG2000.Spec.TagTree.create_rel
+#print axioms JPEG2000.Spec.TagTree.fast_decode_eq
+#print axioms JPEG2000.Spec.TagTree.fast_decodeValue_eq

@@ -1,5 +1,6 @@
 import Encode.MQ
 import Encode.Marker
+import Encode.TilePart
 
 /-!
 # Reference encoder

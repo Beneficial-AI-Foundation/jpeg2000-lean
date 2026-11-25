@@ -6,6 +6,8 @@ import JPEG2000.Marker
 import JPEG2000.TilePart
 import JPEG2000.MQ
 import JPEG2000.Header
+import JPEG2000.TagTree
+import JPEG2000.Tier2.Geometry
 
 /-!
 # jpeg2000-lean

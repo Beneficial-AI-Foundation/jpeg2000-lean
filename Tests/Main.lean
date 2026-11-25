@@ -12,6 +12,10 @@ import Tests.MQEnc
 import Tests.MQ
 import Tests.Header
 import Tests.Tier1Context
+import Tests.TilePartRoundTrip
+import Tests.Tier1Spec
+import Tests.TagTree
+import Tests.Geometry
 import Tests.MQRoundTrip
 
 /-!
@@ -45,7 +49,11 @@ def suites : List Suite :=
     { name := "mq", run := JPEG2000.Tests.MQ.run },
     { name := "header", run := JPEG2000.Tests.Header.run },
     { name := "mq-roundtrip", run := JPEG2000.Tests.MQRoundTrip.run },
-    { name := "tier1ctx", run := JPEG2000.Tests.Tier1Context.run } ]
+    { name := "tier1ctx", run := JPEG2000.Tests.Tier1Context.run },
+    { name := "tilepart-roundtrip", run := JPEG2000.Tests.TilePartRoundTrip.run },
+    { name := "tier1spec", run := JPEG2000.Tests.Tier1Spec.run },
+    { name := "tagtree", run := JPEG2000.Tests.TagTree.run },
+    { name := "geometry", run := JPEG2000.Tests.Geometry.run } ]
 
 end JPEG2000.Tests
 
