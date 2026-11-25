@@ -1042,3 +1042,11 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.Resources.decodeCodestream_resources
 #print axioms JPEG2000.Spec.Resources.decode_resources
 #print axioms JPEG2000.Spec.Resources.decode_size
+
+-- Phase 7, task 7.1h: Tier-1 wired into C9 (Spec/Tier1Wire.lean)
+#print axioms JPEG2000.Spec.Tier1Wire.validateSegs_error
+#print axioms JPEG2000.Spec.Tier1Wire.fast_error_of_bad
+#print axioms JPEG2000.Spec.Tier1Wire.specCodeBlock_ok
+#print axioms JPEG2000.Spec.Tier1Wire.agree_blockAgree
+#print axioms JPEG2000.Spec.Tier1Wire.tier1Equiv
+#print axioms JPEG2000.Spec.Tier1Wire.c9_of_header
