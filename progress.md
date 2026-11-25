@@ -17,6 +17,7 @@ Design document: Plan.md
   becomes current. Proof tasks name their theorem IDs from Plan.md §4 (S1–S6, C1–C10).
 
 ## Current wave
+Wave 10: 3.4b (wt), 3.6 (new), 4.4 (new), 5.2 (new)
 
 ## Branches and PRs
 | Phase | Branch | Base | PR | State |
@@ -85,9 +86,9 @@ Plan.md §7 row 3, §5.2 "Tier-1", Annex D. Exit: **M3**: C3 proved for plain mo
 | 3.3 | Spec modes: reset, termall, vertically causal, segmentation symbols, predictable termination, bypass (raw) | 3.2 | `Spec/Tier1/Modes.lean`, `Spec/Tier1/Decode.lean`, `Tests/Tier1Spec.lean` | wt | done (2026-11-25) |
 | 3.4 | Fast Tier-1 | — | — | — | split (into 3.4a, 3.4b) |
 | 3.4a | Fast Tier-1, plain mode: 32-bit flag word per coefficient (significance, sign, visited, refined + pre-merged neighbourhood bits), stripe scan, zero-stripe skipping, `Int32` output plane; tested = spec on random blocks | 3.2, 2.3 | `JPEG2000/Tier1/`, `Tests/Tier1Fast.lean` | new | done (2026-11-25) |
-| 3.4b | Fast Tier-1, other modes (reset, termall, causal, segsym, predictable termination, bypass) = 3.3's spec | 3.3, 3.4a | `JPEG2000/Tier1/`, `Tests/Tier1Fast.lean` | wt | todo |
+| 3.4b | Fast Tier-1, other modes (reset, termall, causal, segsym, predictable termination, bypass) = 3.3's spec | 3.3, 3.4a | `JPEG2000/Tier1/`, `Tests/Tier1Fast.lean` | wt | | doing (2026-11-25) |
 | 3.5 | Reference Tier-1 encoder, plain mode | 3.2, 2.2 | `Encode/Tier1.lean`, `Tests/Tier1Enc.lean` | new | done (2026-11-25) |
-| 3.6 | C3 for plain mode: simulation relation flag words ↔ spec state, preserved by each pass | 3.4a | `Spec/Tier1Equiv.lean` | new | todo |
+| 3.6 | C3 for plain mode: simulation relation flag words ↔ spec state, preserved by each pass | 3.4a | `Spec/Tier1Equiv.lean` | new | | doing (2026-11-25) |
 | 3.7 | Tests: every mode combination fast = spec on random code-blocks; T.803 code-blocks vs OpenJPEG | 3.3, 3.4b, 3.5, 4.4 | `Tests/Tier1.lean`, `scripts/diff-codeblocks.py` | new | todo |
 | 3.8 | M3 check | 3.1–3.7 | — | solo | todo |
 Exit criterion checked: [ ]
@@ -99,7 +100,7 @@ Plan.md §7 row 4, §5.2 "Tier-2", Annex B. Exit: **M4**: C4, C5 proved; every T
 | 4.1 | (landed on `phase-1-headers`) Tag trees (B.10.2): decoder, reference encoder, C4 | 1.1 | `JPEG2000/TagTree.lean`, `Spec/TagTree.lean`, `Tests/TagTree.lean` | new | | done (2026-11-25) |
 | 4.2 | (landed on `phase-1-headers`) Geometry (B.5–B.7): tile-components, resolutions, sub-bands, precincts, code-blocks, with `Limits` checks | 1.5 | `JPEG2000/Tier2/Geometry.lean`, `Tests/Geometry.lean` | new | | done (2026-11-25) |
 | 4.3 | Progression orders LRCP/RLCP/RPCL/PCRL/CPRL + POC as explicit iterators; C5 (bijection onto the packet set) | 4.2 | `JPEG2000/Progression.lean`, `Spec/Progression.lean`, `Tests/Progression.lean` | new | done (2026-11-25) |
-| 4.4 | Packet headers (B.10): zero-length packets, inclusion, zero bit-planes, passes, `Lblock`, segment lengths per mode (`Spec.Tier1.segmentPasses`); layer accumulation into per-code-block segments; SOP/EPH; check `Progression.iterationWork` against `Limits` | 4.1, 4.2, 4.3 | `JPEG2000/Tier2/Packet.lean` | new | todo |
+| 4.4 | Packet headers (B.10): zero-length packets, inclusion, zero bit-planes, passes, `Lblock`, segment lengths per mode (`Spec.Tier1.segmentPasses`); layer accumulation into per-code-block segments; SOP/EPH; check `Progression.iterationWork` against `Limits` | 4.1, 4.2, 4.3 | `JPEG2000/Tier2/Packet.lean`, `Tests/Packet.lean` | new | | doing (2026-11-25) |
 | 4.5 | PPM/PPT header sourcing and tile-part ordering | 4.4 | `JPEG2000/Tier2/Headers.lean` | new | todo |
 | 4.6 | Differential: per-code-block segments vs OpenJPEG on every T.803 stream | 4.5, 0.5 | `Tests/Tier2.lean`, `scripts/diff-segments.py` | new | todo |
 | 4.7 | M4 check | 4.1–4.6 | — | solo | todo |
@@ -110,7 +111,7 @@ Plan.md §7 row 5, §5.2 "DWT", §5.4, Annexes E–H. Exit: **M5**: C6, C7, C8 p
 | ID | Task | Needs | Owns | Par | Status |
 |---|---|---|---|---|---|
 | 5.1 | Dequantisation (derived/expounded/none, guard bits) and ROI max-shift | 1.5 | `JPEG2000/Quant.lean`, `Spec/Quant.lean` | new | todo |
-| 5.2 | 5/3 inverse DWT: Annex F spec over `Int` with symmetric extension, in-place lifting on `Int32` planes, C6 | 1.1 | `Spec/DWT53.lean`, `JPEG2000/DWT53.lean` | new | todo |
+| 5.2 | 5/3 inverse DWT: Annex F spec over `Int` with symmetric extension, in-place lifting on `Int32` planes, C6 | 1.1 | `Spec/DWT53.lean`, `JPEG2000/DWT53.lean`, `Tests/DWT53.lean` | new | | doing (2026-11-25) |
 | 5.3 | 9/7 inverse DWT: `Rat` spec, fixed-point lifting (fractional bits chosen from the C8 bound; Plan §10 open question), C8 for DWT | 5.2 | `Spec/DWT97.lean`, `JPEG2000/DWT97.lean` | new | todo |
 | 5.4 | RCT/ICT, DC shift, clamping; C7, C8 for ICT | 1.1 | `JPEG2000/MCT.lean`, `Spec/MCT.lean` | new | todo |
 | 5.5 | Assembly and pipeline: tiles, sub-sampling, reduced resolution, `JPEG2000.decodeCodestream` | 3.4b, 4.5, 5.1–5.4 | `JPEG2000/Assemble.lean`, `JPEG2000/Decode.lean` | new | todo |
@@ -221,6 +222,7 @@ Exit criterion checked: [ ]
 * Proofs: two `if`s with different `Decidable` instances for the same condition — `split <;> rename_i h <;> simp only [h, and_self, ↓reduceIte]` (no `if_congr` in core). Rewrite under a `do` bind continuation with `simp only [lemma args]`, not `rw`. Lex order on `List Nat`: `List.le_trans/le_total/lt_asymm/le_iff_lt_or_eq/append_left_lt` + `List.pairwise_mergeSort`, `List.mergeSort_perm` → "strictly sorted by key + same members ⇒ equal". `h ▸ hyp` rewrites everywhere — use `have … := by rw [← h]; exact hyp`. A concatenated scratch check can pass while the module build fails (e.g. `split` on a `match` whose scrutinee then needs `simp only [hv]` with `rename_i hv`) — always rebuild after integration.
 
 ## Decisions and deviations from the design document
+* Wave 10: 3.4b and 3.6 run together; 3.4b must leave every plain-path definition of `JPEG2000/Tier1/Decode.lean` unchanged (modes go in new definitions + a dispatching entry point) so 3.6 proves against a stable target. 5.2 is pulled forward (independent files).
 * Wave 8 selection: Phases 1–2 have no further parallel work and Phase 3 has one ready task, so the wave is filled with the ready Phase 4 starters 4.1/4.2 (independent files).
 * 0.1: three libraries (`JPEG2000`, `Spec`, `Encode`) with one umbrella each, all default targets; `Tests` is a separate lib built only via `lake build tests`. `.mcp.json` pins `lean-lsp-mcp==0.33.0` with `lean_build` disabled (as bib-lean).
 
