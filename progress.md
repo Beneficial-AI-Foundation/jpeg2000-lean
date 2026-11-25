@@ -21,7 +21,7 @@ Design document: Plan.md
 ## Branches and PRs
 | Phase | Branch | Base | PR | State |
 |---|---|---|---|---|
-| 0 | `phase-0-infra` | `origin/main` | — | none |
+| 0 | `phase-0-infra` | `origin/main` | [#1](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/1) | draft |
 | 1 | `phase-1-headers` | `phase-0-infra` | — | none |
 | 2 | `phase-2-mq` | `phase-1-headers` | — | none |
 | 3 | `phase-3-tier1` | `phase-2-mq` | — | none |
@@ -174,3 +174,4 @@ Exit criterion checked: [ ]
 ## Blocked / questions for the human
 
 ## Log (append-only; one line per integrated wave)
+* 2026-11-25 — wave 0 (phase 0, PR #1): ledger bootstrapped from Plan.md §7; draft PR #1 opened; commit "wave 0: ledger"
