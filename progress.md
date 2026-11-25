@@ -17,6 +17,7 @@ Design document: Plan.md
   becomes current. Proof tasks name their theorem IDs from Plan.md §4 (S1–S6, C1–C10).
 
 ## Current wave
+Wave 6: 1.5 (new), 2.4 (new), 2.5 (new), 2.6 (wt)
 
 ## Branches and PRs
 | Phase | Branch | Base | PR | State |
@@ -55,7 +56,7 @@ Plan.md §7 row 1, §3, Annex A/I. Exit: **M1**: every T.803 stream and every co
 | 1.2 | JP2/JPX box parser (Annex I): box headers incl. XL boxes, signature/ftyp/jp2h (ihdr, colr, pclr, cmap, cdef, bpcc, res ignored)/jp2c; raw J2K detection | 1.1 | `JPEG2000/Box.lean`, `Tests/Box.lean` | new | | done (2026-11-25) |
 | 1.3 | Main-header marker segments (Annex A): SIZ, COD/COC, QCD/QCC, RGN, POC, COM, CAP/CRG tolerated; typed records | 1.1 | `JPEG2000/Marker.lean`, `Tests/Marker.lean` | new | | done (2026-11-25) |
 | 1.4 | Tile-part markers SOT/SOD/EOC, PPM/PPT/PLT/TLM, tile-part assembly into tiles (Psot=0, out-of-order parts, TNsot) | 1.3 | `JPEG2000/TilePart.lean`, `Tests/TilePart.lean` | new | | done (2026-11-25) |
-| 1.5 | `Header`: main + per-tile headers merged (COD/COC/QCD/QCC precedence, tile overrides), validation against `Limits` before allocation; `parseCodestream` | 1.3, 1.4 | `JPEG2000/Header.lean`, `Tests/Header.lean` | new | todo |
+| 1.5 | `Header`: main + per-tile headers merged (COD/COC/QCD/QCC precedence, tile overrides), validation against `Limits` before allocation; `parseCodestream` | 1.3, 1.4 | `JPEG2000/Header.lean`, `Tests/Header.lean` | new | | doing (2026-11-25) |
 | 1.6 | Marker-segment serialiser (`Encode/Marker.lean`) and the round-trip theorem `parse (serialise m) = m` for every marker segment type (`Spec/MarkerRoundTrip.lean`) | 1.3 | `Encode/Marker.lean`, `Spec/MarkerRoundTrip.lean` | new | | done (2026-11-25) |
 | 1.7 | Header dump exe + `scripts/diff-headers.py` comparing against `opj_dump` on every corpus stream | 1.2, 1.5, 0.5 | `Tests/HeaderDump.lean`, `scripts/diff-headers.py` | new | todo |
 | 1.8 | M1 check | 1.1–1.7 | — | solo | todo |
@@ -68,9 +69,9 @@ Plan.md §7 row 2, §5.2 "MQ decoder", Annex C. Exit: **M2**: C1 and C2 proved; 
 | 2.1 | (landed on `phase-1-headers`) `Spec.MQ`: Qe table (C.2) as data, `INITDEC`/`DECODE`/`RENORMD`/`BYTEIN` transcribed over `Nat`/`List UInt8` with synthetic `0xFF` padding past the end | 0.2 | `Spec/MQ.lean` | new | | done (2026-11-25) |
 | 2.2 | (landed on `phase-1-headers`) Reference MQ encoder (Annex C encoder flowcharts, `FLUSH`) | 2.1 | `Encode/MQ.lean` | new | | done (2026-11-25) |
 | 2.3 | (landed on `phase-1-headers`) Fast MQ decoder: `UInt32` `C`/`A`/`CT`, context state array, no GMP, bounded reads | 2.1, 1.1 | `JPEG2000/MQ.lean` | new | | done (2026-11-25) |
-| 2.4 | C1: `mqDecode (mqEncode s) = s` | 2.1, 2.2 | `Spec/MQRoundTrip.lean` | new | todo |
-| 2.5 | C2: fast decoder = `Spec.MQ` on every input; termination of `RENORMD` | 2.3 | `Spec/MQEquiv.lean` | new | todo |
-| 2.6 | Tests (10⁶ random round trips, fixed vectors) + throughput bench | 2.2, 2.3 | `Tests/MQ.lean`, `Bench/MQ.lean` | new | todo |
+| 2.4 | C1: `mqDecode (mqEncode s) = s` | 2.1, 2.2 | `Spec/MQRoundTrip.lean` | new | | doing (2026-11-25) |
+| 2.5 | C2: fast decoder = `Spec.MQ` on every input; termination of `RENORMD` | 2.3 | `Spec/MQEquiv.lean` | new | | doing (2026-11-25) |
+| 2.6 | Tests (10⁶ random round trips, fixed vectors) + throughput bench | 2.2, 2.3 | `Tests/MQRoundTrip.lean`, `Bench/MQ.lean`, `lakefile.lean` (exe `bench-mq`, lib `Bench`) | wt | doing (2026-11-25) |
 | 2.7 | M2 check | 2.1–2.6 | — | solo | todo |
 Exit criterion checked: [ ]
 
