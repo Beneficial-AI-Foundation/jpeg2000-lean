@@ -1027,6 +1027,10 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.Resources.decode_limitExceeded_of_geometry
 #print axioms JPEG2000.Spec.Resources.decode_limitExceeded_of_area
 #print axioms JPEG2000.Spec.Resources.decode_limitExceeded_of_bytes
+#print axioms JPEG2000.Spec.Resources.allocOutput_limitOnly
+#print axioms JPEG2000.Spec.Resources.allocOutput_ok_iff
+#print axioms JPEG2000.Spec.Resources.decodeCodestream_limitExceeded_of_output
+#print axioms JPEG2000.Spec.Resources.decode_limitExceeded_of_output
 #print axioms JPEG2000.Spec.Resources.blit_dims
 #print axioms JPEG2000.Spec.Resources.place_dims
 #print axioms JPEG2000.Spec.Resources.decodeCodestream_planes

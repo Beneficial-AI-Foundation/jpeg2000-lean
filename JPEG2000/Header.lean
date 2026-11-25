@@ -42,8 +42,13 @@ Precedence is by kind, independent of the order of the segments in a header (T.8
   `Ysiz − YOsiz`) ≤ `maxImageSide`, area ≤ `maxImageArea`, number of tiles ≤ `maxTiles`,
   number of tile-components (tiles × `Csiz`) ≤ `maxCodeBlocks` (each tile-component gets a
   `CompParams` record and later per-tile-component state; no separate `Limits` field
-  exists), samples over all components (B.2, sub-sampled sizes) ≤ `maxWorkSamples`, output
-  bytes (1/2/4/8 bytes per sample by bit depth) ≤ `maxDecodedBytes`.
+  exists). These bound what the stream **declares** and protect against absurd headers.
+  The sample and byte budgets (`maxWorkSamples`, `maxDecodedBytes`) bound what is
+  **allocated**, which depends on the resolution reduction and on the tiling, so they are
+  checked where the allocation happens (task 6.5): the reduced output grids in
+  `Decode.allocOutput` (B-14), one tile's reduced tile-component planes in
+  `Assemble.decodeTile`, the display channels in `JPEG2000.decode`. Header parsing allocates
+  nothing proportional to the sample count.
 * After the merge, from the geometry only (nothing allocated): total code-blocks over every
   tile of the tile grid (tiles without tile-parts use the main-header parameters) ≤
   `maxCodeBlocks`, total precincts ≤ `maxPrecincts`, total packets (layers × precincts,
@@ -63,7 +68,8 @@ need equal
   warning when the tile-component sizes differ) and the same wavelet transform in that tile
   (G.2: RCT with 5/3, ICT with 9/7); POC `CSpoc < Csiz`. Lenient (clamped later by the
   progression, B.12, as OpenJPEG): `CEpoc > Csiz`, `REpoc > NL + 1`, `LYEpoc > layers`.
-* Not yet: reduced-resolution decoding constraints.
+* Reduced-resolution decoding (`reduce`) is the decoder's: `Decode.decodeCodestream` bounds it by
+  `maxDecompLevels` and checks the reduced grids against the sample and byte budgets.
 -/
 
 namespace JPEG2000.Header
@@ -435,7 +441,9 @@ def tileCoding (mh : MainHeader) (mainOv : Overrides) (defaults : Coding) (t : T
 def bytesPerSample (depth : Nat) : Nat :=
   if depth ≤ 8 then 1 else if depth ≤ 16 then 2 else if depth ≤ 32 then 4 else 8
 
-/-- Geometry checks before any per-tile allocation (see the module doc). -/
+/-- Geometry checks of the declared image before any per-tile allocation: image side, area,
+tile count, tile-components (see the module doc). The sample and byte budgets are checked
+where they are allocated, at the requested resolution reduction (task 6.5). -/
 def checkGeometry (L : Limits) (mh : MainHeader) : Except Error Unit := do
   let s := mh.siz
   let loc : Location := .atOffset .marker 2
@@ -446,11 +454,6 @@ def checkGeometry (L : Limits) (mh : MainHeader) : Except Error Unit := do
   let nt := numTiles s
   L.check loc .tiles nt
   L.check loc .codeBlocks (nt * s.csiz)
-  let samples := s.components.toList.map fun c =>
-    let r := compRect img c
-    (r.width * r.height, bytesPerSample c.depth.toNat)
-  L.check loc .workSamples (samples.foldl (fun a (n, _) => a + n) 0)
-  L.check loc .decodedBytes (samples.foldl (fun a (n, b) => a + n * b) 0)
 
 /-- Totals of the work estimate: code-blocks, precincts, packets. -/
 structure Totals where

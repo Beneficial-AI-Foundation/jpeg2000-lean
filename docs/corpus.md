@@ -226,8 +226,11 @@ sub-sampled chroma (2x2, 2x1, odd origin); 1 to 12 tiles; `/SMaskInData` 1 and 2
 without `/Matte`; `/ColorSpace` absent (JPX colour governs: `issue5475`, `issue5481`,
 `issue5549`, `perf_codecs_jpx`, `jpx_smaskindata-7`), Device{Gray,RGB,CMYK}, ICCBased,
 Indexed (over a 4-bit JP2 palette), DeviceN with 2 and 5 colorants. The largest,
-`issue19517-8.jpx`, is 12608 x 16806 x 4 (212 Mpx, a rendered map): our decoder refuses it
-under `Limits.default` (`workSamples` 847,560,192 > 2^28, also at `reduce 3`).
+`issue19517-8.jpx`, is 12608 x 16806 x 4 (212 Mpx, a rendered map, one tile): under
+`Limits.default` our decoder decodes it at `reduce >= 1` and refuses full resolution
+(`workSamples` 847,560,192 > 2^28) since task 6.5 made the sample/byte budgets bound the
+reduced output grids; with raised limits it decodes at full resolution bit-identically to
+OpenJPEG (`Tests/LargeImage.lean`). Its manifest entry has `"reduce": 2`.
 
 ### Extracting
 
@@ -262,11 +265,13 @@ file: palette, cmap/cdef, sYCC; skipped for ICC and non-sRGB/grey/sYCC enumerate
 which Debian's `opj_decompress` converts itself through lcms2 or its own CMYK/CIELab code).
 Tolerance (peak error per component): reversible 0, irreversible 1 (fixed-point vs
 OpenJPEG's float 9/7, the ±1 measured on every T.803 stream in task 5.5), +1 for an sYCC
-conversion (task 6.1). Images above `--max-mpx` (40) are skipped.
+conversion (task 6.1). An entry's `"reduce": k` makes both decoders discard k resolution
+levels (`issue19517-8`: 2). Images whose reduced area is above `--max-mpx` (40) are skipped.
 
-Result (2026-11-25, OpenJPEG 2.5.3): **38/41 within tolerance** (every reversible component
-bit-exact, every 9/7 component peak ≤ 1, MSE ≤ 0.0012), 3 known deviations, 0 failures,
-1 skipped (`issue19517-8`, size). `--jp2`: 9/9. The known deviations, each recorded with
+Result (2026-11-25, OpenJPEG 2.5.3, after task 6.5): **39/42 within tolerance** (every
+reversible component bit-exact, every 9/7 component peak ≤ 1, MSE ≤ 0.0012), 3 known
+deviations, 0 failures, 0 skipped (`issue19517-8` compared at reduce 2, codestream and jp2
+levels bit-exact). `--jp2`: 9/9. The known deviations, each recorded with
 its evidence in the entry's `known_deviations`:
 
 * `bug_jpx-15` — OpenJPEG 2.5.3 aborts (`munmap_chunk(): invalid pointer`) on two

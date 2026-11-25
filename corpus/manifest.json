@@ -4559,7 +4559,8 @@
     "levels": 5,
     "wavelet": "5-3 reversible"
    },
-   "note": "12608 x 16806, 4 components (212 Mpx): skipped by scripts/diff-images.py (--max-mpx 40). Our decoder refuses it under Limits.default (workSamples 847,560,192 > maxWorkSamples 2^28), also at reduce 3. A >= 20 Mpx real-world benchmark candidate (Plan 8.4) once the limits allow it."
+   "reduce": 2,
+   "note": "12608 x 16806, 4 components (212 Mpx), one tile. Compared by scripts/diff-images.py at reduce 2 (3152 x 4202, as opj_decompress -r 2). Since task 6.5 the sample/byte budgets bound the reduced output grids: under Limits.default it decodes at reduce >= 1 (reduce 0 is refused: workSamples 847,560,192 > maxWorkSamples 2^28); with raised limits it decodes at full resolution bit-identically to OpenJPEG (Tests/LargeImage.lean, JPEG2000_LARGE_IMAGE=1). A >= 20 Mpx real-world benchmark candidate (Plan 8.4)."
   },
   {
    "path": "pdf-jpx/issue19517-13.jpx",

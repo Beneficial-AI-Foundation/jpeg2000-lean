@@ -80,37 +80,52 @@ headline ones:
 | Quantity | Bound | Theorem |
 |---|---|---|
 | input length | `maxInputBytes` | `parse_within`, `decode_size` |
-| image side, area, tiles, `tiles × Csiz`, declared samples / output bytes | `maxImageSide`, `maxImageArea`, `maxTiles`, `maxCodeBlocks`, `maxWorkSamples`, `maxDecodedBytes` | `checkGeometry_ok_iff` (`GeometryWithin`), `parse_within` |
+| declared image side, area, tiles, `tiles × Csiz` (full resolution) | `maxImageSide`, `maxImageArea`, `maxTiles`, `maxCodeBlocks` | `checkGeometry_ok_iff` (`GeometryWithin`), `parse_within` |
 | code-blocks, precincts, packets of the whole tile grid (exact totals, `Header.checkWork`) | `maxCodeBlocks`, `maxPrecincts`, `maxPackets` | `checkWork_within` |
 | `reduce` | `maxDecompLevels` | `decodeCodestream_resources` |
-| output component planes (cells / bytes at `bytesPerSample`); each plane exactly `width × height` | `maxWorkSamples` / `maxDecodedBytes` | `allocOutput_ok`, `decodeCodestream_resources` |
+| output component planes at the requested `reduce` (cells `outputCells` / bytes `outputBytes` at `bytesPerSample`); each plane exactly `width × height` | `maxWorkSamples` / `maxDecodedBytes` | `allocOutput_ok`, `allocOutput_ok_iff`, `decodeCodestream_resources` |
 | `decode`: image area | `maxImageArea` | `decode_resources`, `decode_size` |
 | `decode`: up-sampled channels (fresh cells / bytes; every channel, alpha and other channel is one of them, `w × h`) | `maxWorkSamples` / `maxDecodedBytes` | `decode_resources` (`ImageWithin`) |
 | interleaved 8/16-bit buffer (exact size `w·h·n·(1|2)`) | `maxDecodedBytes` | `interleave_size`, `interleaved8_size`, `interleaved16_size` |
-| per tile: all tile-component planes held until the MCT; each tile-component plane | `maxWorkSamples` | `decodeTile_work`, `reconstructTileComp_work` |
+| per tile (reduced): all tile-component planes held until the MCT; each tile-component plane | `maxWorkSamples` | `decodeTile_work`, `reconstructTileComp_work` |
 | per tile: packet iteration work (`iterationWork`, ≥ packets visited) | `maxPackets` | `decodeTilePacketsWith_ok`, `decodeWithStream_ok` |
 | coding passes of all tiles | `maxCodingPasses` | `decodeAllTileCodeBlocks_passes` |
 
-**Excess ⇒ `limitExceeded`.** `checkGeometry_limitOnly`: the geometry check fails only with
-`limitExceeded` (value > bound). `decode_limitExceeded_of_geometry` (and the `_of_area`,
-`_of_bytes` corollaries): if the container (`Box.parseFile`) and the main header
-(`parseMainHeader`) parse and the declared geometry violates `GeometryWithin` — e.g. area >
-`maxImageArea` or declared output bytes > `maxDecodedBytes` — then `decode L data opts =
-.error (.limitExceeded loc k v b)` with `b < v`, for every `opts`. The precondition is needed:
-a stream malformed before the end of its main header fails with `malformed`/`truncated`
-first. (A too-large `reduce` is also `limitExceeded`, checked first.)
+**Declared versus allocated (task 6.5).** The header bounds what the stream *declares*
+(side, area, tiles, tile-components, at full resolution: absurd headers are refused before
+the tile-parts are read); `maxWorkSamples`/`maxDecodedBytes` bound what is *allocated*, at
+the requested reduction: the output grids (`Decode.allocOutput`, B-14), one tile's reduced
+planes (`Assemble.decodeTile`; tiles are decoded one at a time), `decode`'s channels and
+buffers. Every allocation is still bounded by a `Limits`-derived function; peak memory is
+about `4 bytes × (output cells + one tile's cells) ≤ 8 · maxWorkSamples` bytes plus `decode`'s
+channels and buffers.
 
-### Robustness to task 6.5
+**Excess ⇒ `limitExceeded`.** `checkGeometry_limitOnly`: the geometry check fails only with
+`limitExceeded` (value > bound). `decode_limitExceeded_of_geometry` (and the `_of_area`
+corollary): if the container (`Box.parseFile`) and the main header (`parseMainHeader`) parse
+and the declared geometry violates `GeometryWithin` — e.g. area > `maxImageArea` — then
+`decode L data opts = .error (.limitExceeded loc k v b)` with `b < v`, for every `opts`. The
+precondition is needed: a stream malformed before the end of its main header fails with
+`malformed`/`truncated` first. (A too-large `reduce` is also `limitExceeded`, checked first.)
+`decodeCodestream_limitExceeded_of_output`, `decode_limitExceeded_of_output` and
+`decode_limitExceeded_of_bytes`: if `Header.parse L data = .ok h` and the output at the
+requested reduction exceeds `maxWorkSamples` cells (`outputCells h.siz reduce`) or
+`maxDecodedBytes` bytes (`outputBytes h.siz reduce`), the decoder fails with `limitExceeded`
+before any plane is allocated (`allocOutput_ok_iff`, `allocOutput_limitOnly`). Before 6.5,
+`decode_limitExceeded_of_bytes` took the main-header hypotheses and the full-resolution
+`declaredBytes`; the bound moved to what is allocated, so its precondition is now the whole
+header (the check runs after the tile-part headers are parsed).
+
+### Maintenance
 
 The statements name checked quantities (`GeometryWithin` mirrors `checkGeometry`;
-`allocOutput_ok` the reduced output grids; `tileCells` the per-tile set), so when 6.5 changes
-*what* is checked (reduced grids, per-tile working sets) the statements keep their shape, but
-the proofs unfold `decodeCodestream`, `Decode.allocOutput`, `decode`, `Assemble.decodeTile`,
-`reconstructTileComp`, `Header.checkGeometry`/`checkWork`, `Tier2.Packet.decodeTilePacketsWith`
-and `Tier2.Headers.decodeAllTileCodeBlocks`: an edit there must re-check
-`lake env lean Spec/Resources.lean` (as with the C9 skeletons). If 6.5 drops the full-resolution
-`workSamples`/`decodedBytes` checks from `checkGeometry`, `GeometryWithin` must drop them too
-(and `decode_limitExceeded_of_bytes` would then rest on `allocOutput`'s check instead).
+`allocOutput_ok`/`outputCells`/`outputBytes` the reduced output grids; `tileCells` the
+per-tile set). The proofs unfold `decodeCodestream`, `Decode.allocOutput`, `decode`,
+`Assemble.decodeTile`, `reconstructTileComp`, `Header.checkGeometry`/`checkWork`,
+`Tier2.Packet.decodeTilePacketsWith` and `Tier2.Headers.decodeAllTileCodeBlocks`: an edit
+there must re-check `lake env lean Spec/Resources.lean` (as with the C9 skeletons). Task 6.5
+dropped the full-resolution `workSamples`/`decodedBytes` checks from `checkGeometry` (and
+from `GeometryWithin`); `decode_limitExceeded_of_bytes` now rests on `allocOutput`'s check.
 
 ### Not proved (gaps, stated precisely)
 
@@ -137,5 +152,6 @@ and `Tier2.Headers.decodeAllTileCodeBlocks`: an edit there must re-check
    palette/sYCC planes, Tier-1 concatenated segment buffers (`Assemble.tier1Input`, bounded by
    the input length), `TagTree`/`Geometry` per-band checks, `ppmChunkIndex`. Each is checked in
    code; the theorems would follow the same pattern (`bind_ok` + `check_ok`).
-5. Excess ⇒ `limitExceeded` is proved for the geometry checks only; for later checks
-   (work totals, per-tile planes, passes) another error may legitimately come first.
+5. Excess ⇒ `limitExceeded` is proved for the geometry checks and the output allocation
+   (`allocOutput`); for later checks (work totals, per-tile planes, passes) another error may
+   legitimately come first.
