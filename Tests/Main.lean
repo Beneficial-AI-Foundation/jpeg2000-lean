@@ -21,6 +21,9 @@ import Tests.Tier1Enc
 import Tests.Progression
 import Tests.Packet
 import Tests.DWT53
+import Tests.Tier2Headers
+import Tests.Quant
+import Tests.DWT97
 import Tests.MQRoundTrip
 
 /-!
@@ -63,7 +66,10 @@ def suites : List Suite :=
     { name := "tier1enc", run := JPEG2000.Tests.Tier1Enc.run },
     { name := "progression", run := JPEG2000.Tests.Progression.run },
     { name := "packet", run := JPEG2000.Tests.Packet.run },
-    { name := "dwt53", run := JPEG2000.Tests.DWT53.run } ]
+    { name := "dwt53", run := JPEG2000.Tests.DWT53.run },
+    { name := "tier2headers", run := JPEG2000.Tests.Tier2Headers.run },
+    { name := "quant", run := JPEG2000.Tests.Quant.run },
+    { name := "dwt97", run := JPEG2000.Tests.DWT97.run } ]
 
 end JPEG2000.Tests
 

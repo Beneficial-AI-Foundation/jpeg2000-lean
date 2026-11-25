@@ -14,6 +14,9 @@ import JPEG2000.Tier1.Modes
 import JPEG2000.Progression
 import JPEG2000.Tier2.Packet
 import JPEG2000.DWT53
+import JPEG2000.Tier2.Headers
+import JPEG2000.Quant
+import JPEG2000.DWT97
 
 /-!
 # jpeg2000-lean

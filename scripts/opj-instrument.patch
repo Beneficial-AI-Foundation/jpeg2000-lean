@@ -1,0 +1,248 @@
+jpeg2000-lean task 4.6a: instrument OpenJPEG v2.5.3 (commit 210a8a56) for
+differential tests. Applied by scripts/build-opj-instrumented.sh with
+`patch -p1` in the extracted tarball. Only src/lib/openjp2/t1.c changes:
+when OPJ_DUMP_FILE is set, one "cb" line per code-block (Tier-2 result) and
+one "coef" line per decoded code-block (Tier-1 result) are written to it.
+Format: docs/differential.md. No output and no behaviour change otherwise.
+
+--- a/src/lib/openjp2/t1.c
++++ b/src/lib/openjp2/t1.c
+@@ -57,6 +57,187 @@
+ 
+ #include "t1_luts.h"
+ 
++/* ---- jpeg2000-lean differential dump (scripts/opj-instrument.patch) ----
++ * Active only when the environment variable OPJ_DUMP_FILE names a file.
++ * Line format: docs/differential.md of jpeg2000-lean. Build with
++ * OPJ_USE_THREAD=OFF so that lines come out in a deterministic order. */
++static FILE *opj_dump_fp = NULL;
++static int opj_dump_state = 0; /* 0: not looked yet, 1: on, -1: off */
++
++static FILE *opj_dump_get(void)
++{
++    if (opj_dump_state == 0) {
++        const char *path = getenv("OPJ_DUMP_FILE");
++        opj_dump_state = -1;
++        if (path != NULL && path[0] != '\0') {
++            opj_dump_fp = fopen(path, "w");
++            if (opj_dump_fp != NULL) {
++                opj_dump_state = 1;
++                fprintf(opj_dump_fp, "opjdump 1\n");
++            }
++        }
++    }
++    return opj_dump_fp;
++}
++
++static int opj_dump_flag(const char *name)
++{
++    const char *v = getenv(name);
++    return v != NULL && strcmp(v, "1") == 0;
++}
++
++#define OPJ_DUMP_FNV_INIT 0xcbf29ce484222325ULL
++
++/* FNV-1a 64 */
++static OPJ_UINT64 opj_dump_fnv(OPJ_UINT64 h, const OPJ_BYTE *p, OPJ_UINT32 n)
++{
++    while (n-- > 0) {
++        h ^= *p++;
++        h *= 0x100000001b3ULL;
++    }
++    return h;
++}
++
++/* Hash (and optionally hex-print) the next n bytes of the concatenated
++ * chunks of cblk, advancing the cursor (*ci, *coff). Stops at the end of
++ * the chunks. */
++static OPJ_UINT64 opj_dump_range(const opj_tcd_cblk_dec_t *cblk,
++                                 OPJ_UINT32 *ci, OPJ_UINT32 *coff,
++                                 OPJ_UINT32 n, OPJ_UINT64 h, FILE *hex)
++{
++    while (n > 0 && *ci < cblk->numchunks) {
++        const opj_tcd_seg_data_chunk_t *c = &cblk->chunks[*ci];
++        OPJ_UINT32 k, take = c->len - *coff;
++        if (take > n) {
++            take = n;
++        }
++        h = opj_dump_fnv(h, c->data + *coff, take);
++        if (hex != NULL) {
++            for (k = 0; k < take; ++k) {
++                fprintf(hex, "%02x", c->data[*coff + k]);
++            }
++        }
++        *coff += take;
++        n -= take;
++        if (*coff >= c->len) {
++            ++*ci;
++            *coff = 0;
++        }
++    }
++    return h;
++}
++
++/* One "cb" line: Tier-2 result for a code-block, before Tier-1. */
++static void opj_dump_cb(OPJ_UINT32 tileno, OPJ_UINT32 compno,
++                        OPJ_UINT32 resno, const opj_tcd_band_t *band,
++                        OPJ_UINT32 precno, OPJ_UINT32 cblkno,
++                        const opj_tcd_cblk_dec_t *cblk, OPJ_UINT32 cblksty)
++{
++    FILE *f = opj_dump_get();
++    OPJ_UINT32 i, ci, coff, total = 0, passes = 0;
++    OPJ_UINT64 h;
++    if (f == NULL || cblk->x1 <= cblk->x0 || cblk->y1 <= cblk->y0) {
++        return;
++    }
++    for (i = 0; i < cblk->numchunks; ++i) {
++        total += cblk->chunks[i].len;
++    }
++    for (i = 0; i < cblk->real_num_segs; ++i) {
++        passes += cblk->segs[i].real_num_passes;
++    }
++    fprintf(f, "cb tile=%u comp=%u res=%u band=%u prec=%u cblk=%u"
++            " x0=%d y0=%d x1=%d y1=%d sty=%u Mb=%d",
++            tileno, compno, resno, band->bandno, precno, cblkno,
++            cblk->x0, cblk->y0, cblk->x1, cblk->y1, cblksty, band->numbps);
++    if (cblk->numsegs == 0) {
++        fprintf(f, " numbps=- zbp=-");
++    } else {
++        fprintf(f, " numbps=%u zbp=%d", cblk->numbps,
++                band->numbps - (OPJ_INT32)cblk->numbps);
++    }
++    fprintf(f, " passes=%u segs=%u len=%u corrupt=%d", passes,
++            cblk->real_num_segs, total, cblk->corrupted ? 1 : 0);
++    fprintf(f, " seglens=");
++    for (i = 0; i < cblk->real_num_segs; ++i) {
++        fprintf(f, i ? ",%u" : "%u", cblk->segs[i].len);
++    }
++    fprintf(f, cblk->real_num_segs ? " segpasses=" : "- segpasses=");
++    for (i = 0; i < cblk->real_num_segs; ++i) {
++        fprintf(f, i ? ",%u" : "%u", cblk->segs[i].real_num_passes);
++    }
++    fprintf(f, cblk->real_num_segs ? " seghash=" : "- seghash=");
++    ci = 0;
++    coff = 0;
++    for (i = 0; i < cblk->real_num_segs; ++i) {
++        h = opj_dump_range(cblk, &ci, &coff, cblk->segs[i].len,
++                           OPJ_DUMP_FNV_INIT, NULL);
++        fprintf(f, i ? ",%016llx" : "%016llx", (unsigned long long)h);
++    }
++    ci = 0;
++    coff = 0;
++    h = opj_dump_range(cblk, &ci, &coff, total, OPJ_DUMP_FNV_INIT, NULL);
++    fprintf(f, "%s hash=%016llx\n", cblk->real_num_segs ? "" : "-",
++            (unsigned long long)h);
++    if (opj_dump_flag("OPJ_DUMP_DATA_FULL")) {
++        fprintf(f, "data ");
++        ci = 0;
++        coff = 0;
++        if (total == 0) {
++            fprintf(f, "-");
++        }
++        (void)opj_dump_range(cblk, &ci, &coff, total, OPJ_DUMP_FNV_INIT, f);
++        fprintf(f, "\n");
++    }
++}
++
++/* OpenJPEG keeps |v| = 2*m + 2^L (m: T.800 magnitude at the 2^p scale,
++ * L: lowest bit-plane decoded for this coefficient), v = 0 if never
++ * significant. Clearing the lowest set bit and halving gives m exactly. */
++static OPJ_INT32 opj_dump_t800(OPJ_INT32 v)
++{
++    OPJ_UINT32 m = v < 0 ? 0U - (OPJ_UINT32)v : (OPJ_UINT32)v;
++    m = (m & (m - 1U)) >> 1;
++    return v < 0 ? -(OPJ_INT32)m : (OPJ_INT32)m;
++}
++
++/* One "coef" line: Tier-1 output of a code-block (before ROI descaling
++ * and dequantisation), as T.800 sign-magnitude values. */
++static void opj_dump_coef(OPJ_UINT32 tileno, OPJ_UINT32 compno,
++                          OPJ_UINT32 resno, OPJ_UINT32 bandno,
++                          OPJ_UINT32 precno, OPJ_UINT32 cblkno,
++                          OPJ_UINT32 roishift, const OPJ_INT32 *d,
++                          OPJ_UINT32 w, OPJ_UINT32 h)
++{
++    FILE *f = opj_dump_get();
++    OPJ_UINT64 hash = OPJ_DUMP_FNV_INIT;
++    OPJ_UINT32 i, nz = 0, n = w * h;
++    if (f == NULL || n == 0) {
++        return;
++    }
++    for (i = 0; i < n; ++i) {
++        OPJ_UINT32 u = (OPJ_UINT32)opj_dump_t800(d[i]);
++        OPJ_BYTE b[4];
++        b[0] = (OPJ_BYTE)(u & 0xFFU);
++        b[1] = (OPJ_BYTE)((u >> 8) & 0xFFU);
++        b[2] = (OPJ_BYTE)((u >> 16) & 0xFFU);
++        b[3] = (OPJ_BYTE)(u >> 24);
++        hash = opj_dump_fnv(hash, b, 4);
++        nz += u != 0;
++    }
++    fprintf(f, "coef tile=%u comp=%u res=%u band=%u prec=%u cblk=%u"
++            " w=%u h=%u roi=%u nz=%u hash=%016llx\n",
++            tileno, compno, resno, bandno, precno, cblkno, w, h, roishift,
++            nz, (unsigned long long)hash);
++    if (opj_dump_flag("OPJ_DUMP_COEF_FULL")) {
++        fprintf(f, "vals");
++        for (i = 0; i < n; ++i) {
++            fprintf(f, " %d", opj_dump_t800(d[i]));
++        }
++        fprintf(f, "\n");
++    }
++}
++/* ---- end of differential dump helpers ---- */
++
+ /** @defgroup T1 T1 - Implementation of the tier-1 coding */
+ /*@{*/
+ 
+@@ -1600,6 +1781,7 @@
+     opj_event_mgr_t *p_manager;
+     opj_mutex_t* p_manager_mutex;
+     OPJ_BOOL check_pterm;
++    OPJ_UINT32 dump_tileno, dump_precno, dump_cblkno;
+ } opj_t1_cblk_decode_processing_job_t;
+ 
+ static void opj_t1_destroy_wrapper(void* t1)
+@@ -1716,6 +1898,13 @@
+             opj_free(job);
+             return;
+         }
++        if (cblk->x1 > cblk->x0 && cblk->y1 > cblk->y0) {
++            opj_dump_coef(job->dump_tileno, tilec->compno, resno, band->bandno,
++                          job->dump_precno, job->dump_cblkno,
++                          (OPJ_UINT32)tccp->roishift,
++                          cblk->decoded_data ? cblk->decoded_data : t1->data,
++                          t1->w, t1->h);
++        }
+     }
+ 
+     x = cblk->x0 - band->x0;
+@@ -1959,12 +2148,18 @@
+ #endif
+                     }
+ 
++                    opj_dump_cb(tcd->tcd_tileno, tilec->compno, resno, band, precno,
++                                cblkno, cblk, tccp->cblksty);
++
+                     job = (opj_t1_cblk_decode_processing_job_t*) opj_calloc(1,
+                             sizeof(opj_t1_cblk_decode_processing_job_t));
+                     if (!job) {
+                         *pret = OPJ_FALSE;
+                         return;
+                     }
++                    job->dump_tileno = tcd->tcd_tileno;
++                    job->dump_precno = precno;
++                    job->dump_cblkno = cblkno;
+                     job->whole_tile_decoding = tcd->whole_tile_decoding;
+                     job->resno = resno;
+                     job->cblk = cblk;
+@@ -1991,6 +2186,9 @@
+ #ifdef DEBUG_VERBOSE
+     printf("Leave opj_t1_decode_cblks(). Number decoded: %d\n", codeblocks_decoded);
+ #endif
++    if (opj_dump_fp != NULL) {
++        fflush(opj_dump_fp);
++    }
+     return;
+ }
+ 
