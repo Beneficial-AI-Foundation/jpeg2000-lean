@@ -17,6 +17,7 @@ Design document: Plan.md
   becomes current. Proof tasks name their theorem IDs from Plan.md §4 (S1–S6, C1–C10).
 
 ## Current wave
+Wave 12: 4.6b (wt), 5.4 (new), 6.1 (new)
 
 ## Branches and PRs
 | Phase | Branch | Base | PR | State |
@@ -103,7 +104,7 @@ Plan.md §7 row 4, §5.2 "Tier-2", Annex B. Exit: **M4**: C4, C5 proved; every T
 | 4.5 | PPM/PPT header sourcing and tile-part ordering | 4.4 | `JPEG2000/Tier2/Headers.lean`, `Tests/Tier2Headers.lean` | new | | done (2026-11-25) |
 | 4.6 | Differential: per-code-block segments vs OpenJPEG on every T.803 stream | — | — | — | split (into 4.6a, 4.6b) |
 | 4.6a | Instrumented OpenJPEG for differentials: `scripts/build-opj-instrumented.sh` fetches OpenJPEG v2.5.3 at a pinned commit (GitHub, SHA-256 of the tarball), applies `scripts/opj-instrument.patch` (dump per code-block: tile, component, resolution, band, precinct, code-block index, zero bit-planes, passes, segment pass counts + SHA-256/bytes of each segment's data; and the decoded Tier-1 coefficients), builds with cmake into `.lake/opj-instrumented/` (git-ignored); `docs/differential.md` | 0.5 | `scripts/build-opj-instrumented.sh`, `scripts/opj-instrument.patch`, `docs/differential.md` | new | done (2026-11-25) |
-| 4.6b | Differential driver: our per-code-block segments (and 3.7's coefficients) vs the instrumented OpenJPEG dump on every T.803 stream | 4.5, 4.6a | `Tests/SegmentDump.lean`, `scripts/diff-segments.py`, `lakefile.lean` (exe), `.github/workflows/ci.yml` | wt | todo |
+| 4.6b | Differential driver: our per-code-block segments (and 3.7's coefficients) vs the instrumented OpenJPEG dump on every T.803 stream | 4.5, 4.6a | `Tests/SegmentDump.lean`, `scripts/diff-segments.py`, `lakefile.lean` (exe), `.github/workflows/ci.yml` | wt | | doing (2026-11-25) |
 | 4.7 | M4 check | 4.1–4.5, 4.6b | — | solo | todo |
 Exit criterion checked: [ ]
 
@@ -114,7 +115,7 @@ Plan.md §7 row 5, §5.2 "DWT", §5.4, Annexes E–H. Exit: **M5**: C6, C7, C8 p
 | 5.1 | (landed on `phase-3-tier1`) Dequantisation (derived/expounded/none, guard bits) and ROI max-shift | 1.5 | `JPEG2000/Quant.lean`, `Spec/Quant.lean`, `Tests/Quant.lean` | new | | done (2026-11-25) |
 | 5.2 | (landed on `phase-3-tier1`) 5/3 inverse DWT: Annex F spec over `Int` with symmetric extension, in-place lifting on `Int32` planes, C6 | 1.1 | `Spec/DWT53.lean`, `JPEG2000/DWT53.lean`, `Tests/DWT53.lean` | new | | done (2026-11-25) |
 | 5.3 | (landed on `phase-3-tier1`) 9/7 inverse DWT: `Rat` spec, fixed-point lifting (fractional bits chosen from the C8 bound; Plan §10 open question), C8 for DWT | 5.2 | `Spec/DWT97.lean`, `JPEG2000/DWT97.lean`, `Tests/DWT97.lean` | new | | done (2026-11-25) |
-| 5.4 | RCT/ICT, DC shift, clamping; C7, C8 for ICT | 1.1 | `JPEG2000/MCT.lean`, `Spec/MCT.lean` | new | todo |
+| 5.4 | RCT/ICT, DC shift, clamping; C7, C8 for ICT | 1.1 | `JPEG2000/MCT.lean`, `Spec/MCT.lean`, `Tests/MCT.lean` | new | | doing (2026-11-25) |
 | 5.5 | Assembly and pipeline: tiles, sub-sampling, reduced resolution, `JPEG2000.decodeCodestream` | 3.4b, 4.5, 5.1–5.4 | `JPEG2000/Assemble.lean`, `JPEG2000/Decode.lean` | new | todo |
 | 5.6 | T.803 conformance runner (peak error / MSE per class) | 5.5, 0.5 | `Tests/Conformance.lean`, `scripts/conformance.py` | new | todo |
 | 5.7 | M5 check | 5.1–5.6 | — | solo | todo |
@@ -124,7 +125,7 @@ Exit criterion checked: [ ]
 Plan.md §7 row 6, §1 "What we build", Annex I. Exit: **M6**: the JP2 conformance files and the PDF-extracted corpus render identically to OpenJPEG + colour management to within tolerance.
 | ID | Task | Needs | Owns | Par | Status |
 |---|---|---|---|---|---|
-| 6.1 | Colour: enumerated spaces, ICC pass-through, palette (`pclr`), component mapping (`cmap`), channel definitions (`cdef`, alpha) | 1.2 | `JPEG2000/Color.lean` | new | todo |
+| 6.1 | Colour: enumerated spaces, ICC pass-through, palette (`pclr`), component mapping (`cmap`), channel definitions (`cdef`, alpha) | 1.2 | `JPEG2000/Color.lean`, `Tests/Color.lean` | new | | doing (2026-11-25) |
 | 6.2 | Consumer API: `decode : Limits → ByteArray → Except Error Image`, planes + interleaved 8/16-bit, bit-depth scaling, PDF info (`/SMaskInData`) | 5.5, 6.1 | `JPEG2000/Image.lean`, `JPEG2000/Decode.lean` | wt | todo |
 | 6.3 | JP2 conformance + PDF-extracted corpus comparison | 6.2, 0.5 | `Tests/JP2.lean`, `scripts/diff-images.py`, `corpus/manifest.json` | wt | todo |
 | 6.4 | M6 check | 6.1–6.3 | — | solo | todo |
