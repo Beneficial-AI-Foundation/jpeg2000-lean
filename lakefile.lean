@@ -60,3 +60,9 @@ lean_exe «segment-dump» where
 decodes at the class-0 and class-1 thresholds: `lake exe conformance`. Not a default target. -/
 lean_exe conformance where
   root := `Tests.ConformanceMain
+
+/-- Decoded planes as PGX files (task 6.3b): `lake exe image-dump <file> <outprefix>` writes
+the raw codestream components and the `JPEG2000.decode` image channels, compared with
+`opj_decompress` by `scripts/diff-images.py`. Not a default target. -/
+lean_exe «image-dump» where
+  root := `Tests.ImageDump

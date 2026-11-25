@@ -11,6 +11,24 @@
     "conformance": "ITU-T T.803 | ISO/IEC 15444-4 test files, Copyright (c) 2002 Algo Vision Technology GmbH, Aware Inc., Kodak Inc., Ricoh Innovations Inc.; holders do not assert copyright against use for testing/claiming JPEG 2000 conformance; no right granted for non-JPEG-2000 uses; the notice must accompany copies (input/conformance/COPYRIGHT, fetched as role 'notice'). Not redistributed here.",
     "nonregression": "no licence stated (repository has no LICENSE; README only says the files serve the OpenJPEG test suite; input/nonregression/README.txt traces several files to bug reports and mailing lists). Treated as all rights reserved by their authors; fetched by URL, never redistributed."
    }
+  },
+  "pdf-pdf.js": {
+   "repository": "https://github.com/mozilla/pdf.js",
+   "commit": "98100629a8ab3c6625c82a5ab5b9a82457f415f3",
+   "url_prefix": "https://raw.githubusercontent.com/mozilla/pdf.js/98100629a8ab3c6625c82a5ab5b9a82457f415f3/test/pdfs/",
+   "licence": "Repository licence Apache-2.0 covers the pdf.js code; the test PDFs are mostly attachments from public bug reports (issueNNNN = github.com/mozilla/pdf.js/issues/NNNN) or hand-made test cases, with no individual licence stated. Treated as all rights reserved by their authors: fetched by URL at a pinned commit, never redistributed."
+  },
+  "pdf-pikepdf": {
+   "repository": "https://github.com/pikepdf/pikepdf",
+   "commit": "0c3b58ff2f28769596037367fe7245e51b486bbe",
+   "url_prefix": "https://raw.githubusercontent.com/pikepdf/pikepdf/0c3b58ff2f28769596037367fe7245e51b486bbe/tests/resources/",
+   "licence": "Repository licence MPL-2.0 (test resources carry no separate notice). Fetched by URL at a pinned commit, never redistributed."
+  },
+  "pdf-pdfbox": {
+   "repository": "https://github.com/apache/pdfbox",
+   "commit": "28fe61f4ad64ea2c474de775113028b4cfea981e",
+   "url_prefix": "https://raw.githubusercontent.com/apache/pdfbox/28fe61f4ad64ea2c474de775113028b4cfea981e/tools/src/test/resources/input/ImageIOUtil/",
+   "licence": "Apache PDFBox test resources, repository licence Apache-2.0. Fetched by URL at a pinned commit, never redistributed."
   }
  },
  "thresholds_source": {
@@ -3443,6 +3461,2365 @@
     "cblk_style": 0,
     "wavelet": "5-3 reversible",
     "megapixels": 0.07
+   }
+  },
+  {
+   "path": "pdf-sources/pdf.js/S2.pdf",
+   "url": "https://raw.githubusercontent.com/mozilla/pdf.js/98100629a8ab3c6625c82a5ab5b9a82457f415f3/test/pdfs/S2.pdf",
+   "sha256": "57d874f2760ded2b70eb58b7b5e31df407d5641b7225576b77458b5dc5009543",
+   "size": 478490,
+   "git_blob_sha1": "a69f3f89c3002850a92dba23957906fb2a85971b",
+   "roles": [
+    "pdf-source"
+   ],
+   "licence": "pdf-pdf.js"
+  },
+  {
+   "path": "pdf-sources/pdf.js/bug_jpx.pdf",
+   "url": "https://raw.githubusercontent.com/mozilla/pdf.js/98100629a8ab3c6625c82a5ab5b9a82457f415f3/test/pdfs/bug_jpx.pdf",
+   "sha256": "4010d808557a72278368c05518367735ed186cbdd04974b8506275f9ac40f999",
+   "size": 5451,
+   "git_blob_sha1": "77d8194e3f890bee8c21a1e7ab2c85a61d24f085",
+   "roles": [
+    "pdf-source"
+   ],
+   "licence": "pdf-pdf.js"
+  },
+  {
+   "path": "pdf-sources/pdf.js/issue12213.pdf",
+   "url": "https://raw.githubusercontent.com/mozilla/pdf.js/98100629a8ab3c6625c82a5ab5b9a82457f415f3/test/pdfs/issue12213.pdf",
+   "sha256": "73abd2a46c22afc6f67a035cc143c7e3fc0e111ed41c5cb627429d50bcefbd32",
+   "size": 14610,
+   "git_blob_sha1": "464cd3c581a0f78e2905c14ca4084ec1a2b9fb13",
+   "roles": [
+    "pdf-source"
+   ],
+   "licence": "pdf-pdf.js"
+  },
+  {
+   "path": "pdf-sources/pdf.js/issue19326.pdf",
+   "url": "https://raw.githubusercontent.com/mozilla/pdf.js/98100629a8ab3c6625c82a5ab5b9a82457f415f3/test/pdfs/issue19326.pdf",
+   "sha256": "fd41067a652c07786412d9fe40e275c2eddf30493e3083edcde297900f9748ed",
+   "size": 37546,
+   "git_blob_sha1": "800d86883866bbad6fd08f88118966cf027642eb",
+   "roles": [
+    "pdf-source"
+   ],
+   "licence": "pdf-pdf.js"
+  },
+  {
+   "path": "pdf-sources/pdf.js/issue19517.pdf",
+   "url": "https://raw.githubusercontent.com/mozilla/pdf.js/98100629a8ab3c6625c82a5ab5b9a82457f415f3/test/pdfs/issue19517.pdf",
+   "sha256": "908c133880c7148864102eab517224d524cdd32769d2ae0f1e6d69e75a0471d6",
+   "size": 6262577,
+   "git_blob_sha1": "7425032618f10ff07b665f1d1a9432cd7fbde77e",
+   "roles": [
+    "pdf-source"
+   ],
+   "licence": "pdf-pdf.js"
+  },
+  {
+   "path": "pdf-sources/pdf.js/issue5475.pdf",
+   "url": "https://raw.githubusercontent.com/mozilla/pdf.js/98100629a8ab3c6625c82a5ab5b9a82457f415f3/test/pdfs/issue5475.pdf",
+   "sha256": "c50d4b50fa976b9001774f30d7d1f23a50169c9fd7e50dacc7022d7a0ea6a0ef",
+   "size": 166026,
+   "git_blob_sha1": "4ccd745cbeab471d63438c8e9f53a0922eb08cd0",
+   "roles": [
+    "pdf-source"
+   ],
+   "licence": "pdf-pdf.js"
+  },
+  {
+   "path": "pdf-sources/pdf.js/issue5481.pdf",
+   "url": "https://raw.githubusercontent.com/mozilla/pdf.js/98100629a8ab3c6625c82a5ab5b9a82457f415f3/test/pdfs/issue5481.pdf",
+   "sha256": "95a47b344b6121e7e648cab049c9fabff020f01120920a6c6c48332bf4f7e75b",
+   "size": 1720095,
+   "git_blob_sha1": "71470db7c4690384a6ad7bd148e931484299d28b",
+   "roles": [
+    "pdf-source"
+   ],
+   "licence": "pdf-pdf.js"
+  },
+  {
+   "path": "pdf-sources/pdf.js/issue5549.pdf",
+   "url": "https://raw.githubusercontent.com/mozilla/pdf.js/98100629a8ab3c6625c82a5ab5b9a82457f415f3/test/pdfs/issue5549.pdf",
+   "sha256": "f12be65798d8b65b68c27db08f89fe87ea506482309ba37aee837702a06410cd",
+   "size": 830412,
+   "git_blob_sha1": "8e08c356b82ebe8054416349bce60016117f8aa3",
+   "roles": [
+    "pdf-source"
+   ],
+   "licence": "pdf-pdf.js"
+  },
+  {
+   "path": "pdf-sources/pdf.js/issue5567.pdf",
+   "url": "https://raw.githubusercontent.com/mozilla/pdf.js/98100629a8ab3c6625c82a5ab5b9a82457f415f3/test/pdfs/issue5567.pdf",
+   "sha256": "35431e73744702c34b0a4295867550dba020afca0c85c5d7d3100533d27abfdc",
+   "size": 2169844,
+   "git_blob_sha1": "f0471602fb5224e718b694bdcf35cc76137798f7",
+   "roles": [
+    "pdf-source"
+   ],
+   "licence": "pdf-pdf.js"
+  },
+  {
+   "path": "pdf-sources/pdf.js/jp2k-resetprob.pdf",
+   "url": "https://raw.githubusercontent.com/mozilla/pdf.js/98100629a8ab3c6625c82a5ab5b9a82457f415f3/test/pdfs/jp2k-resetprob.pdf",
+   "sha256": "582da92f1cad4fa47639e5df5c29ebba6e4ae432ba5e9283297ee6e5e88d7efa",
+   "size": 3251,
+   "git_blob_sha1": "5222158ab5dfea5d361b514b280246a0a6647f48",
+   "roles": [
+    "pdf-source"
+   ],
+   "licence": "pdf-pdf.js"
+  },
+  {
+   "path": "pdf-sources/pdf.js/jpx_numcomps.pdf",
+   "url": "https://raw.githubusercontent.com/mozilla/pdf.js/98100629a8ab3c6625c82a5ab5b9a82457f415f3/test/pdfs/jpx_numcomps.pdf",
+   "sha256": "fa0e65f443c750bc899fe1601b72e817b8160ceff5ad1db95247ddacd4cb15d4",
+   "size": 10895,
+   "git_blob_sha1": "b80ce99946bd9ec260ab24fd17ee0ae9b83a4c29",
+   "roles": [
+    "pdf-source"
+   ],
+   "licence": "pdf-pdf.js"
+  },
+  {
+   "path": "pdf-sources/pdf.js/jpx_smaskindata.pdf",
+   "url": "https://raw.githubusercontent.com/mozilla/pdf.js/98100629a8ab3c6625c82a5ab5b9a82457f415f3/test/pdfs/jpx_smaskindata.pdf",
+   "sha256": "a82813559c74f074b0caf92c80875fc018acb737269a2af5508c7e083b2a5fd3",
+   "size": 2515,
+   "git_blob_sha1": "26d47af90272df6ff4589bdcbeffeaa8881f2eb4",
+   "roles": [
+    "pdf-source"
+   ],
+   "licence": "pdf-pdf.js"
+  },
+  {
+   "path": "pdf-sources/pdf.js/jpx_subsampling.pdf",
+   "url": "https://raw.githubusercontent.com/mozilla/pdf.js/98100629a8ab3c6625c82a5ab5b9a82457f415f3/test/pdfs/jpx_subsampling.pdf",
+   "sha256": "01f92ae453f8f6d2e8c61574054c1ca3160e3481a3f9c8cc365aa1ff7cd3e1f3",
+   "size": 5146,
+   "git_blob_sha1": "467bd08b79a858a62251e7af2c899ce3098f4f0a",
+   "roles": [
+    "pdf-source"
+   ],
+   "licence": "pdf-pdf.js"
+  },
+  {
+   "path": "pdf-sources/pdf.js/perf_codecs_jpx.pdf",
+   "url": "https://raw.githubusercontent.com/mozilla/pdf.js/98100629a8ab3c6625c82a5ab5b9a82457f415f3/test/pdfs/perf_codecs_jpx.pdf",
+   "sha256": "0f8479d461d0d7e5fb3875f8336ecbbc995ec180bc60b07a7a8be757a9e22169",
+   "size": 524879,
+   "git_blob_sha1": "632b2fed47c373db02d772b04b7214908d2f69aa",
+   "roles": [
+    "pdf-source"
+   ],
+   "licence": "pdf-pdf.js"
+  },
+  {
+   "path": "pdf-sources/pdf.js/red_stamp.pdf",
+   "url": "https://raw.githubusercontent.com/mozilla/pdf.js/98100629a8ab3c6625c82a5ab5b9a82457f415f3/test/pdfs/red_stamp.pdf",
+   "sha256": "41371762b5efdde3b81896e64445736abdec2f9e09d37c8979054e430293cfe4",
+   "size": 5860,
+   "git_blob_sha1": "c76cdc9424c0cb4bbf65498c87f0aef351036a91",
+   "roles": [
+    "pdf-source"
+   ],
+   "licence": "pdf-pdf.js"
+  },
+  {
+   "path": "pdf-sources/pikepdf/pike-jp2.pdf",
+   "url": "https://raw.githubusercontent.com/pikepdf/pikepdf/0c3b58ff2f28769596037367fe7245e51b486bbe/tests/resources/pike-jp2.pdf",
+   "sha256": "7f0231d6d2bc77561f86daee74a058e839fcf2a605ceb563959b19b12b4cf8cc",
+   "size": 18152,
+   "git_blob_sha1": "588fcd6cb99bd39eb4f19cad0f383e603c326a29",
+   "roles": [
+    "pdf-source"
+   ],
+   "licence": "pdf-pikepdf"
+  },
+  {
+   "path": "pdf-sources/pikepdf/pike-flate-jp2.pdf",
+   "url": "https://raw.githubusercontent.com/pikepdf/pikepdf/0c3b58ff2f28769596037367fe7245e51b486bbe/tests/resources/pike-flate-jp2.pdf",
+   "sha256": "1bfa13db0b154b8a308e4b59c4a0243d31cae3c6dd8e3707a57c6f1e5305f1ed",
+   "size": 18471,
+   "git_blob_sha1": "c074e69fe625cc9329fff5990d46bbddd23341ea",
+   "roles": [
+    "pdf-source"
+   ],
+   "licence": "pdf-pikepdf"
+  },
+  {
+   "path": "pdf-sources/pdfbox/JPXTestCMYK.pdf",
+   "url": "https://raw.githubusercontent.com/apache/pdfbox/28fe61f4ad64ea2c474de775113028b4cfea981e/tools/src/test/resources/input/ImageIOUtil/JPXTestCMYK.pdf",
+   "sha256": "b37f0229370f5ac04ebfd98b3c678d33f4fa3c87ee914a5a5f1c54bf7ca7994d",
+   "size": 403469,
+   "git_blob_sha1": "509260acd402e246003908666c75224ac53d64da",
+   "roles": [
+    "pdf-source"
+   ],
+   "licence": "pdf-pdfbox"
+  },
+  {
+   "path": "pdf-sources/pdfbox/JPXTestGrey.pdf",
+   "url": "https://raw.githubusercontent.com/apache/pdfbox/28fe61f4ad64ea2c474de775113028b4cfea981e/tools/src/test/resources/input/ImageIOUtil/JPXTestGrey.pdf",
+   "sha256": "b1a1791f6292b792344700ee30dd7987084bf9338c28afccede3454df0fd9080",
+   "size": 45755,
+   "git_blob_sha1": "649ff7a80a053a6965eb8a48dd6a8d5623971838",
+   "roles": [
+    "pdf-source"
+   ],
+   "licence": "pdf-pdfbox"
+  },
+  {
+   "path": "pdf-sources/pdfbox/JPXTestRGB.pdf",
+   "url": "https://raw.githubusercontent.com/apache/pdfbox/28fe61f4ad64ea2c474de775113028b4cfea981e/tools/src/test/resources/input/ImageIOUtil/JPXTestRGB.pdf",
+   "sha256": "bb605c1ce58f85ac1cce9cd2b2293bebb066d6c8e0de1488b63b13116a4fd4db",
+   "size": 457637,
+   "git_blob_sha1": "728e9ae22c8f69639122131e19487f3fe6161cac",
+   "roles": [
+    "pdf-source"
+   ],
+   "licence": "pdf-pdfbox"
+  }
+ ],
+ "pdf_jpx": [
+  {
+   "path": "pdf-jpx/S2-17.jpx",
+   "sha256": "ccfd6c80616b123a4bf964e3214f43cc529121d899a59919d6c626cd685c57cb",
+   "size": 7846,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pdf.js/S2.pdf",
+   "object": [
+    17,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "jp2",
+   "pdf_image": {
+    "Width": 341,
+    "Height": 392,
+    "ColorSpace": "/DeviceRGB",
+    "BitsPerComponent": 8,
+    "SMask": "present",
+    "Intent": "/RelativeColorimetric"
+   },
+   "codestream": {
+    "width": 341,
+    "height": 392,
+    "components": 3,
+    "bit_depths": [
+     8,
+     8,
+     8
+    ],
+    "signed": [
+     false,
+     false,
+     false
+    ],
+    "subsampling": [
+     "1x1",
+     "1x1",
+     "1x1"
+    ],
+    "tiles": 4,
+    "progression": "RLCP",
+    "layers": 5,
+    "mct": 1,
+    "levels": 5,
+    "wavelet": "9-7 irreversible"
+   }
+  },
+  {
+   "path": "pdf-jpx/S2-18.jpx",
+   "sha256": "0214fe469daa346666712a5c1870e852917dfaa3f63cc46f4929b6fb01029330",
+   "size": 8088,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pdf.js/S2.pdf",
+   "object": [
+    18,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "jp2",
+   "pdf_image": {
+    "Width": 345,
+    "Height": 417,
+    "ColorSpace": "/DeviceRGB",
+    "BitsPerComponent": 8,
+    "SMask": "present",
+    "Intent": "/RelativeColorimetric"
+   },
+   "codestream": {
+    "width": 345,
+    "height": 417,
+    "components": 3,
+    "bit_depths": [
+     8,
+     8,
+     8
+    ],
+    "signed": [
+     false,
+     false,
+     false
+    ],
+    "subsampling": [
+     "1x1",
+     "1x1",
+     "1x1"
+    ],
+    "tiles": 4,
+    "progression": "RLCP",
+    "layers": 5,
+    "mct": 1,
+    "levels": 5,
+    "wavelet": "9-7 irreversible"
+   }
+  },
+  {
+   "path": "pdf-jpx/S2-19.jpx",
+   "sha256": "ded0cb73aaa69531ea43a8a6365ce4df81009d9dbebbf3ce984217733f14bb5f",
+   "size": 7796,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pdf.js/S2.pdf",
+   "object": [
+    19,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "jp2",
+   "pdf_image": {
+    "Width": 337,
+    "Height": 392,
+    "ColorSpace": "/DeviceRGB",
+    "BitsPerComponent": 8,
+    "SMask": "present",
+    "Intent": "/RelativeColorimetric"
+   },
+   "codestream": {
+    "width": 337,
+    "height": 392,
+    "components": 3,
+    "bit_depths": [
+     8,
+     8,
+     8
+    ],
+    "signed": [
+     false,
+     false,
+     false
+    ],
+    "subsampling": [
+     "1x1",
+     "1x1",
+     "1x1"
+    ],
+    "tiles": 4,
+    "progression": "RLCP",
+    "layers": 5,
+    "mct": 1,
+    "levels": 5,
+    "wavelet": "9-7 irreversible"
+   }
+  },
+  {
+   "path": "pdf-jpx/S2-20.jpx",
+   "sha256": "3e5dd11080fe22a51fefb5ecbc60659503345170eb8f765c3d7060fdef52fda1",
+   "size": 8125,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pdf.js/S2.pdf",
+   "object": [
+    20,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "jp2",
+   "pdf_image": {
+    "Width": 344,
+    "Height": 413,
+    "ColorSpace": "/DeviceRGB",
+    "BitsPerComponent": 8,
+    "SMask": "present",
+    "Intent": "/RelativeColorimetric"
+   },
+   "codestream": {
+    "width": 344,
+    "height": 413,
+    "components": 3,
+    "bit_depths": [
+     8,
+     8,
+     8
+    ],
+    "signed": [
+     false,
+     false,
+     false
+    ],
+    "subsampling": [
+     "1x1",
+     "1x1",
+     "1x1"
+    ],
+    "tiles": 4,
+    "progression": "RLCP",
+    "layers": 5,
+    "mct": 1,
+    "levels": 5,
+    "wavelet": "9-7 irreversible"
+   }
+  },
+  {
+   "path": "pdf-jpx/S2-21.jpx",
+   "sha256": "3e9ac8a221b113afc4648143ffbf6a1a396da519809dfc10f9268e8d02cfd7d4",
+   "size": 5954,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pdf.js/S2.pdf",
+   "object": [
+    21,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "jp2",
+   "pdf_image": {
+    "Width": 340,
+    "Height": 403,
+    "ColorSpace": "/DeviceRGB",
+    "BitsPerComponent": 8,
+    "SMask": "present",
+    "Intent": "/RelativeColorimetric"
+   },
+   "codestream": {
+    "width": 340,
+    "height": 403,
+    "components": 3,
+    "bit_depths": [
+     8,
+     8,
+     8
+    ],
+    "signed": [
+     false,
+     false,
+     false
+    ],
+    "subsampling": [
+     "1x1",
+     "1x1",
+     "1x1"
+    ],
+    "tiles": 4,
+    "progression": "RLCP",
+    "layers": 5,
+    "mct": 1,
+    "levels": 5,
+    "wavelet": "9-7 irreversible"
+   }
+  },
+  {
+   "path": "pdf-jpx/S2-22.jpx",
+   "sha256": "aa7de3456815865b2f61653962a61fdf408d210a3fbd54452eec6891e4690611",
+   "size": 5729,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pdf.js/S2.pdf",
+   "object": [
+    22,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "jp2",
+   "pdf_image": {
+    "Width": 349,
+    "Height": 396,
+    "ColorSpace": "/DeviceRGB",
+    "BitsPerComponent": 8,
+    "SMask": "present",
+    "Intent": "/RelativeColorimetric"
+   },
+   "codestream": {
+    "width": 349,
+    "height": 396,
+    "components": 3,
+    "bit_depths": [
+     8,
+     8,
+     8
+    ],
+    "signed": [
+     false,
+     false,
+     false
+    ],
+    "subsampling": [
+     "1x1",
+     "1x1",
+     "1x1"
+    ],
+    "tiles": 4,
+    "progression": "RLCP",
+    "layers": 5,
+    "mct": 1,
+    "levels": 5,
+    "wavelet": "9-7 irreversible"
+   }
+  },
+  {
+   "path": "pdf-jpx/S2-29.jpx",
+   "sha256": "4b3bc02bbd48d7afa698bfdf7226f9156f98c396f60beb984c4691c2a12b189c",
+   "size": 11864,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pdf.js/S2.pdf",
+   "object": [
+    29,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "jp2",
+   "pdf_image": {
+    "Width": 341,
+    "Height": 392,
+    "ColorSpace": "/DeviceGray",
+    "BitsPerComponent": 8,
+    "Intent": "/RelativeColorimetric"
+   },
+   "codestream": {
+    "width": 341,
+    "height": 392,
+    "components": 1,
+    "bit_depths": [
+     8
+    ],
+    "signed": [
+     false
+    ],
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 4,
+    "progression": "RLCP",
+    "layers": 6,
+    "mct": 0,
+    "levels": 5,
+    "wavelet": "5-3 reversible"
+   }
+  },
+  {
+   "path": "pdf-jpx/S2-30.jpx",
+   "sha256": "9aaaba90e4d393420997b30e89ac93c7aa7d5eced7e2405caf3002fdd58a2ce0",
+   "size": 12119,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pdf.js/S2.pdf",
+   "object": [
+    30,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "jp2",
+   "pdf_image": {
+    "Width": 345,
+    "Height": 417,
+    "ColorSpace": "/DeviceGray",
+    "BitsPerComponent": 8,
+    "Intent": "/RelativeColorimetric"
+   },
+   "codestream": {
+    "width": 345,
+    "height": 417,
+    "components": 1,
+    "bit_depths": [
+     8
+    ],
+    "signed": [
+     false
+    ],
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 4,
+    "progression": "RLCP",
+    "layers": 6,
+    "mct": 0,
+    "levels": 5,
+    "wavelet": "5-3 reversible"
+   }
+  },
+  {
+   "path": "pdf-jpx/S2-31.jpx",
+   "sha256": "5bef73d90ec3ecf83f97f1d862987c61b01f36ad443e20a3f7c5708cf74d42f2",
+   "size": 11130,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pdf.js/S2.pdf",
+   "object": [
+    31,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "jp2",
+   "pdf_image": {
+    "Width": 337,
+    "Height": 392,
+    "ColorSpace": "/DeviceGray",
+    "BitsPerComponent": 8,
+    "Intent": "/RelativeColorimetric"
+   },
+   "codestream": {
+    "width": 337,
+    "height": 392,
+    "components": 1,
+    "bit_depths": [
+     8
+    ],
+    "signed": [
+     false
+    ],
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 4,
+    "progression": "RLCP",
+    "layers": 5,
+    "mct": 0,
+    "levels": 5,
+    "wavelet": "5-3 reversible"
+   }
+  },
+  {
+   "path": "pdf-jpx/S2-32.jpx",
+   "sha256": "3571c575bc818ddab3841a11d20e69251b2c48644e390d23c4b788e2cbedb013",
+   "size": 1318,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pdf.js/S2.pdf",
+   "object": [
+    32,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "jp2",
+   "pdf_image": {
+    "Width": 344,
+    "Height": 413,
+    "ColorSpace": "/DeviceGray",
+    "BitsPerComponent": 8,
+    "Intent": "/RelativeColorimetric"
+   },
+   "codestream": {
+    "width": 344,
+    "height": 413,
+    "components": 1,
+    "bit_depths": [
+     8
+    ],
+    "signed": [
+     false
+    ],
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 4,
+    "progression": "RLCP",
+    "layers": 5,
+    "mct": 0,
+    "levels": 5,
+    "wavelet": "9-7 irreversible"
+   }
+  },
+  {
+   "path": "pdf-jpx/S2-33.jpx",
+   "sha256": "794fc43b204ce779b308281f18dca961170d2db7da2004ec69ddc4955ff2f018",
+   "size": 1384,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pdf.js/S2.pdf",
+   "object": [
+    33,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "jp2",
+   "pdf_image": {
+    "Width": 340,
+    "Height": 403,
+    "ColorSpace": "/DeviceGray",
+    "BitsPerComponent": 8,
+    "Intent": "/RelativeColorimetric"
+   },
+   "codestream": {
+    "width": 340,
+    "height": 403,
+    "components": 1,
+    "bit_depths": [
+     8
+    ],
+    "signed": [
+     false
+    ],
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 4,
+    "progression": "RLCP",
+    "layers": 5,
+    "mct": 0,
+    "levels": 5,
+    "wavelet": "9-7 irreversible"
+   }
+  },
+  {
+   "path": "pdf-jpx/S2-34.jpx",
+   "sha256": "a4930f2cd297799b955fe76cd9dcf71a34a003d00e471ed72a717dc66c9e1dab",
+   "size": 1298,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pdf.js/S2.pdf",
+   "object": [
+    34,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "jp2",
+   "pdf_image": {
+    "Width": 349,
+    "Height": 396,
+    "ColorSpace": "/DeviceGray",
+    "BitsPerComponent": 8,
+    "Intent": "/RelativeColorimetric"
+   },
+   "codestream": {
+    "width": 349,
+    "height": 396,
+    "components": 1,
+    "bit_depths": [
+     8
+    ],
+    "signed": [
+     false
+    ],
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 4,
+    "progression": "RLCP",
+    "layers": 5,
+    "mct": 0,
+    "levels": 5,
+    "wavelet": "9-7 irreversible"
+   }
+  },
+  {
+   "path": "pdf-jpx/S2-35.jpx",
+   "sha256": "712394a82b2578a22a66b1cdb59cbd5fe68bff3364e648d2be201a78321fb305",
+   "size": 316,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pdf.js/S2.pdf",
+   "object": [
+    35,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "jp2",
+   "pdf_image": {
+    "Width": 18,
+    "Height": 166,
+    "ColorSpace": "/DeviceGray",
+    "BitsPerComponent": 8,
+    "Intent": "/RelativeColorimetric"
+   },
+   "codestream": {
+    "width": 18,
+    "height": 166,
+    "components": 1,
+    "bit_depths": [
+     8
+    ],
+    "signed": [
+     false
+    ],
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "RLCP",
+    "layers": 1,
+    "mct": 0,
+    "levels": 5,
+    "wavelet": "9-7 irreversible"
+   }
+  },
+  {
+   "path": "pdf-jpx/bug_jpx-15.jpx",
+   "sha256": "90629e28a6820f2e6106562e85dcfdea5eef59e79476c68bfea163c70b85008a",
+   "size": 202,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pdf.js/bug_jpx.pdf",
+   "object": [
+    15,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "j2k",
+   "pdf_image": {
+    "Width": 128,
+    "Height": 64,
+    "ColorSpace": "/DeviceGray",
+    "BitsPerComponent": 8
+   },
+   "codestream": {
+    "width": 128,
+    "height": 64,
+    "components": 1,
+    "bit_depths": [
+     8
+    ],
+    "signed": [
+     false
+    ],
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 2,
+    "progression": "LRCP",
+    "layers": 1,
+    "mct": 0,
+    "levels": 0,
+    "wavelet": "5-3 reversible"
+   },
+   "known_deviations": {
+    "codestream": "OpenJPEG 2.5.3 (Debian's opj_decompress) aborts with 'munmap_chunk(): invalid pointer' on this stream: tile 0 has two extra zero-length tile-parts (Psot 14, TPsot 1 and 2, TNsot 0). With those two tile-parts removed OpenJPEG decodes it, bit-identical to our decode of the unmodified stream (every sample 0). We accept the empty tile-parts; OpenJPEG's failure is the reference's, not a decoder disagreement."
+   }
+  },
+  {
+   "path": "pdf-jpx/issue12213-16.jpx",
+   "sha256": "915a2c5e6cb736384141e9bcb938f8f4ffe01bd7f9dbdf5f89cddcb81355e07f",
+   "size": 6603,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pdf.js/issue12213.pdf",
+   "object": [
+    16,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "jp2",
+   "pdf_image": {
+    "Width": 684,
+    "Height": 74,
+    "ColorSpace": [
+     "/Indexed",
+     [
+      "/ICCBased",
+      {
+       "stream": {
+        "/N": 3,
+        "/Alternate": "/DeviceRGB"
+       }
+      }
+     ],
+     15,
+     {
+      "stream": {}
+     }
+    ],
+    "BitsPerComponent": 4
+   },
+   "codestream": {
+    "width": 684,
+    "height": 74,
+    "components": 1,
+    "bit_depths": [
+     4
+    ],
+    "signed": [
+     false
+    ],
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 3,
+    "progression": "RLCP",
+    "layers": 5,
+    "mct": 0,
+    "levels": 5,
+    "wavelet": "5-3 reversible"
+   },
+   "known_deviations": {
+    "jp2": "Malformed pclr: it declares 4-bit palette columns (Bi = 3) but stores 8-bit values (0xFF, 0xBF, ...). Our palette keeps the low Bi+1 bits of each entry (task 6.1, JPEG2000/Color.lean), OpenJPEG passes the byte through (and then writes values up to 255 in a PGX declared 4-bit). PDF rendering is unaffected: the image dictionary's /ColorSpace /Indexed overrides the JPX colour information, so a PDF reader uses the codestream index plane, which is bit-exact."
+   }
+  },
+  {
+   "path": "pdf-jpx/issue19326-8.jpx",
+   "sha256": "79f261bcbebcab99f15bd5444dcf9a6f6d4602f32c42e68959fa0f97d86ee946",
+   "size": 32235,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pdf.js/issue19326.pdf",
+   "object": [
+    8,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "jp2",
+   "pdf_image": {
+    "Width": 551,
+    "Height": 337,
+    "ColorSpace": "/DeviceGray",
+    "BitsPerComponent": 8,
+    "SMask": "present"
+   },
+   "codestream": {
+    "width": 551,
+    "height": 337,
+    "components": 2,
+    "bit_depths": [
+     16,
+     16
+    ],
+    "signed": [
+     false,
+     false
+    ],
+    "subsampling": [
+     "1x1",
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 1,
+    "mct": 0,
+    "levels": 5,
+    "wavelet": "5-3 reversible"
+   }
+  },
+  {
+   "path": "pdf-jpx/issue19326-11.jpx",
+   "sha256": "13a5fabd9409bd0b9167246fb24885e4893e725abc880ea99d85bfa37994fc89",
+   "size": 238,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pdf.js/issue19326.pdf",
+   "object": [
+    11,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "jp2",
+   "pdf_image": {
+    "Width": 1,
+    "Height": 1,
+    "ColorSpace": "/DeviceGray",
+    "BitsPerComponent": 8
+   },
+   "codestream": {
+    "width": 1,
+    "height": 1,
+    "components": 2,
+    "bit_depths": [
+     8,
+     8
+    ],
+    "signed": [
+     false,
+     false
+    ],
+    "subsampling": [
+     "1x1",
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 1,
+    "mct": 0,
+    "levels": 0,
+    "wavelet": "5-3 reversible"
+   }
+  },
+  {
+   "path": "pdf-jpx/issue19517-8.jpx",
+   "sha256": "e40dd59cfb42f08feb03a7877cd8519b0f74adbce0c8301fcc9f67c2e54e7b4c",
+   "size": 2919584,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pdf.js/issue19517.pdf",
+   "object": [
+    8,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "jp2",
+   "pdf_image": {
+    "Width": 12608,
+    "Height": 16806,
+    "ColorSpace": [
+     "/ICCBased",
+     {
+      "stream": {
+       "/N": 3,
+       "/Alternate": "/DeviceRGB"
+      }
+     }
+    ],
+    "BitsPerComponent": 8,
+    "SMask": "present"
+   },
+   "codestream": {
+    "width": 12608,
+    "height": 16806,
+    "components": 4,
+    "bit_depths": [
+     8,
+     8,
+     8,
+     8
+    ],
+    "signed": [
+     false,
+     false,
+     false,
+     false
+    ],
+    "subsampling": [
+     "1x1",
+     "1x1",
+     "1x1",
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 1,
+    "mct": 0,
+    "levels": 5,
+    "wavelet": "5-3 reversible"
+   },
+   "note": "12608 x 16806, 4 components (212 Mpx): skipped by scripts/diff-images.py (--max-mpx 40). Our decoder refuses it under Limits.default (workSamples 847,560,192 > maxWorkSamples 2^28), also at reduce 3. A >= 20 Mpx real-world benchmark candidate (Plan 8.4) once the limits allow it."
+  },
+  {
+   "path": "pdf-jpx/issue19517-13.jpx",
+   "sha256": "d97387f3342f8c5ecfe0feee18b5bf6c4195d408d86a081a16751e0d17e47f2f",
+   "size": 266,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pdf.js/issue19517.pdf",
+   "object": [
+    13,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "jp2",
+   "pdf_image": {
+    "Width": 1,
+    "Height": 1,
+    "ColorSpace": [
+     "/ICCBased",
+     {
+      "stream": {
+       "/N": 3,
+       "/Alternate": "/DeviceRGB"
+      }
+     }
+    ],
+    "BitsPerComponent": 8
+   },
+   "codestream": {
+    "width": 1,
+    "height": 1,
+    "components": 4,
+    "bit_depths": [
+     8,
+     8,
+     8,
+     8
+    ],
+    "signed": [
+     false,
+     false,
+     false,
+     false
+    ],
+    "subsampling": [
+     "1x1",
+     "1x1",
+     "1x1",
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 1,
+    "mct": 0,
+    "levels": 0,
+    "wavelet": "5-3 reversible"
+   }
+  },
+  {
+   "path": "pdf-jpx/issue5475-8.jpx",
+   "sha256": "39b11b32677f8a6c6c4d8b85fb15895a04617e4541cb1a7a3124504e4554fc63",
+   "size": 161225,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pdf.js/issue5475.pdf",
+   "object": [
+    8,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "jp2",
+   "pdf_image": {
+    "Width": 512,
+    "Height": 512
+   },
+   "codestream": {
+    "width": 512,
+    "height": 512,
+    "components": 1,
+    "bit_depths": [
+     8
+    ],
+    "signed": [
+     false
+    ],
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 1,
+    "mct": 0,
+    "levels": 1,
+    "wavelet": "9-7 irreversible"
+   }
+  },
+  {
+   "path": "pdf-jpx/issue5481-5.jpx",
+   "sha256": "2c29bdede8166688edd619d46d851b3d39f6ff36f53c821035926ee2a875d186",
+   "size": 854268,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pdf.js/issue5481.pdf",
+   "object": [
+    5,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "jp2",
+   "pdf_image": {
+    "Width": 1090,
+    "Height": 725
+   },
+   "codestream": {
+    "width": 1090,
+    "height": 725,
+    "components": 3,
+    "bit_depths": [
+     8,
+     8,
+     8
+    ],
+    "signed": [
+     false,
+     false,
+     false
+    ],
+    "subsampling": [
+     "1x1",
+     "1x1",
+     "1x1"
+    ],
+    "tiles": 6,
+    "progression": "RPCL",
+    "layers": 10,
+    "mct": 1,
+    "levels": 1,
+    "wavelet": "9-7 irreversible"
+   }
+  },
+  {
+   "path": "pdf-jpx/issue5481-43.jpx",
+   "sha256": "f94e312e745aa5e876dc25c03f4669d609a7ffd8702385e025a1059a17cca7de",
+   "size": 854268,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pdf.js/issue5481.pdf",
+   "object": [
+    43,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "jp2",
+   "pdf_image": {
+    "Width": 1090,
+    "Height": 725
+   },
+   "codestream": {
+    "width": 1090,
+    "height": 725,
+    "components": 3,
+    "bit_depths": [
+     8,
+     8,
+     8
+    ],
+    "signed": [
+     false,
+     false,
+     false
+    ],
+    "subsampling": [
+     "1x1",
+     "1x1",
+     "1x1"
+    ],
+    "tiles": 6,
+    "progression": "PCRL",
+    "layers": 10,
+    "mct": 1,
+    "levels": 1,
+    "wavelet": "9-7 irreversible"
+   }
+  },
+  {
+   "path": "pdf-jpx/issue5549-11.jpx",
+   "sha256": "11850e4c661258d186402ad2988406995be8981bf5fe21c91d9bd4b6ad3b3493",
+   "size": 825278,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pdf.js/issue5549.pdf",
+   "object": [
+    11,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "jp2",
+   "pdf_image": {
+    "Width": 1090,
+    "Height": 725
+   },
+   "codestream": {
+    "width": 1090,
+    "height": 725,
+    "components": 3,
+    "bit_depths": [
+     8,
+     8,
+     8
+    ],
+    "signed": [
+     false,
+     false,
+     false
+    ],
+    "subsampling": [
+     "1x1",
+     "1x1",
+     "1x1"
+    ],
+    "tiles": 6,
+    "progression": "LRCP",
+    "layers": 10,
+    "mct": 1,
+    "levels": 5,
+    "wavelet": "9-7 irreversible"
+   }
+  },
+  {
+   "path": "pdf-jpx/issue5567-11.jpx",
+   "sha256": "98eab1aa9ae56a689b03be2c68b978a1db4809ceee60f4925dd52096da82ff8b",
+   "size": 2164848,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pdf.js/issue5567.pdf",
+   "object": [
+    11,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "j2k",
+   "pdf_image": {
+    "Width": 1500,
+    "Height": 1125,
+    "ColorSpace": "/DeviceRGB",
+    "BitsPerComponent": 8
+   },
+   "codestream": {
+    "width": 1500,
+    "height": 1125,
+    "components": 3,
+    "bit_depths": [
+     8,
+     8,
+     8
+    ],
+    "signed": [
+     false,
+     false,
+     false
+    ],
+    "subsampling": [
+     "1x1",
+     "1x1",
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 1,
+    "mct": 1,
+    "levels": 5,
+    "wavelet": "5-3 reversible"
+   }
+  },
+  {
+   "path": "pdf-jpx/jp2k-resetprob-6.jpx",
+   "sha256": "53412a27d4aac2b49193b9ace123f72b93a600d0a332297d11a2771601851667",
+   "size": 2273,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pdf.js/jp2k-resetprob.pdf",
+   "object": [
+    6,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "jp2",
+   "pdf_image": {
+    "Width": 40,
+    "Height": 27,
+    "ColorSpace": "/DeviceRGB",
+    "BitsPerComponent": 8
+   },
+   "codestream": {
+    "width": 40,
+    "height": 27,
+    "components": 3,
+    "bit_depths": [
+     8,
+     8,
+     8
+    ],
+    "signed": [
+     false,
+     false,
+     false
+    ],
+    "subsampling": [
+     "1x1",
+     "1x1",
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 1,
+    "mct": 1,
+    "levels": 5,
+    "wavelet": "5-3 reversible"
+   }
+  },
+  {
+   "path": "pdf-jpx/jpx_numcomps-10.jpx",
+   "sha256": "50c108a978db51b5c250174d50ccafae21d3e14bf88ebf092f37450c16070621",
+   "size": 1202,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pdf.js/jpx_numcomps.pdf",
+   "object": [
+    10,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "j2k",
+   "pdf_image": {
+    "Width": 32,
+    "Height": 32,
+    "ColorSpace": [
+     "/DeviceN",
+     [
+      "/A",
+      "/B"
+     ],
+     "/DeviceRGB",
+     {
+      "stream": {}
+     }
+    ],
+    "BitsPerComponent": 8
+   },
+   "codestream": {
+    "width": 32,
+    "height": 32,
+    "components": 2,
+    "bit_depths": [
+     8,
+     8
+    ],
+    "signed": [
+     false,
+     false
+    ],
+    "subsampling": [
+     "1x1",
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 1,
+    "mct": 0,
+    "levels": 0,
+    "wavelet": "5-3 reversible"
+   },
+   "also_in": [
+    {
+     "source_pdf": "pdf-sources/pdf.js/jpx_numcomps.pdf",
+     "object": [
+      11,
+      0
+     ]
+    },
+    {
+     "source_pdf": "pdf-sources/pdf.js/jpx_numcomps.pdf",
+     "object": [
+      12,
+      0
+     ]
+    },
+    {
+     "source_pdf": "pdf-sources/pdf.js/jpx_numcomps.pdf",
+     "object": [
+      15,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "path": "pdf-jpx/jpx_numcomps-13.jpx",
+   "sha256": "35bd88b91c0ebcf8ca7fa7c0afddb64cef36f76af02e85cb8b163a1b52b87db1",
+   "size": 2860,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pdf.js/jpx_numcomps.pdf",
+   "object": [
+    13,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "j2k",
+   "pdf_image": {
+    "Width": 32,
+    "Height": 32,
+    "ColorSpace": [
+     "/DeviceN",
+     [
+      "/A",
+      "/B",
+      "/C",
+      "/D",
+      "/E"
+     ],
+     "/DeviceRGB",
+     {
+      "stream": {}
+     }
+    ],
+    "BitsPerComponent": 8
+   },
+   "codestream": {
+    "width": 32,
+    "height": 32,
+    "components": 5,
+    "bit_depths": [
+     8,
+     8,
+     8,
+     8,
+     8
+    ],
+    "signed": [
+     false,
+     false,
+     false,
+     false,
+     false
+    ],
+    "subsampling": [
+     "1x1",
+     "1x1",
+     "1x1",
+     "1x1",
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 1,
+    "mct": 0,
+    "levels": 0,
+    "wavelet": "5-3 reversible"
+   }
+  },
+  {
+   "path": "pdf-jpx/jpx_numcomps-14.jpx",
+   "sha256": "bc70eeb4cc61c61045b670c1170ae13c6d114a6c63eccae34e20189009ee3bdd",
+   "size": 644,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pdf.js/jpx_numcomps.pdf",
+   "object": [
+    14,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "j2k",
+   "pdf_image": {
+    "Width": 32,
+    "Height": 32,
+    "ColorSpace": "/DeviceRGB",
+    "BitsPerComponent": 8,
+    "SMaskInData": 1
+   },
+   "codestream": {
+    "width": 32,
+    "height": 32,
+    "components": 3,
+    "bit_depths": [
+     8,
+     8,
+     8
+    ],
+    "signed": [
+     false,
+     false,
+     false
+    ],
+    "subsampling": [
+     "1x1",
+     "1x1",
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 1,
+    "mct": 0,
+    "levels": 5,
+    "wavelet": "5-3 reversible"
+   }
+  },
+  {
+   "path": "pdf-jpx/jpx_smaskindata-5.jpx",
+   "sha256": "d6d072d715c4c075fdee44f1fe265ab7ccabdd9ffe4112fdcb23038a057f3c0b",
+   "size": 268,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pdf.js/jpx_smaskindata.pdf",
+   "object": [
+    5,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "jp2",
+   "pdf_image": {
+    "Width": 2,
+    "Height": 1,
+    "ColorSpace": "/DeviceRGB",
+    "BitsPerComponent": 8,
+    "SMaskInData": 2,
+    "Matte": [
+     0,
+     1,
+     0
+    ]
+   },
+   "codestream": {
+    "width": 2,
+    "height": 1,
+    "components": 4,
+    "bit_depths": [
+     8,
+     8,
+     8,
+     8
+    ],
+    "signed": [
+     false,
+     false,
+     false,
+     false
+    ],
+    "subsampling": [
+     "1x1",
+     "1x1",
+     "1x1",
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 1,
+    "mct": 0,
+    "levels": 0,
+    "wavelet": "5-3 reversible"
+   }
+  },
+  {
+   "path": "pdf-jpx/jpx_smaskindata-6.jpx",
+   "sha256": "af62c7d0070f2d49caf50ba69e7139fc588bbd8046418fb789d75187555b07a9",
+   "size": 269,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pdf.js/jpx_smaskindata.pdf",
+   "object": [
+    6,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "jp2",
+   "pdf_image": {
+    "Width": 2,
+    "Height": 1,
+    "ColorSpace": "/DeviceRGB",
+    "BitsPerComponent": 8,
+    "SMaskInData": 2
+   },
+   "codestream": {
+    "width": 2,
+    "height": 1,
+    "components": 4,
+    "bit_depths": [
+     8,
+     8,
+     8,
+     8
+    ],
+    "signed": [
+     false,
+     false,
+     false,
+     false
+    ],
+    "subsampling": [
+     "1x1",
+     "1x1",
+     "1x1",
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 1,
+    "mct": 0,
+    "levels": 0,
+    "wavelet": "5-3 reversible"
+   }
+  },
+  {
+   "path": "pdf-jpx/jpx_smaskindata-7.jpx",
+   "sha256": "dd47a12eb40caafc0b317743cabdf62e16c07ec28c8b859211aa06b099bdb6e7",
+   "size": 268,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pdf.js/jpx_smaskindata.pdf",
+   "object": [
+    7,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "jp2",
+   "pdf_image": {
+    "Width": 2,
+    "Height": 1,
+    "BitsPerComponent": 8,
+    "SMaskInData": 2,
+    "Matte": [
+     0,
+     0,
+     1
+    ]
+   },
+   "codestream": {
+    "width": 2,
+    "height": 1,
+    "components": 4,
+    "bit_depths": [
+     8,
+     8,
+     8,
+     8
+    ],
+    "signed": [
+     false,
+     false,
+     false,
+     false
+    ],
+    "subsampling": [
+     "1x1",
+     "1x1",
+     "1x1",
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 1,
+    "mct": 0,
+    "levels": 0,
+    "wavelet": "5-3 reversible"
+   }
+  },
+  {
+   "path": "pdf-jpx/jpx_smaskindata-8.jpx",
+   "sha256": "7df75352352692960e915417f667dec28f0f2478f3af52a8a5bef002c060e261",
+   "size": 271,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pdf.js/jpx_smaskindata.pdf",
+   "object": [
+    8,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "jp2",
+   "pdf_image": {
+    "Width": 2,
+    "Height": 1,
+    "ColorSpace": "/DeviceRGB",
+    "BitsPerComponent": 8,
+    "SMaskInData": 1
+   },
+   "codestream": {
+    "width": 2,
+    "height": 1,
+    "components": 4,
+    "bit_depths": [
+     8,
+     8,
+     8,
+     8
+    ],
+    "signed": [
+     false,
+     false,
+     false,
+     false
+    ],
+    "subsampling": [
+     "1x1",
+     "1x1",
+     "1x1",
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 1,
+    "mct": 0,
+    "levels": 0,
+    "wavelet": "5-3 reversible"
+   }
+  },
+  {
+   "path": "pdf-jpx/jpx_subsampling-10.jpx",
+   "sha256": "8b6924af1aba8819f6e8fe2b505b92f9a67f321398788bc53c16ba0d39787201",
+   "size": 1075,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pdf.js/jpx_subsampling.pdf",
+   "object": [
+    10,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "j2k",
+   "pdf_image": {
+    "Width": 32,
+    "Height": 32,
+    "ColorSpace": "/DeviceRGB",
+    "BitsPerComponent": 8
+   },
+   "codestream": {
+    "width": 32,
+    "height": 32,
+    "components": 3,
+    "bit_depths": [
+     8,
+     8,
+     8
+    ],
+    "signed": [
+     false,
+     false,
+     false
+    ],
+    "subsampling": [
+     "1x1",
+     "2x2",
+     "2x2"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 1,
+    "mct": 0,
+    "levels": 0,
+    "wavelet": "5-3 reversible"
+   }
+  },
+  {
+   "path": "pdf-jpx/jpx_subsampling-11.jpx",
+   "sha256": "80ebc11c375f5287077fede08a2b9e92aba7aec81e2c48f7ad290fae342c7e28",
+   "size": 1075,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pdf.js/jpx_subsampling.pdf",
+   "object": [
+    11,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "j2k",
+   "pdf_image": {
+    "Width": 32,
+    "Height": 32,
+    "ColorSpace": "/DeviceRGB",
+    "BitsPerComponent": 8
+   },
+   "codestream": {
+    "width": 32,
+    "height": 32,
+    "components": 3,
+    "bit_depths": [
+     8,
+     8,
+     8
+    ],
+    "signed": [
+     false,
+     false,
+     false
+    ],
+    "subsampling": [
+     "1x1",
+     "2x2",
+     "2x2"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 1,
+    "mct": 0,
+    "levels": 0,
+    "wavelet": "5-3 reversible"
+   },
+   "known_deviations": {
+    "codestream": "Odd image origin (XOsiz = YOsiz = 1) with 2x2 sub-sampled chroma, converted sYCC->RGB by OpenJPEG's heuristic. Our up-sampling replicates chroma on the reference grid (T.800 B.2; task 6.1 decision), OpenJPEG's sycc420_to_rgb aligns it differently for odd origins: 30 of 1024 pixels differ, all in row 0 and in column 0 (odd rows). Our decoded components are identical to those of jpx_subsampling-10 (the same data at origin 0), where ours and OpenJPEG agree exactly."
+   }
+  },
+  {
+   "path": "pdf-jpx/jpx_subsampling-12.jpx",
+   "sha256": "f9639e1aa5b1c4556cc3fe4e6582c4be9baba0a21ee6ff83ca5d81916c13ad0d",
+   "size": 257,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pdf.js/jpx_subsampling.pdf",
+   "object": [
+    12,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "j2k",
+   "pdf_image": {
+    "Width": 32,
+    "Height": 32,
+    "ColorSpace": "/DeviceGray",
+    "BitsPerComponent": 8
+   },
+   "codestream": {
+    "width": 32,
+    "height": 32,
+    "components": 1,
+    "bit_depths": [
+     8
+    ],
+    "signed": [
+     false
+    ],
+    "subsampling": [
+     "2x2"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 1,
+    "mct": 0,
+    "levels": 0,
+    "wavelet": "5-3 reversible"
+   }
+  },
+  {
+   "path": "pdf-jpx/jpx_subsampling-13.jpx",
+   "sha256": "f7ca958d2ea94a102f52d20e900efe19f212c576fe419b72da6ed22b1042926d",
+   "size": 991,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pdf.js/jpx_subsampling.pdf",
+   "object": [
+    13,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "j2k",
+   "pdf_image": {
+    "Width": 32,
+    "Height": 32,
+    "ColorSpace": [
+     "/DeviceN",
+     [
+      "/A",
+      "/B"
+     ],
+     "/DeviceRGB",
+     {
+      "stream": {}
+     }
+    ],
+    "BitsPerComponent": 8
+   },
+   "codestream": {
+    "width": 32,
+    "height": 32,
+    "components": 2,
+    "bit_depths": [
+     8,
+     8
+    ],
+    "signed": [
+     false,
+     false
+    ],
+    "subsampling": [
+     "1x1",
+     "2x1"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 1,
+    "mct": 0,
+    "levels": 0,
+    "wavelet": "5-3 reversible"
+   }
+  },
+  {
+   "path": "pdf-jpx/perf_codecs_jpx-2.jpx",
+   "sha256": "052e5b93074e453ca9f1fa137c4a6074fa1f4bbc0afa197914d283b44f93dee1",
+   "size": 524203,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pdf.js/perf_codecs_jpx.pdf",
+   "object": [
+    2,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "jp2",
+   "pdf_image": {
+    "Width": 1800,
+    "Height": 2330,
+    "BitsPerComponent": 8
+   },
+   "codestream": {
+    "width": 1800,
+    "height": 2330,
+    "components": 3,
+    "bit_depths": [
+     8,
+     8,
+     8
+    ],
+    "signed": [
+     false,
+     false,
+     false
+    ],
+    "subsampling": [
+     "1x1",
+     "1x1",
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 1,
+    "mct": 0,
+    "levels": 5,
+    "wavelet": "9-7 irreversible"
+   }
+  },
+  {
+   "path": "pdf-jpx/red_stamp-18.jpx",
+   "sha256": "4e293888e423bc96fc5c6ea9f53069dd307d16b2814ba870883ebd064b240855",
+   "size": 175,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pdf.js/red_stamp.pdf",
+   "object": [
+    18,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "j2k",
+   "pdf_image": {
+    "Width": 100,
+    "Height": 100,
+    "ColorSpace": "/DeviceRGB",
+    "BitsPerComponent": 8
+   },
+   "codestream": {
+    "width": 100,
+    "height": 100,
+    "components": 3,
+    "bit_depths": [
+     8,
+     8,
+     8
+    ],
+    "signed": [
+     false,
+     false,
+     false
+    ],
+    "subsampling": [
+     "1x1",
+     "1x1",
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 1,
+    "mct": 1,
+    "levels": 5,
+    "wavelet": "5-3 reversible"
+   }
+  },
+  {
+   "path": "pdf-jpx/pike-jp2-6.jpx",
+   "sha256": "41537e9fa38dc6820cdbe02b4157abfd84c9cff770876f71c3186cc02ec75aa5",
+   "size": 17170,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pikepdf/pike-jp2.pdf",
+   "object": [
+    6,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "j2k",
+   "pdf_image": {
+    "Width": 120,
+    "Height": 44,
+    "ColorSpace": "/DeviceRGB",
+    "BitsPerComponent": 8
+   },
+   "codestream": {
+    "width": 120,
+    "height": 44,
+    "components": 3,
+    "bit_depths": [
+     16,
+     16,
+     16
+    ],
+    "signed": [
+     false,
+     false,
+     false
+    ],
+    "subsampling": [
+     "1x1",
+     "1x1",
+     "1x1"
+    ],
+    "tiles": 1,
+    "progression": "LRCP",
+    "layers": 1,
+    "mct": 1,
+    "levels": 5,
+    "wavelet": "5-3 reversible"
+   },
+   "also_in": [
+    {
+     "source_pdf": "pdf-sources/pikepdf/pike-flate-jp2.pdf",
+     "object": [
+      7,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "path": "pdf-jpx/JPXTestCMYK-12.jpx",
+   "sha256": "0b0b1b7a5b8567e53caf5af727f5a6e72d225914759a9a8a0a544aab64c8eedd",
+   "size": 3592,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pdfbox/JPXTestCMYK.pdf",
+   "object": [
+    12,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "jp2",
+   "pdf_image": {
+    "Width": 1377,
+    "Height": 443,
+    "ColorSpace": "/DeviceCMYK",
+    "BitsPerComponent": 8,
+    "SMask": "present",
+    "Intent": "/RelativeColorimetric"
+   },
+   "codestream": {
+    "width": 1377,
+    "height": 443,
+    "components": 4,
+    "bit_depths": [
+     8,
+     8,
+     8,
+     8
+    ],
+    "signed": [
+     false,
+     false,
+     false,
+     false
+    ],
+    "subsampling": [
+     "1x1",
+     "1x1",
+     "1x1",
+     "1x1"
+    ],
+    "tiles": 12,
+    "progression": "RLCP",
+    "layers": 4,
+    "mct": 1,
+    "levels": 5,
+    "wavelet": "9-7 irreversible"
+   }
+  },
+  {
+   "path": "pdf-jpx/JPXTestGrey-84.jpx",
+   "sha256": "ae489a642da32c838d82c7fd56cef4c2291fe28d2c12e77c78a79c28e6691c44",
+   "size": 2774,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pdfbox/JPXTestGrey.pdf",
+   "object": [
+    84,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "jp2",
+   "pdf_image": {
+    "Width": 690,
+    "Height": 223,
+    "ColorSpace": "/DeviceGray",
+    "BitsPerComponent": 8
+   },
+   "codestream": {
+    "width": 690,
+    "height": 223,
+    "components": 1,
+    "bit_depths": [
+     8
+    ],
+    "signed": [
+     false
+    ],
+    "subsampling": [
+     "1x1"
+    ],
+    "tiles": 3,
+    "progression": "RLCP",
+    "layers": 1,
+    "mct": 0,
+    "levels": 5,
+    "wavelet": "9-7 irreversible"
+   }
+  },
+  {
+   "path": "pdf-jpx/JPXTestRGB-12.jpx",
+   "sha256": "cd439be5bb15d2eddedf8228eba2249eb9ef9cad2896bd72c0243f65c58f1804",
+   "size": 3291,
+   "roles": [
+    "pdf-jpx"
+   ],
+   "source_pdf": "pdf-sources/pdfbox/JPXTestRGB.pdf",
+   "object": [
+    12,
+    0
+   ],
+   "filters": [
+    "/JPXDecode"
+   ],
+   "format": "jp2",
+   "pdf_image": {
+    "Width": 1377,
+    "Height": 443,
+    "ColorSpace": "/DeviceRGB",
+    "BitsPerComponent": 8,
+    "SMask": "present",
+    "Intent": "/RelativeColorimetric"
+   },
+   "codestream": {
+    "width": 1377,
+    "height": 443,
+    "components": 3,
+    "bit_depths": [
+     8,
+     8,
+     8
+    ],
+    "signed": [
+     false,
+     false,
+     false
+    ],
+    "subsampling": [
+     "1x1",
+     "1x1",
+     "1x1"
+    ],
+    "tiles": 12,
+    "progression": "RLCP",
+    "layers": 4,
+    "mct": 1,
+    "levels": 5,
+    "wavelet": "9-7 irreversible"
    }
   }
  ]
