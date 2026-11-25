@@ -5,8 +5,8 @@ import Spec.Tier1Equiv.Modes
 
 Plan.md §4 (C3), §5.2 "Tier-1 / EBCOT"; T.800 D.5 (segmentation symbols). Task 7.1c.
 
-`c3_all_strict`: the strict pair `JPEG2000.Tier1.decodeCodeBlockSegsStrict` /
-`Spec.Tier1.decodeCodeBlockStrict` (a segmentation symbol other than `1010` is an error) agrees
+`c3_all_strict_exact` (`c3_all_strict` in `Spec.Tier1Equiv.Clamp` after task 5.8): the strict pair `JPEG2000.Tier1.decodeCodeBlockSegsStrictExact` /
+`Spec.Tier1.decodeCodeBlockStrictExact` (a segmentation symbol other than `1010` is an error) agrees
 exactly as the lenient pair of `c3_all`. On top of `c3_all` it needs that the fast count of bad
 symbols is the spec's `badSegSymbols`:
 
@@ -369,9 +369,9 @@ theorem core_bad (data : ByteArray) (segs : Array JPEG2000.Tier1.Seg) (w h : Nat
     rw [decodeSegments_bad_noSeg _ md hs]
     revert hcore
     split
-    · generalize JPEG2000.Tier1.decodeCodeBlock _ _ _ _ _ _ _ _ _ = r
+    · generalize JPEG2000.Tier1.decodeCodeBlockExact _ _ _ _ _ _ _ _ _ = r
       intro hc; cases r <;> simp at hc; exact hc.2.symm
-    · generalize JPEG2000.Tier1.decodeCodeBlock _ _ _ _ _ _ _ _ _ = r
+    · generalize JPEG2000.Tier1.decodeCodeBlockExact _ _ _ _ _ _ _ _ _ = r
       intro hc; cases r <;> simp at hc; exact hc.2.symm
   · simp only [hp, Bool.false_eq_true, ↓reduceIte, Except.ok.injEq, Prod.mk.injEq] at hcore
     rw [← hcore.2]
@@ -389,22 +389,22 @@ theorem core_bad (data : ByteArray) (segs : Array JPEG2000.Tier1.Seg) (w h : Nat
         segs.toList segs.size 0 _ 0 _ 0 0 false (by simp) (by simp) hhom R0 rfl
 
 /-- **C3 for every code-block style, strict segmentation symbols**: as `c3_all` for
-`decodeCodeBlockSegsStrict` and `Spec.Tier1.decodeCodeBlockStrict` (a segmentation symbol other
+`decodeCodeBlockSegsStrictExact` and `Spec.Tier1.decodeCodeBlockStrictExact` (a segmentation symbol other
 than `1010` is the same `malformed` error on both sides). -/
-theorem c3_all_strict (data : ByteArray) (segs : Array JPEG2000.Tier1.Seg) (w h : Nat)
+theorem c3_all_strict_exact (data : ByteArray) (segs : Array JPEG2000.Tier1.Seg) (w h : Nat)
     (band : Band) (style : UInt8) (Mb zbp : Nat)
     (hrange : ∀ sg ∈ segs.toList, sg.start ≤ sg.stop ∧ sg.stop ≤ data.size)
     (hK : 0 < (segs.toList.map (·.passes)).sum → Mb - zbp ≤ 31) :
-    match JPEG2000.Tier1.decodeCodeBlockSegsStrict data segs w h band style Mb zbp,
-      Spec.Tier1.decodeCodeBlockStrict (specBlockM data segs w h band style Mb zbp) with
+    match JPEG2000.Tier1.decodeCodeBlockSegsStrictExact data segs w h band style Mb zbp,
+      Spec.Tier1.decodeCodeBlockStrictExact (specBlockM data segs w h band style Mb zbp) with
     | .error e1, .error e2 => e1 = e2
     | .ok o, .ok cs => Agree w h o cs
     | _, _ => False := by
-  have L := c3_all data segs w h band style Mb zbp hrange hK
+  have L := c3_all_exact data segs w h band style Mb zbp hrange hK
   have hv := validate_eqM data segs w h band style Mb zbp hrange hK
-  unfold JPEG2000.Tier1.decodeCodeBlockSegs at L
-  unfold JPEG2000.Tier1.decodeCodeBlockSegsStrict Spec.Tier1.decodeCodeBlockStrict
-  unfold Spec.Tier1.decodeCodeBlock at L
+  unfold JPEG2000.Tier1.decodeCodeBlockSegsExact at L
+  unfold JPEG2000.Tier1.decodeCodeBlockSegsStrictExact Spec.Tier1.decodeCodeBlockStrictExact
+  unfold Spec.Tier1.decodeCodeBlockExact at L
   have hB := core_bad data segs w h band style Mb zbp hK
   revert L hB
   generalize JPEG2000.Tier1.decodeSegsCore data segs w h band style Mb zbp = core

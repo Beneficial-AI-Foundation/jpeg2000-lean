@@ -1,5 +1,5 @@
 import Spec.Tier2Wire
-import Spec.Tier1Equiv.Modes
+import Spec.Tier1Equiv.Clamp
 
 /-!
 # The Tier-1 equivalence wired into C9
@@ -16,7 +16,8 @@ same `tier1Input` buffer, so no byte-level argument is needed here (that the buf
 segments of the spec Tier-2 result is `Spec.Equiv.decodeBlock_eq_st`, used by C9 itself):
 
 * a range outside the buffer: the spec fails (`specCodeBlock`) and so does the fast decoder
-  (its argument check `validateSegs` throws, `fast_error_of_bad`);
+  (it checks every range before anything else, `badRange`, `fast_error_of_bad` — also the
+  ranges of segments it would drop as lying below bit-plane 0, task 5.8);
 * otherwise `specCodeBlock` is `Spec.Tier1EquivM.specBlockM` of the buffer and ranges
   (`specCodeBlock_ok`), and C3 for every style (`Spec.Tier1EquivM.c3_all_unsup`) gives
   `Agree`, both failing, or the fast one refusing with `unsupported` (K > 31); `Agree` implies
@@ -52,11 +53,9 @@ theorem fast_error_of_bad (data : ByteArray) (segs : Array Tier1.Seg) (w h : Nat
     (style : UInt8) (Mb zbp : Nat)
     (hbad : (segs.any fun sg => decide (sg.start > sg.stop) || decide (sg.stop > data.size)) = true) :
     ∃ e, Tier1.decodeCodeBlockSegs data segs w h band style Mb zbp = .error e := by
-  obtain ⟨e, he⟩ := validateSegs_error data segs w h (Tier1.Style.ofByte style) (Mb - zbp) hbad
-  refine ⟨e, ?_⟩
-  unfold Tier1.decodeCodeBlockSegs Tier1.decodeSegsCore
-  simp only [he]
-  rfl
+  refine ⟨.malformed JPEG2000.Tier1.tier1Loc "code-block data range outside the buffer", ?_⟩
+  unfold Tier1.decodeCodeBlockSegs Tier1.badRange
+  simp only [hbad, ↓reduceIte]
 
 /-- With every range in its buffer, the spec code-block of a fast code-block is `specBlockM` of
 the `tier1Input` buffer and ranges. -/

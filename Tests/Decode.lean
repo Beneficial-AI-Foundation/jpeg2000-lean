@@ -30,6 +30,12 @@ OpenJPEG); T.800 B.3, B-12, B-14, Annexes D–H.
 
 The PGX reader here is private to this suite (task 5.6a writes the official one).
 
+6. **Passes below bit-plane 0** (task 5.8): the non-regression streams `test_lossless.j2k`
+   (5/3, bit-exact) and `kodak_2layers_lrcp.j2c` (9/7 + ICT, two layers) signal more passes
+   than `3K − 2` for some code-blocks; they go through (1)–(3). `kodak_2layers_lrcp.j2c` is
+   compared leniently (`knownDiff`: OpenJPEG's 109-pass segment cap changes its Tier-2
+   parse of that stream).
+
 Defaults keep the suite fast: the large streams `p0_07`, `p0_08`, `p0_05`, `p1_03` and
 `file*.jp2` run only with `JPEG2000_DECODE_ALL=1`. Skips cleanly when `corpus/files` or
 `opj_decompress` is missing (only the structure checks need no OpenJPEG).
@@ -41,6 +47,9 @@ open JPEG2000 JPEG2000.Bytes JPEG2000.Marker JPEG2000.Header
 
 /-- The conformance input directory. -/
 def inputDir : System.FilePath := "corpus/files/openjpeg-data/input/conformance"
+
+/-- The OpenJPEG non-regression input directory. -/
+def nonregDir : System.FilePath := "corpus/files/openjpeg-data/input/nonregression"
 
 /-- The T.803 reference decodes. -/
 def baselineDir : System.FilePath := "corpus/files/openjpeg-data/baseline/conformance"
@@ -226,6 +235,14 @@ size (`opj_decompress.c` guesses the colour space), so a per-component compariso
 impossible. Structure checks still run. -/
 def opjConverts : List String := ["file3"]
 
+/-- Streams with a known, explained difference from `opj_decompress` (compared leniently:
+differences are printed, not failures). `kodak_2layers_lrcp.j2c` has a code-block
+(comp 0, res 5, HL, precinct 18, block 3) that signals 172 passes in one packet; OpenJPEG
+splits a plain-mode codeword segment after 109 passes (`opj_t2_init_seg`, `maxpasses = 109`)
+and so reads two length fields where T.800 B.10.7.1 has one, and the two packet-header
+parses diverge from there (task 5.8 report; Decision 4.4 "known difference"). -/
+def knownDiff : List String := ["kodak_2layers_lrcp.j2c"]
+
 /-- Decodes one stream and runs checks (1)–(3) (and (5) for ROI streams). -/
 def checkStream (dir : System.FilePath) (opj : Bool) (name : String) (path : System.FilePath)
     (roi : Bool) : IO Nat := do
@@ -250,7 +267,9 @@ def checkStream (dir : System.FilePath) (opj : Bool) (name : String) (path : Sys
         IO.println s!"  FAIL {name}: opj_decompress failed"
         fails := fails + 1
       | some ref =>
-        let (f, res) ← compareOpj name img ref roi
+        if knownDiff.contains name then
+          IO.println s!"  {name}: known Tier-2 deviation from OpenJPEG (plain-mode segments capped at 109 passes), differences reported, not failures"
+        let (f, res) ← compareOpj name img ref (roi || knownDiff.contains name)
         fails := fails + f
         if roi then
           -- (5): T.803 reference decodes `c1<name>_<c>.pgx`.
@@ -325,9 +344,15 @@ def bigStreams : List String :=
 /-- The ROI (RGN) streams. -/
 def roiStreams : List String := ["p0_03", "p0_06", "p0_13", "p0_15"]
 
+/-- Non-regression streams that signal more coding passes than `3K − 2` for some code-blocks
+(task 5.8: the passes below bit-plane 0 are dropped, as OpenJPEG does). `test_lossless` is
+5/3 (bit-exact); `kodak_2layers_lrcp` is 9/7 + ICT, 2 layers (`knownDiff`). -/
+def nonregStreams : List String := ["test_lossless.j2k", "kodak_2layers_lrcp.j2c"]
+
 /-- The file of a stream name. -/
 def streamPath (n : String) : System.FilePath :=
-  inputDir / (if n.startsWith "file" then s!"{n}.jp2" else s!"{n}.j2k")
+  if nonregStreams.contains n then nonregDir / n
+  else inputDir / (if n.startsWith "file" then s!"{n}.jp2" else s!"{n}.j2k")
 
 /-- Runs the suite. -/
 def run : IO Nat := do
@@ -340,7 +365,7 @@ def run : IO Nat := do
   let dir : System.FilePath := s!".lake/tests-decode-{← IO.monoNanosNow}"
   IO.FS.createDirAll dir
   let mut fails := 0
-  let streams := defaultStreams ++ (if all then bigStreams else [])
+  let streams := defaultStreams ++ nonregStreams ++ (if all then bigStreams else [])
   for n in streams do
     fails := fails + (← checkStream dir opj n (streamPath n) (roiStreams.contains n))
   -- (4) reduced resolution.

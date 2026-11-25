@@ -13,7 +13,10 @@ can make a coefficient significant get mode-aware copies (`…M`, `raw…`), the
 look-up tables, the magnitude refinement pass, `clearVis`, `fillRows` and `CodeBlockOut` are
 reused as they are. The entry point `decodeCodeBlockSegs` sends a block whose style decodes
 as plain (every flag clear except predictable termination, which has no decoder effect) to
-the plain `decodeCodeBlock`, so C3 for plain mode carries over to it unchanged.
+the plain `decodeCodeBlockExact`, so C3 for plain mode carries over to it unchanged. Passes
+signalled beyond the `3K − 2`-th (below bit-plane 0) are dropped before decoding (`clampSegs`,
+= `Spec.Tier1.CodeBlock.clampPasses`, task 5.8): they code nothing, OpenJPEG ignores them,
+and some encoders emit them (`kodak_2layers_lrcp.j2c`, `test_lossless.j2k`).
 
 | T.800 | spec (`Spec.Tier1`) | here |
 |---|---|---|
@@ -376,7 +379,8 @@ def validateSegs (data : ByteArray) (segs : Array Seg) (w h : Nat) (m : Style) (
 
 /-- The decoder behind `decodeCodeBlockSegs`: the decoded block and the number of bad
 segmentation symbols (always 0 for a style that decodes as plain, which goes to the plain
-`decodeCodeBlock`). -/
+`decodeCodeBlockExact`). Exactly the passes of `segs` are decoded (more than `3K − 2` is
+`malformed`). -/
 def decodeSegsCore (data : ByteArray) (segs : Array Seg) (w h : Nat) (band : Band)
     (style : UInt8) (numBitPlanes zeroBitPlanes : Nat) : Except Error (CodeBlockOut × Nat) := do
   let m := Style.ofByte style
@@ -385,11 +389,12 @@ def decodeSegsCore (data : ByteArray) (segs : Array Seg) (w h : Nat) (band : Ban
   if m.decodesAsPlain then
     match segs.toList with
     | [sg] =>
-      let o ← decodeCodeBlock data sg.start sg.stop w h band numBitPlanes zeroBitPlanes sg.passes
+      let o ← decodeCodeBlockExact data sg.start sg.stop w h band numBitPlanes zeroBitPlanes
+        sg.passes
       return (o, 0)
     | _ =>
       -- no segment (no pass included): validation admits nothing else in plain mode
-      let o ← decodeCodeBlock data 0 0 w h band numBitPlanes zeroBitPlanes 0
+      let o ← decodeCodeBlockExact data 0 0 w h band numBitPlanes zeroBitPlanes 0
       return (o, 0)
   else
     let g : Geo := { w, h, st := w + 2, zc := zcFor band, hzc := zcFor_size band }
@@ -402,24 +407,65 @@ def decodeSegsCore (data : ByteArray) (segs : Array Seg) (w h : Nat) (band : Ban
     let plane := fillRows g s.flags s.mags h (Plane.zero w h) 0
     return ({ plane, flags := s.flags, codedPlanes := K, numPasses := segsPasses segs }, bad)
 
+/-- Tier-1 decoding of one code-block in any code-block style **as signalled**: exactly the
+passes of `segs` (more than `3K − 2` is `malformed`). `decodeCodeBlockSegs` is this on
+`clampSegs`. -/
+def decodeCodeBlockSegsExact (data : ByteArray) (segs : Array Seg) (w h : Nat) (band : Band)
+    (style : UInt8) (numBitPlanes zeroBitPlanes : Nat) : Except Error CodeBlockOut :=
+  (decodeSegsCore data segs w h band style numBitPlanes zeroBitPlanes).map Prod.fst
+
+/-- As `decodeCodeBlockSegsExact`, but a segmentation symbol other than `1010` is an error
+(`Spec.Tier1.decodeCodeBlockStrictExact`). -/
+def decodeCodeBlockSegsStrictExact (data : ByteArray) (segs : Array Seg) (w h : Nat)
+    (band : Band) (style : UInt8) (numBitPlanes zeroBitPlanes : Nat) :
+    Except Error CodeBlockOut := do
+  let (o, bad) ← decodeSegsCore data segs w h band style numBitPlanes zeroBitPlanes
+  if bad != 0 then throw (.malformed tier1Loc "bad segmentation symbol")
+  return o
+
+/-! ## Passes below bit-plane 0 (task 5.8) -/
+
+/-- The first `m` passes of a segment list (`Spec.Tier1.truncSegments`): whole segments while
+they fit, then the first segment that reaches `m` cut to the remaining passes (its byte range
+kept), nothing after it. -/
+def truncSegs : List Seg → Nat → List Seg
+  | [], _ => []
+  | s :: ss, m =>
+    if m = 0 then []
+    else if m ≤ s.passes then [{ s with passes := m }]
+    else s :: truncSegs ss (m - s.passes)
+
+/-- The segments of a block of `K` coded bit-planes with the passes beyond the `3K − 2`-th
+dropped (`Spec.Tier1.CodeBlock.clampPasses`); unchanged when within the bound. -/
+def clampSegs (segs : Array Seg) (K : Nat) : Array Seg :=
+  if segsPasses segs ≤ 3 * K - 2 then segs else (truncSegs segs.toList (3 * K - 2)).toArray
+
+/-- Some segment range lies outside the buffer (or is reversed). -/
+def badRange (data : ByteArray) (segs : Array Seg) : Bool :=
+  segs.any fun sg => sg.start > sg.stop || sg.stop > data.size
+
 /-- **Tier-1 decoding of one code-block in any code-block style** (T.800 Annex D, Table
 A.19): `w × h` coefficients of a sub-band of orientation `band`, code-block style byte
 `style` (`SPcod`/`SPcoc`, bits 0–5), `Mb = numBitPlanes`, `zeroBitPlanes` missing planes;
 `segs` are the block's codeword segments in order, each a byte range of `data` with its pass
 count (the counts must be `segmentPasses (Style.ofByte style) numPasses 0`: one segment in
-plain mode, none when no pass is included). Bad segmentation symbols are tolerated (as
+plain mode, none when no pass is included). Every range must lie in `data`; passes beyond
+the `3K − 2`-th (below bit-plane 0) code nothing and are dropped first (`clampSegs`, as
+OpenJPEG; task 5.8). Bad segmentation symbols are tolerated (as
 `Spec.Tier1.decodeCodeBlock` and OpenJPEG). A style that decodes as plain is handed to
-`decodeCodeBlock` (task 3.4a). -/
+`decodeCodeBlockExact` (task 3.4a). -/
 def decodeCodeBlockSegs (data : ByteArray) (segs : Array Seg) (w h : Nat) (band : Band)
     (style : UInt8) (numBitPlanes zeroBitPlanes : Nat) : Except Error CodeBlockOut :=
-  (decodeSegsCore data segs w h band style numBitPlanes zeroBitPlanes).map Prod.fst
+  if badRange data segs then .error (.malformed tier1Loc "code-block data range outside the buffer")
+  else decodeCodeBlockSegsExact data (clampSegs segs (numBitPlanes - zeroBitPlanes)) w h band
+    style numBitPlanes zeroBitPlanes
 
 /-- As `decodeCodeBlockSegs`, but a segmentation symbol other than `1010` is an error
 (`Spec.Tier1.decodeCodeBlockStrict`). -/
 def decodeCodeBlockSegsStrict (data : ByteArray) (segs : Array Seg) (w h : Nat) (band : Band)
-    (style : UInt8) (numBitPlanes zeroBitPlanes : Nat) : Except Error CodeBlockOut := do
-  let (o, bad) ← decodeSegsCore data segs w h band style numBitPlanes zeroBitPlanes
-  if bad != 0 then throw (.malformed tier1Loc "bad segmentation symbol")
-  return o
+    (style : UInt8) (numBitPlanes zeroBitPlanes : Nat) : Except Error CodeBlockOut :=
+  if badRange data segs then .error (.malformed tier1Loc "code-block data range outside the buffer")
+  else decodeCodeBlockSegsStrictExact data (clampSegs segs (numBitPlanes - zeroBitPlanes)) w h
+    band style numBitPlanes zeroBitPlanes
 
 end JPEG2000.Tier1

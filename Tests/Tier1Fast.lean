@@ -526,7 +526,21 @@ def runSegChecks : IO Nat := do
   f := f + (← expect "segment start > stop rejected" ((dec #[⟨3, 2, 2⟩] 2).isSome))
   f := f + (← expect "segment past the buffer rejected (termall, last segment)"
     ((dec #[⟨0, 2, 1⟩, ⟨2, 9, 1⟩] 4).isSome))
-  f := f + (← expect "too many passes rejected (K = 3: 7 passes max)" ((dec #[⟨0, 6, 8⟩] 2).isSome))
+  f := f + (← expect "too many passes rejected by the exact decoder (K = 3: 7 passes max)"
+    ((err? (Tier1.decodeCodeBlockSegsExact buf #[⟨0, 6, 8⟩] 4 4 .LL 2 3 0)).isSome))
+  f := f + (← expect "too many passes: the extra one dropped (task 5.8)"
+    ((dec #[⟨0, 6, 8⟩] 2).isNone &&
+      (match Tier1.decodeCodeBlockSegs buf #[⟨0, 6, 8⟩] 4 4 .LL 2 3 0,
+          Tier1.decodeCodeBlockSegs buf #[⟨0, 6, 7⟩] 4 4 .LL 2 3 0 with
+       | .ok a, .ok b => a.plane.data == b.plane.data && a.numPasses == 7
+       | _, _ => false)))
+  f := f + (← expect "termall, too many passes: later segments dropped (task 5.8)"
+    (match Tier1.decodeCodeBlockSegs buf #[⟨0, 1, 1⟩, ⟨1, 2, 1⟩, ⟨2, 3, 1⟩, ⟨3, 4, 1⟩] 4 4 .LL 4 2 1,
+        Tier1.decodeCodeBlockSegs buf #[⟨0, 1, 1⟩] 4 4 .LL 4 2 1 with
+     | .ok a, .ok b => a.plane.data == b.plane.data && a.numPasses == 1
+     | _, _ => false))
+  f := f + (← expect "dropped segment past the buffer still rejected"
+    ((err? (Tier1.decodeCodeBlockSegs buf #[⟨0, 1, 1⟩, ⟨2, 9, 1⟩] 4 4 .LL 4 2 1)).isSome))
   f := f + (← expect "K = 32 with passes unsupported"
     (match err? (Tier1.decodeCodeBlockSegs buf #[⟨0, 6, 1⟩] 4 4 .LL 2 32 0) with
      | some (.unsupported _ _) => true | _ => false))
