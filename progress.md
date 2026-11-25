@@ -17,6 +17,7 @@ Design document: Plan.md
   becomes current. Proof tasks name their theorem IDs from Plan.md §4 (S1–S6, C1–C10).
 
 ## Current wave
+Wave 8: 1.10 (new), 3.2 (new), 4.1 (new), 4.2 (new)
 
 ## Branches and PRs
 | Phase | Branch | Base | PR | State |
@@ -59,7 +60,7 @@ Plan.md §7 row 1, §3, Annex A/I. Exit: **M1**: every T.803 stream and every co
 | 1.6 | Marker-segment serialiser (`Encode/Marker.lean`) and the round-trip theorem `parse (serialise m) = m` for every marker segment type (`Spec/MarkerRoundTrip.lean`) | 1.3 | `Encode/Marker.lean`, `Spec/MarkerRoundTrip.lean` | new | | done (2026-11-25) |
 | 1.7 | Header dump exe (`lake exe header-dump <file>` printing the merged header in `opj_dump -i`-comparable form) + `scripts/diff-headers.py` comparing against `opj_dump` on every corpus stream | 1.2, 1.5, 0.5 | `Tests/HeaderDump.lean`, `scripts/diff-headers.py`, `lakefile.lean` (exe `header-dump`), `.github/workflows/ci.yml` (diff step) | wt | done (2026-11-25) |
 | 1.9 | Tolerate `TNsot` one too small as OpenJPEG does (`m_nb_tile_parts_correction` in `opj_j2k_read_sot`): `issue208.jp2`, `issue559-eci-090-CIELab.jp2` declare TNsot = 5 with 6 tile-parts; fix `parseSOT`/`assembleTile`, drop the two `xfailTNsot` entries in `Tests/Header.lean` | 1.5 | `JPEG2000/TilePart.lean`, `Tests/TilePart.lean`, `Tests/Header.lean` | wt | | done (2026-11-25) |
-| 1.10 | Serialisers + round-trip theorems for the tile-part marker segments SOT, TLM, PLT, PPM, PPT (M1 says "marker segments"; 1.6 covered the 9 main-header types only) | 1.4, 1.6 | `Encode/TilePart.lean`, `Spec/TilePartRoundTrip.lean`, `Tests/TilePartRoundTrip.lean` | new | todo |
+| 1.10 | Serialisers + round-trip theorems for the tile-part marker segments SOT, TLM, PLT, PPM, PPT (M1 says "marker segments"; 1.6 covered the 9 main-header types only) | 1.4, 1.6 | `Encode/TilePart.lean`, `Spec/TilePartRoundTrip.lean`, `Tests/TilePartRoundTrip.lean` | new | | doing (2026-11-25) |
 | 1.8 | M1 check | 1.1–1.7, 1.9, 1.10 | — | solo | todo |
 Exit criterion checked: [ ]
 
@@ -81,7 +82,7 @@ Plan.md §7 row 3, §5.2 "Tier-1", Annex D. Exit: **M3**: C3 proved for plain mo
 | ID | Task | Needs | Owns | Par | Status |
 |---|---|---|---|---|---|
 | 3.1 | (landed on `phase-1-headers`) Spec context tables D.1–D.3 (zero coding, sign coding, magnitude refinement) as data | 2.1 | `Spec/Tier1/Context.lean` | new | | done (2026-11-25) |
-| 3.2 | Spec Tier-1 decoder, plain mode: per-coefficient state, significance propagation / magnitude refinement / cleanup passes, run-length coding | 3.1 | `Spec/Tier1/Decode.lean` | new | todo |
+| 3.2 | Spec Tier-1 decoder, plain mode: per-coefficient state, significance propagation / magnitude refinement / cleanup passes, run-length coding | 3.1 | `Spec/Tier1/Decode.lean`, `Tests/Tier1Spec.lean` | new | | doing (2026-11-25) |
 | 3.3 | Spec modes: reset, termall, vertically causal, segmentation symbols, predictable termination, bypass (raw) | 3.2 | `Spec/Tier1/Modes.lean` | new | todo |
 | 3.4 | Fast Tier-1: 32-bit flag word per coefficient, stripe scan, zero-stripe skipping, all modes | 3.2, 2.3 | `JPEG2000/Tier1/` | new | todo |
 | 3.5 | Reference Tier-1 encoder, plain mode | 3.2, 2.2 | `Encode/Tier1.lean` | new | todo |
@@ -94,8 +95,8 @@ Exit criterion checked: [ ]
 Plan.md §7 row 4, §5.2 "Tier-2", Annex B. Exit: **M4**: C4, C5 proved; every T.803 stream yields the same per-code-block segments as OpenJPEG.
 | ID | Task | Needs | Owns | Par | Status |
 |---|---|---|---|---|---|
-| 4.1 | Tag trees (B.10.2): decoder, reference encoder, C4 | 1.1 | `JPEG2000/TagTree.lean`, `Spec/TagTree.lean` | new | todo |
-| 4.2 | Geometry (B.5–B.7): tile-components, resolutions, sub-bands, precincts, code-blocks, with `Limits` checks | 1.5 | `JPEG2000/Tier2/Geometry.lean` | new | todo |
+| 4.1 | Tag trees (B.10.2): decoder, reference encoder, C4 | 1.1 | `JPEG2000/TagTree.lean`, `Spec/TagTree.lean`, `Tests/TagTree.lean` | new | | doing (2026-11-25) |
+| 4.2 | Geometry (B.5–B.7): tile-components, resolutions, sub-bands, precincts, code-blocks, with `Limits` checks | 1.5 | `JPEG2000/Tier2/Geometry.lean`, `Tests/Geometry.lean` | new | | doing (2026-11-25) |
 | 4.3 | Progression orders LRCP/RLCP/RPCL/PCRL/CPRL + POC as explicit iterators; C5 (bijection onto the packet set) | 4.2 | `JPEG2000/Progression.lean`, `Spec/Progression.lean` | new | todo |
 | 4.4 | Packet headers (B.10): zero-length packets, inclusion, zero bit-planes, passes, `Lblock`, segment lengths per mode; layer accumulation into per-code-block segments; SOP/EPH | 4.1, 4.2, 4.3 | `JPEG2000/Tier2/Packet.lean` | new | todo |
 | 4.5 | PPM/PPT header sourcing and tile-part ordering | 4.4 | `JPEG2000/Tier2/Headers.lean` | new | todo |
@@ -208,6 +209,7 @@ Exit criterion checked: [ ]
 * Tier-1 context numbering: 0–8 zero coding, 9–13 sign, 14–16 refinement, 17 run-length, 18 UNIFORM (= OpenJPEG `T1_CTXNO_*`, `Spec.MQ`, `JPEG2000.MQ.tier1Inits`). OpenJPEG band numbers: 0 LL, 1 HL, 2 LH, 3 HH; its zc generator swaps H/V for HL at lookup (agrees with T.800).
 
 ## Decisions and deviations from the design document
+* Wave 8 selection: Phases 1–2 have no further parallel work and Phase 3 has one ready task, so the wave is filled with the ready Phase 4 starters 4.1/4.2 (independent files).
 * 0.1: three libraries (`JPEG2000`, `Spec`, `Encode`) with one umbrella each, all default targets; `Tests` is a separate lib built only via `lake build tests`. `.mcp.json` pins `lean-lsp-mcp==0.33.0` with `lean_build` disabled (as bib-lean).
 
 * 0.2: `Error.Stage` gains `decode` (argument checks before any stage). Defaults that are judgement calls, not T.800 bounds: image side 2^17, 2^22 code-blocks/precincts, 255 passes per code-block, box nesting 8 — revisit against the corpus.
