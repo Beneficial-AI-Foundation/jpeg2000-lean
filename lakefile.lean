@@ -49,3 +49,9 @@ lean_exe «bench-mq» where
 with OpenJPEG by `scripts/diff-headers.py`. Not a default target. -/
 lean_exe «header-dump» where
   root := `Tests.HeaderDump
+
+/-- Per-code-block segments and Tier-1 coefficients in the instrumented-OpenJPEG dump format
+(task 4.6b): `lake exe segment-dump <file>`, compared with OpenJPEG by
+`scripts/diff-segments.py`. Not a default target. -/
+lean_exe «segment-dump» where
+  root := `Tests.SegmentDump
