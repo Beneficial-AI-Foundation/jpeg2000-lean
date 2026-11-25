@@ -10,6 +10,7 @@ import Tests.TilePart
 import Tests.MarkerRoundTrip
 import Tests.MQEnc
 import Tests.MQ
+import Tests.MQRoundTrip
 
 /-!
 # Test runner
@@ -39,7 +40,8 @@ def suites : List Suite :=
     { name := "tilepart", run := JPEG2000.Tests.TilePart.run },
     { name := "marker-roundtrip", run := JPEG2000.Tests.MarkerRoundTrip.run },
     { name := "mqenc", run := JPEG2000.Tests.MQEnc.run },
-    { name := "mq", run := JPEG2000.Tests.MQ.run } ]
+    { name := "mq", run := JPEG2000.Tests.MQ.run },
+    { name := "mq-roundtrip", run := JPEG2000.Tests.MQRoundTrip.run } ]
 
 end JPEG2000.Tests
 
