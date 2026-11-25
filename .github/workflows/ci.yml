@@ -74,6 +74,12 @@ jobs:
       - name: Tests
         run: lake exe tests
 
+      # T.803 conformance (task 5.6b): every p0/p1 stream against the reference decodes;
+      # fails on any class-1 failure (M5); class 0 is reported, informational. Linux only.
+      - name: T.803 conformance
+        if: runner.os == 'Linux'
+        run: lake build conformance && .lake/build/bin/conformance
+
       # Header differential against OpenJPEG's opj_dump (task 1.7). Linux only: Ubuntu's
       # libopenjp2-tools provides opj_dump; macOS runs the build and tests without it.
       - name: Install opj_dump
