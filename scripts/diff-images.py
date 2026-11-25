@@ -1,0 +1,331 @@
+#!/usr/bin/env python3
+"""Decoded-image differential: `JPEG2000.decode` vs `opj_decompress` (Plan.md 8.2, 8.3).
+
+Run from the repository root (or anywhere) as:   python3 -I scripts/diff-images.py [options]
+
+For every `pdf-jpx` entry of corpus/manifest.json (the JPX streams extracted from PDFs by
+scripts/extract-pdf-jpx.py) -- and with `--jp2` also the T.803 JP2 files (role `jp2`) --
+two comparisons are made, each per component, sample by sample:
+
+  codestream  the contiguous codestream (the `jp2c` payload of a JP2 file) decoded by
+              `opj_decompress -i x.j2k -o x.pgx` against our `image-dump` raw components
+              (`decodeCodestream`).  OpenJPEG converts a space-less 3-component stream whose
+              component 1 is horizontally sub-sampled from sYCC to RGB even here; then our
+              `JPEG2000.decode` channels (which apply the same heuristic) are compared.
+  jp2         JP2 files only: `opj_decompress -i x.jp2` (palette, cmap/cdef, sYCC) against
+              our `JPEG2000.decode` channels.  Skipped when the file renders through an ICC
+              profile (Debian's opj_decompress applies it with lcms2: colour management is
+              the ICC task's, scripts/icc-apply.py) or through an enumerated space other than
+              sRGB/greyscale/sYCC (OpenJPEG converts CMYK, e-sYCC, CIELab to RGB itself).
+
+Tolerances (peak = max |ours - OpenJPEG| per component; MSE reported):
+  reversible 5/3, no colour conversion ......... 0 (bit-exact)
+  irreversible 9/7 (and/or ICT) ................ 1 (fixed-point vs OpenJPEG's float 9/7:
+                                                  measured +-1 on every T.803 stream, task 5.5)
+  sYCC -> RGB conversion ....................... +1 (exact truncation of OpenJPEG's
+                                                  double formula; +-1 on boundary pixels, 6.1)
+A component that is reversible only in some tiles counts as irreversible.
+
+A level listed in the entry's `known_deviations` (manifest; each with its explanation) that
+is outside tolerance is reported as `known` and not counted as a failure; a recorded
+deviation that no longer occurs is reported as a `note`.
+
+Files whose image area exceeds --max-mpx (default 40) are skipped (reported), as are
+all files when opj_decompress, the image-dump executable (`lake build image-dump`) or the
+corpus files are missing.  Exit status 1 if any compared file is outside tolerance (or only
+one decoder decodes it) at a level not recorded as a known deviation.  "both-fail" (both
+decoders reject the stream) counts as agreement.
+"""
+import argparse
+import json
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MANIFEST = os.path.join(REPO, "corpus", "manifest.json")
+DEFAULT_ROOT = os.path.join(REPO, "corpus", "files")
+IMAGE_DUMP = os.path.join(REPO, ".lake", "build", "bin", "image-dump")
+TIMEOUT = 1200
+
+
+def safe_join(root, rel):
+    parts = rel.split("/")
+    if rel.startswith("/") or "\\" in rel or any(p in ("", ".", "..") for p in parts):
+        raise ValueError("unsafe path in manifest: %r" % rel)
+    return os.path.join(root, *parts)
+
+
+def read_pgx(path):
+    """(width, height, depth, signed, samples) of a PGX file (OpenJPEG or ours)."""
+    with open(path, "rb") as f:
+        b = f.read()
+    nl = b.index(b"\n")
+    toks = b[:nl].decode("ascii").replace("\r", " ").split()
+    if toks[0] != "PG" or toks[1] not in ("ML", "LM"):
+        raise ValueError("bad PGX header in %s" % path)
+    rest = toks[2:]
+    if rest[0] in ("+", "-"):
+        sign, rest = rest[0], rest[1:]
+        depth = int(rest[0])
+    elif rest[0][0] in "+-":
+        sign, depth = rest[0][0], int(rest[0][1:])
+    else:
+        sign, depth = "+", int(rest[0])
+    w, h = int(rest[1]), int(rest[2])
+    bps = 1 if depth <= 8 else 2 if depth <= 16 else 4
+    data = b[nl + 1:]
+    if len(data) != w * h * bps:
+        raise ValueError("PGX size mismatch in %s" % path)
+    order = "big" if toks[1] == "ML" else "little"
+    signed = sign == "-"
+    if bps == 1:
+        s = list(data)
+        if signed:
+            s = [v - 256 if v >= 128 else v for v in s]
+    else:
+        s = [int.from_bytes(data[i:i + bps], order, signed=signed)
+             for i in range(0, len(data), bps)]
+    return w, h, depth, signed, s
+
+
+def compare(a, b):
+    """(peak, mse) of two PGX tuples, or a mismatch string."""
+    if a[:2] != b[:2]:
+        return "size %dx%d vs %dx%d" % (a[0], a[1], b[0], b[1])
+    sa, sb = a[4], b[4]
+    peak, sq = 0, 0
+    for x, y in zip(sa, sb):
+        d = x - y
+        if d:
+            d = -d if d < 0 else d
+            sq += d * d
+            if d > peak:
+                peak = d
+    return peak, (sq / len(sa) if sa else 0.0)
+
+
+def codestream_of(b):
+    if b[:12] != b"\x00\x00\x00\x0cjP  \r\n\x87\n":
+        return b
+    p = 0
+    while p + 8 <= len(b):
+        lbox = int.from_bytes(b[p:p + 4], "big")
+        hdr = 8
+        if lbox == 1:
+            lbox = int.from_bytes(b[p + 8:p + 16], "big")
+            hdr = 16
+        elif lbox == 0:
+            lbox = len(b) - p
+        if lbox < hdr:
+            return None
+        if b[p + 4:p + 8] == b"jp2c":
+            return b[p + hdr:p + lbox]
+        p += lbox
+    return None
+
+
+def run(cmd):
+    try:
+        r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=TIMEOUT)
+    except subprocess.TimeoutExpired:
+        return None, "timeout"
+    return r.returncode, r.stdout.decode("utf-8", "replace") + r.stderr.decode("utf-8", "replace")
+
+
+def opj_planes(src, tmp, tag):
+    """Decode src with opj_decompress into PGX; list of PGX tuples or an error string."""
+    out = os.path.join(tmp, tag + ".pgx")
+    rc, log = run(["opj_decompress", "-i", src, "-o", out])
+    if rc != 0:
+        return "opj_decompress failed (%s): %s" % (rc, log.strip().splitlines()[-1:] if log else "")
+    planes, k = [], 0
+    while os.path.exists(os.path.join(tmp, "%s_%d.pgx" % (tag, k))):
+        planes.append(read_pgx(os.path.join(tmp, "%s_%d.pgx" % (tag, k))))
+        k += 1
+    if not planes and os.path.exists(out):
+        planes.append(read_pgx(out))
+    return planes or "opj_decompress wrote no PGX"
+
+
+def ours(src, tmp, tag):
+    """Run image-dump; returns (info dict, raw planes, img planes) or an error string."""
+    pre = os.path.join(tmp, tag)
+    rc, log = run([IMAGE_DUMP, src, pre])
+    info = {"raw": [], "img": [], "error": None}
+    for line in (log or "").splitlines():
+        t = line.split()
+        if not t:
+            continue
+        if t[0] in ("space", "icc", "declared", "sycc_converted"):
+            info[t[0]] = t[1]
+        elif t[0] == "raw":
+            info["raw"].append({"rev": t[6] == "true"})
+        elif t[0] == "img":
+            info["img"].append({"role": t[2]})
+        elif t[0] == "error":
+            info["error"] = line
+    if rc != 0:
+        return info["error"] or "image-dump failed (%s): %s" % (rc, log.strip()[-200:])
+    raw = [read_pgx("%s_raw_%d.pgx" % (pre, k)) for k in range(len(info["raw"]))]
+    img = [read_pgx("%s_img_%d.pgx" % (pre, k)) for k in range(len(info["img"]))]
+    return info, raw, img
+
+
+def judge(name, level, theirs, mine, tols, lines):
+    """Compare plane lists; appends report lines; True if within tolerance."""
+    if isinstance(theirs, str) or isinstance(mine, str):
+        lines.append("FAIL %s [%s]: %s" % (name, level, theirs if isinstance(theirs, str) else mine))
+        return False
+    if len(theirs) != len(mine):
+        lines.append("FAIL %s [%s]: %d components from OpenJPEG, %d ours"
+                     % (name, level, len(theirs), len(mine)))
+        return False
+    ok = True
+    parts = []
+    for k, (a, b) in enumerate(zip(theirs, mine)):
+        r = compare(b, a)
+        if isinstance(r, str):
+            parts.append("c%d %s" % (k, r))
+            ok = False
+            continue
+        peak, mse = r
+        good = peak <= tols[k]
+        ok &= good
+        parts.append("c%d peak %d mse %.4f (tol %d)%s" % (k, peak, mse, tols[k], "" if good else " !"))
+    lines.append("%s %s [%s]: %s" % ("ok  " if ok else "FAIL", name, level, "; ".join(parts)))
+    return ok
+
+
+def check_file(e, root, tmp, lines):
+    """Returns the set of levels ('codestream', 'jp2') outside tolerance."""
+    path = safe_join(root, e["path"])
+    name = e["path"]
+    failed = set()
+    with open(path, "rb") as f:
+        data = f.read()
+    cs = codestream_of(data)
+    if cs is None:
+        lines.append("FAIL %s: no codestream box" % name)
+        return {"codestream"}
+    csf = os.path.join(tmp, "cs.j2k")
+    with open(csf, "wb") as f:
+        f.write(cs)
+    # codestream level
+    theirs = opj_planes(csf, tmp, "opj_cs")
+    r = ours(csf, tmp, "ours_cs")
+    if isinstance(r, str):
+        if isinstance(theirs, str):
+            lines.append("both-fail %s [codestream]: ours %s; OpenJPEG %s" % (name, r, theirs))
+        else:
+            lines.append("FAIL %s [codestream]: %s (OpenJPEG decodes it)" % (name, r))
+            failed.add("codestream")
+        return failed
+    info, raw, img = r
+    rev = [c["rev"] for c in info["raw"]]
+    sycc = info.get("sycc_converted") == "true"
+    if sycc:
+        mine = img
+        tols = [(0 if all(rev[:3]) else 1) + 1 for _ in img]
+    else:
+        mine = raw
+        tols = [0 if rv else 1 for rv in rev]
+    if not judge(name, "codestream" + (" sYCC->RGB" if sycc else ""), theirs, mine, tols, lines):
+        failed.add("codestream")
+    if data[:12] != b"\x00\x00\x00\x0cjP  \r\n\x87\n":
+        return failed
+    # jp2 level
+    jf = os.path.join(tmp, "f.jp2")
+    with open(jf, "wb") as f:
+        f.write(data)
+    r = ours(jf, tmp, "ours_jp2")
+    if isinstance(r, str):
+        theirs = opj_planes(jf, tmp, "opj_jp2")
+        if isinstance(theirs, str):
+            lines.append("both-fail %s [jp2]: ours %s; OpenJPEG %s" % (name, r, theirs))
+        else:
+            lines.append("FAIL %s [jp2]: %s (OpenJPEG decodes it)" % (name, r))
+            failed.add("jp2")
+        return failed
+    info, raw, img = r
+    space = info.get("declared", "?")
+    if space == "icc" or space.startswith("enumerated"):
+        lines.append("skip %s [jp2]: colour space %s (OpenJPEG converts it itself)" % (name, space))
+        return failed
+    theirs = opj_planes(jf, tmp, "opj_jp2")
+    rev = [c["rev"] for c in info["raw"]]
+    sycc = info.get("sycc_converted") == "true"
+    tols = [(0 if all(rev) else 1) + (1 if sycc else 0) for _ in img]
+    if not judge(name, "jp2 %s" % space, theirs, img, tols, lines):
+        failed.add("jp2")
+    return failed
+
+
+def main(argv):
+    ap = argparse.ArgumentParser(description="JPEG2000.decode vs opj_decompress, per component.")
+    ap.add_argument("--jp2", action="store_true", help="also the T.803 JP2 files (role jp2)")
+    ap.add_argument("--only", action="append", metavar="TEXT", help="paths containing TEXT")
+    ap.add_argument("--max-mpx", type=float, default=40.0, help="skip larger images (default 40)")
+    ap.add_argument("--root", metavar="DIR")
+    ap.add_argument("--verbose", action="store_true", help="print every comparison")
+    args = ap.parse_args(argv)
+    root = os.path.abspath(args.root) if args.root else DEFAULT_ROOT
+
+    if shutil.which("opj_decompress") is None:
+        print("skip: opj_decompress not found")
+        return 0
+    if not os.path.isfile(IMAGE_DUMP):
+        print("skip: %s missing (run `lake build image-dump`)" % os.path.relpath(IMAGE_DUMP, REPO))
+        return 0
+    with open(MANIFEST, encoding="utf-8") as f:
+        manifest = json.load(f)
+    entries = list(manifest.get("pdf_jpx", []))
+    if args.jp2:
+        entries += [e for e in manifest["files"] if "jp2" in e.get("roles", ())]
+    if args.only:
+        entries = [e for e in entries if any(t in e["path"] for t in args.only)]
+    present = [e for e in entries if os.path.isfile(safe_join(root, e["path"]))]
+    if not present:
+        print("skip: no corpus files present (run scripts/fetch-corpus.py and "
+              "scripts/extract-pdf-jpx.py)")
+        return 0
+
+    n_ok, n_fail, n_known, skipped = 0, 0, 0, []
+    for e in present:
+        cs = e.get("codestream") or {}
+        mpx = cs.get("width", 0) * cs.get("height", 0) / 1e6
+        if mpx > args.max_mpx:
+            skipped.append("%s (%.1f Mpx > --max-mpx %g)" % (e["path"], mpx, args.max_mpx))
+            continue
+        lines = []
+        with tempfile.TemporaryDirectory(prefix="diff-images-") as tmp:
+            failed = check_file(e, root, tmp, lines)
+        known = e.get("known_deviations", {})
+        for l in lines:
+            if args.verbose or not l.startswith("ok  "):
+                print(l, flush=True)
+        for level in sorted(failed & set(known)):
+            print("known %s [%s]: %s" % (e["path"], level, known[level]))
+        for level in sorted(set(known) - failed):
+            print("note %s [%s]: recorded known deviation did not occur" % (e["path"], level))
+        if failed - set(known):
+            n_fail += 1
+        elif failed:
+            n_known += 1
+        else:
+            n_ok += 1
+            if not args.verbose:
+                print("ok   %s" % e["path"], flush=True)
+    for s in skipped:
+        print("skip %s" % s)
+    missing = len(entries) - len(present)
+    print("diff-images: %d/%d files within tolerance; %d known deviations (recorded in the "
+          "manifest); %d failed; %d skipped (size); %d absent"
+          % (n_ok, n_ok + n_known + n_fail, n_known, n_fail, len(skipped), missing))
+    return 1 if n_fail else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
