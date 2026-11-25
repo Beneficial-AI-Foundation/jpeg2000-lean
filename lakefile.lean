@@ -71,3 +71,12 @@ the raw codestream components and the `JPEG2000.decode` image channels, compared
 `opj_decompress` by `scripts/diff-images.py`. Not a default target. -/
 lean_exe «image-dump» where
   root := `Tests.ImageDump
+
+/-- Fuzz library: every module under `Fuzz/` (not a default target). -/
+lean_lib Fuzz where
+  globs := #[.submodules `Fuzz]
+
+/-- Mutation fuzzer for `JPEG2000.decode` (task 9.1): `lake exe fuzz` (see `scripts/fuzz.sh`).
+Not a default target. -/
+lean_exe fuzz where
+  root := `Fuzz.Main
