@@ -17,6 +17,7 @@ Design document: Plan.md
   becomes current. Proof tasks name their theorem IDs from Plan.md §4 (S1–S6, C1–C10).
 
 ## Current wave
+Wave 14: 5.6b (wt), 6.2 (new), 7.1a (new)
 
 ## Branches and PRs
 | Phase | Branch | Base | PR | State |
@@ -118,7 +119,7 @@ Plan.md §7 row 5, §5.2 "DWT", §5.4, Annexes E–H. Exit: **M5**: C6, C7, C8 p
 | 5.5 | Assembly and pipeline: tiles, sub-sampling, reduced resolution, `JPEG2000.decodeCodestream` | 3.4b, 4.5, 5.1–5.4 | `JPEG2000/Assemble.lean`, `JPEG2000/Decode.lean`, `Tests/Decode.lean` | new | done (2026-11-25) |
 | 5.6 | T.803 conformance runner | — | — | — | split (into 5.6a, 5.6b) |
 | 5.6a | Reference-decode reader (PGX; the JP2 reference TIFFs if needed) + metrics (peak error, MSE per component) + per-stream class thresholds from `corpus/manifest.json`, independent of the decoder | 0.5 | `Tests/Pgx.lean`, `Tests/ConformanceData.lean` | new | done (2026-11-25) |
-| 5.6b | T.803 conformance runner: decode every p0/p1 stream with `decodeCodestream`, compare against the reference decodes at class 0 and 1 thresholds; `lake exe conformance` + CI | 5.5, 5.6a | `Tests/Conformance.lean`, `lakefile.lean`, `.github/workflows/ci.yml` | wt | todo |
+| 5.6b | T.803 conformance runner: decode every p0/p1 stream with `decodeCodestream`, compare against the reference decodes at class 0 and 1 thresholds; `lake exe conformance` + CI | 5.5, 5.6a | `Tests/Conformance.lean`, `lakefile.lean`, `.github/workflows/ci.yml` | wt | | doing (2026-11-25) |
 | 5.7 | M5 check | 5.1–5.5, 5.6b | — | solo | todo |
 Exit criterion checked: [ ]
 
@@ -127,7 +128,7 @@ Plan.md §7 row 6, §1 "What we build", Annex I. Exit: **M6**: the JP2 conforman
 | ID | Task | Needs | Owns | Par | Status |
 |---|---|---|---|---|---|
 | 6.1 | (landed on `phase-3-tier1`) Colour: enumerated spaces, ICC pass-through, palette (`pclr`), component mapping (`cmap`), channel definitions (`cdef`, alpha) | 1.2 | `JPEG2000/Color.lean`, `Tests/Color.lean` | new | | done (2026-11-25) |
-| 6.2 | Consumer API: `decode : Limits → ByteArray → Except Error Image`, planes + interleaved 8/16-bit, bit-depth scaling, PDF info (`/SMaskInData`) | 5.5, 6.1 | `JPEG2000/Image.lean`, `JPEG2000/Decode.lean` | wt | todo |
+| 6.2 | Consumer API: `JPEG2000.decode : Limits → ByteArray → Except Error Image`, planes + interleaved 8/16-bit, bit-depth scaling, colour composition (palette, cdef, sYCC, sub-sampled upsampling), alpha, PDF info (`/SMaskInData`) | 5.5, 6.1 | `JPEG2000/Image.lean`, `Tests/Image.lean` | new | doing (2026-11-25) |
 | 6.3 | JP2 conformance + PDF-extracted corpus comparison | 6.2, 0.5 | `Tests/JP2.lean`, `scripts/diff-images.py`, `corpus/manifest.json` | wt | todo |
 | 6.4 | M6 check | 6.1–6.3 | — | solo | todo |
 Exit criterion checked: [ ]
@@ -136,11 +137,16 @@ Exit criterion checked: [ ]
 Plan.md §7 row 7, §4, §5.3. Exit: **M7**: C9, C10, S2, S3 proved; `#print axioms` clean.
 | ID | Task | Needs | Owns | Par | Status |
 |---|---|---|---|---|---|
-| 7.1 | `Spec.decode` composed from the stage specs; C9 from the stage theorems | 6.2 | `Spec/Decode.lean`, `Spec/Equiv.lean` | new | todo |
+| 7.1 | `Spec.decode` composed from the stage specs; C9 from the stage theorems | — | — | — | split (into 7.1a–7.1e) |
+| 7.1a | `Spec.decode` (codestream → per-component Int samples, reversible exact / irreversible over Rat) composed from the stage specs, and the C9 composition theorem proved from explicitly stated per-stage equivalence hypotheses (one `Prop` per stage); inventory of which stage obligations are already discharged by existing theorems and which are open | 5.5 | `Spec/Decode.lean`, `Spec/Equiv.lean` | new | doing (2026-11-25) |
+| 7.1b | Tier-2 packet decoding spec (B.10 over bit lists, using `Spec.TagTree`) + equivalence with `JPEG2000.Tier2.Packet` | 7.1a | `Spec/Tier2.lean`, `Spec/Tier2Equiv.lean` | new | todo |
+| 7.1c | Tier-1 modes: fast = spec for all code-block styles (extends C3 beyond plain) | 7.1a | `Spec/Tier1Equiv/Modes.lean` | new | todo |
+| 7.1d | 2-D DWT plane loops (Mallat load/store, level composition) for 5/3 and 9/7 and the dequantisation block loop proved = spec | 7.1a | `Spec/DWTPlane.lean`, `Spec/QuantBlock.lean` | new | todo |
+| 7.1e | Discharge the remaining C9 hypotheses and state C9 unconditionally (header, tile assembly, ROI, DC shift) | 7.1b, 7.1c, 7.1d | `Spec/Equiv.lean` | wt | todo |
 | 7.2 | (landed on `phase-5-reconstruction`) Reference encoder end to end (one tile, one layer, LRCP, plain mode, 5/3 + RCT; 9/7 variant) | 3.5, 4.1, 1.6 | `Encode/Encode.lean`, `Encode/Tier2.lean`, `Tests/Encode.lean` | new | done (2026-11-25) |
-| 7.3 | C10: `decode (encode img) = img` for the lossless encoder | 7.1, 7.2 | `Spec/RoundTrip.lean` | new | todo |
-| 7.4 | S2 totality and S3 resource bounds as theorems over `Limits` | 7.1 | `Spec/Resources.lean` | new | todo |
-| 7.5 | M7 check (axioms) | 7.1–7.4 | — | solo | todo |
+| 7.3 | C10: `decode (encode img) = img` for the lossless encoder | 7.1a, 7.2 | `Spec/RoundTrip.lean` | new | todo |
+| 7.4 | S2 totality and S3 resource bounds as theorems over `Limits` | 7.1a | `Spec/Resources.lean` | new | todo |
+| 7.5 | M7 check (axioms) | 7.1e, 7.2–7.4 | — | solo | todo |
 Exit criterion checked: [ ]
 
 ## Phase 8 — Speed
@@ -159,7 +165,7 @@ Plan.md §7 row 9, §8.6–8.7. Exit: **M9**: no crash or limit escape in N CPU-
 |---|---|---|---|---|---|
 | 9.1 | Fuzz harness (mutation of corpus/T.803 streams, tight and loose `Limits`) | 6.2 | `Fuzz/`, `scripts/fuzz.sh` | new | todo |
 | 9.2 | Adversarial stream per OpenJPEG/JasPer CVE class | 6.2 | `Tests/adversarial/`, `Tests/Adversarial.lean` | new | todo |
-| 9.3 | Lenient mode + conservativity theorem (lenient = strict on valid streams) | 7.1 | `JPEG2000/Lenient.lean`, `Spec/Lenient.lean` | new | todo |
+| 9.3 | Lenient mode + conservativity theorem (lenient = strict on valid streams) | 7.1e | `JPEG2000/Lenient.lean`, `Spec/Lenient.lean` | new | todo |
 | 9.4 | Independent kernel re-check (lean4lean, as safe-pdf) | 7.5 | `scripts/lean4lean-check.sh` | new | todo |
 | 9.5 | M9 check (fuzz campaign) | 9.1–9.4 | — | solo | todo |
 Exit criterion checked: [ ]
@@ -243,6 +249,7 @@ Exit criterion checked: [ ]
 * Encoder (7.2): `JPEG2000.Encode.encode : Params → Image → Except Error ByteArray`, `encodeDetailed`; band step index `Spec.Quant.bandIndex r b = 3(r−1) + b.index` (HL is 1) — lossless tests can't catch an off-by-one there, lossy can. Inside `namespace JPEG2000.Encode`, `Tier1.`/`Tier2.` resolve to the encoder's namespaces (write `JPEG2000.Tier2.Packet.…`). Don't filter imports with `grep -v Tier2` when concatenating (drops `JPEG2000.Tier2.Packet`).
 
 ## Decisions and deviations from the design document
+* 7.1 split (wave 14): C9 needs stage theorems that do not exist yet (no Tier-2 packet spec; Tier-1 modes, 2-D DWT loops and the dequantisation block loop are tested, not proved). 7.1a composes `Spec.decode` and proves C9 from explicit per-stage hypotheses; 7.1b–7.1d discharge them; 7.1e states C9 unconditionally. C9 is never stated weaker than Plan §4.
 * Wave 10: 3.4b and 3.6 run together; 3.4b must leave every plain-path definition of `JPEG2000/Tier1/Decode.lean` unchanged (modes go in new definitions + a dispatching entry point) so 3.6 proves against a stable target. 5.2 is pulled forward (independent files).
 * Wave 8 selection: Phases 1–2 have no further parallel work and Phase 3 has one ready task, so the wave is filled with the ready Phase 4 starters 4.1/4.2 (independent files).
 * 0.1: three libraries (`JPEG2000`, `Spec`, `Encode`) with one umbrella each, all default targets; `Tests` is a separate lib built only via `lake build tests`. `.mcp.json` pins `lean-lsp-mcp==0.33.0` with `lean_build` disabled (as bib-lean).
