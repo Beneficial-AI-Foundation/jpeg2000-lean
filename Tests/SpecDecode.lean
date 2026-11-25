@@ -2,12 +2,13 @@ import Spec.Decode
 import Encode.Encode
 
 /-!
-# Tests: `Spec.decode` against `decodeCodestream` (task 7.1a)
+# Tests: `Spec.decode` against `decodeCodestream` (tasks 7.1a, 7.1f)
 
 Plan.md §4 (C9), §5.1; T.800 Annexes B, D, E, F, G.
 
 The executable form of C9 on tiny streams: the specification decoder `Spec.Decode.decode`
-and the fast `decodeCodestream` must agree — every reversible sample equal, every
+(with the real Tier-2 spec `Spec.Tier2.decodeWithStream` since task 7.1f; it re-un-stuffs per
+packet, so inputs stay tiny) and the fast `decodeCodestream` must agree — every reversible sample equal, every
 irreversible sample within 1 (the measured error; the proved bound is in `Spec/Equiv.lean`).
 
 1. **Reference-encoder streams** (`Encode.encode`, task 7.2): tiny images with 1 or 3

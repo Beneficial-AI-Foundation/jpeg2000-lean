@@ -598,7 +598,29 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.Equiv.tail_rel
 #print axioms JPEG2000.Spec.Equiv.final_rel
 #print axioms JPEG2000.Spec.Equiv.c9_of_stages
-#print axioms JPEG2000.Spec.Equiv.tier2Equiv_placeholder
+
+-- Phase 7, task 7.1f: real Tier-2 spec wired into C9 (Spec/Equiv.lean, Spec/Tier2Wire.lean)
+#print axioms JPEG2000.Spec.Equiv.segment_append
+#print axioms JPEG2000.Spec.Equiv.segment_new
+#print axioms JPEG2000.Spec.Equiv.foldl_concat
+#print axioms JPEG2000.Spec.Equiv.directSeg_ok
+#print axioms JPEG2000.Spec.Equiv.tier1Input_ok
+#print axioms JPEG2000.Spec.Equiv.specCodeBlock_eq
+#print axioms JPEG2000.Spec.Equiv.decodeBlock_eq_st
+#print axioms JPEG2000.Spec.Equiv.imagePrecs_getD
+#print axioms JPEG2000.Spec.Equiv.tileComp_image
+#print axioms JPEG2000.Spec.Equiv.list_forIn_congr
+#print axioms JPEG2000.Spec.Equiv.array_forIn_congr
+#print axioms JPEG2000.Spec.Equiv.tileCompWith_congr
+#print axioms JPEG2000.Spec.Equiv.image_getD
+#print axioms JPEG2000.Spec.Equiv.readSizComponent_dxdy
+#print axioms JPEG2000.Spec.Equiv.readArray_dxdy
+#print axioms JPEG2000.Spec.Equiv.parseSIZ_dxdy
+#print axioms JPEG2000.Spec.Equiv.parseMainHeader_dxdy
+#print axioms JPEG2000.Spec.Equiv.parseCodestreamIn_dxdy
+#print axioms JPEG2000.Spec.Equiv.parse_dxdy
+#print axioms JPEG2000.Spec.Tier2Wire.tier2Equiv
+#print axioms JPEG2000.Spec.Tier2Wire.c9_of_open
 
 -- Phase 7, task 7.1b: Tier-2 spec + equivalence (Spec/Tier2*.lean)
 #print axioms JPEG2000.Spec.Tier2Equiv.Res.toERel
