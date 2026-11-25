@@ -17,6 +17,7 @@ Design document: Plan.md
   becomes current. Proof tasks name their theorem IDs from Plan.md §4 (S1–S6, C1–C10).
 
 ## Current wave
+Wave 19: 7.3b (new), 7.3c (new), 8.2a (wt), 9.1 (wt)
 
 ## Branches and PRs
 | Phase | Branch | Base | PR | State |
@@ -154,8 +155,8 @@ Plan.md §7 row 7, §4, §5.3. Exit: **M7**: C9, C10, S2, S3 proved; `#print axi
 | 7.2 | (landed on `phase-5-reconstruction`) Reference encoder end to end (one tile, one layer, LRCP, plain mode, 5/3 + RCT; 9/7 variant) | 3.5, 4.1, 1.6 | `Encode/Encode.lean`, `Encode/Tier2.lean`, `Tests/Encode.lean` | new | done (2026-11-25) |
 | 7.3 | C10 | — | — | — | split (into 7.3a–7.3e) |
 | 7.3a | (landed on `phase-6-jp2-output`) C10 layers 1–2a: Tier-1 round trip `Spec.RoundTrip.decodeValues_encodeCodeBlock` (≤ 37 coded planes), packet-header bit writer / un-stuffing / field codewords (`finish_spec`, `field_natBits`, `numPasses_passBits`, `commaCode_replicate`) | 7.2 | `Spec/RoundTrip.lean`, `Spec/RoundTrip/Tier1.lean`, `Spec/RoundTrip/Tier2Bits.lean` | new | done (2026-11-25) |
-| 7.3b | C10 layer 2b: one-layer LRCP packet round trip — `Spec.Tier2.packet … (encodePacket bands ++ T)` returns each included block with `segs = [⟨data, numPasses⟩]`, `zbp = zeroBitPlanes`, `T` unconsumed (side conditions: zbp ≤ maxZero, 1 ≤ passes ≤ min 109 maxPassesPerCodeBlock, Lblock width ≤ 32); C4 tag-tree invariant per band via `encodeAll_spec`; fold over `encodeTileLRCP` vs `Spec.Progression.packets` | 7.3a | `Spec/RoundTrip/Tier2.lean` | new | todo |
-| 7.3c | C10 layer 3: the encoder's main header and tile-part parse back to its `Header`/`TileParams` (via `MarkerRoundTrip`/`TilePartRoundTrip`) | 7.3a | `Spec/RoundTrip/Header.lean` | new | todo |
+| 7.3b | C10 layer 2b: one-layer LRCP packet round trip — `Spec.Tier2.packet … (encodePacket bands ++ T)` returns each included block with `segs = [⟨data, numPasses⟩]`, `zbp = zeroBitPlanes`, `T` unconsumed (side conditions: zbp ≤ maxZero, 1 ≤ passes ≤ min 109 maxPassesPerCodeBlock, Lblock width ≤ 32); C4 tag-tree invariant per band via `encodeAll_spec`; fold over `encodeTileLRCP` vs `Spec.Progression.packets` | 7.3a | `Spec/RoundTrip/Tier2.lean` | new | | doing (2026-11-25) |
+| 7.3c | C10 layer 3: the encoder's main header and tile-part parse back to its `Header`/`TileParams` (via `MarkerRoundTrip`/`TilePartRoundTrip`) | 7.3a | `Spec/RoundTrip/Header.lean` | new | | doing (2026-11-25) |
 | 7.3d | C10 layer 4: spec-level `Spec.Decode.decode L (encode p img) 0 = .ok img` (1 or 3 components, reversible, K ≤ 31, within `Limits.default`) composing 7.3a–c with `reconstructRev_full`, C6, C7, DC shift | 7.3b, 7.3c | `Spec/RoundTrip/Spec.lean` | new | todo |
 | 7.3e | C10 layer 5: fast `decodeCodestream (encode p img) = img` via `Spec.C9.c9` (discharge its conditions for these streams: reversible, no saturation for K ≤ 31, C8 range only with MCT — analyse RCT) | 7.3d | `Spec/RoundTrip.lean` | new | todo |
 | 7.4 | (landed on `phase-6-jp2-output`) S2 totality and S3 resource bounds as theorems over `Limits` | 7.1a | `Spec/Resources.lean` | new | | done (2026-11-25) |
@@ -167,16 +168,19 @@ Plan.md §7 row 8, §6. Exit: **M8**: the §6 targets met on the benchmark set, 
 | ID | Task | Needs | Owns | Par | Status |
 |---|---|---|---|---|---|
 | 8.1 | (landed on `phase-6-jp2-output`) Benchmark harness: `lake exe bench` decoding the benchmark set (manifest role `benchmark`) with `JPEG2000.decode` (and `decodeCodestream`), median of N runs, 1 thread, per-stage timing (Tier-2, Tier-1, dequant, DWT, MCT) vs the 0.6 OpenJPEG baselines; `scripts/bench.sh` writes a Markdown table; results appended to `docs/performance.md` History | 6.2, 0.6 | `Bench/Decode.lean`, `scripts/bench.sh`, `lakefile.lean` (exe), `docs/performance.md` | wt | done (2026-11-25) |
-| 8.2 | Profile and optimise (split per hot stage when current) | 8.1 | — | wt | todo |
+| 8.2 | Profile and optimise | — | — | — | split (into 8.2a–8.2c) |
+| 8.2a | Tier-1 + MQ allocation-free hot loops: `MQ.Dec.decode` allocates a fresh `Dec` on 4 of 5 paths + a result tuple per decision; Tier-1 pass loops box state — restructure (unboxed loop arguments, in-place updates) keeping C2 (`Spec.MQEquiv.*`), C3 (`c3_plain`, `c3_all*`), Tier1Wire and C9 building; measure with `lake exe bench` before/after | 8.1 | `JPEG2000/MQ.lean`, `JPEG2000/Tier1/*`, `Spec/MQEquiv.lean`, `Spec/Tier1Equiv*`, `Spec/Tier1Wire.lean`, `docs/performance.md` | wt | doing (2026-11-25) |
+| 8.2b | Inverse DWT: column layout / cache-friendly batches, fewer copies; keep `Spec/DWTPlane*` proofs | 8.1 | `JPEG2000/DWT53.lean`, `JPEG2000/DWT97.lean`, `Spec/DWTPlane*` | wt | todo |
+| 8.2c | Tier-2 and assembly fixed costs (large single-tile images: 10–20× OpenJPEG on issue19517-8 even at reduce 2) | 8.1 | `JPEG2000/Tier2/*`, `JPEG2000/Assemble.lean`, matching `Spec/*` | wt | todo |
 | 8.3 | Parallel code-block / tile decoding with pure `Task`s | 8.1 | `JPEG2000/Parallel.lean` | new | todo |
-| 8.4 | M8 check | 8.1–8.3 | — | solo | todo |
+| 8.4 | M8 check | 8.1, 8.2a–8.2c, 8.3 | — | solo | todo |
 Exit criterion checked: [ ]
 
 ## Phase 9 — Hardening
 Plan.md §7 row 9, §8.6–8.7. Exit: **M9**: no crash or limit escape in N CPU-hours of fuzzing; every CVE-class stream rejected or bounded.
 | ID | Task | Needs | Owns | Par | Status |
 |---|---|---|---|---|---|
-| 9.1 | Fuzz harness (mutation of corpus/T.803 streams, tight and loose `Limits`) | 6.2 | `Fuzz/`, `scripts/fuzz.sh` | new | todo |
+| 9.1 | Fuzz harness: `lake exe fuzz` mutating corpus/T.803/PDF-JPX streams (bit flips, byte insert/delete, length-field mutations, marker splicing) through `JPEG2000.decode` with tight and default `Limits`; records crashes (impossible by construction), timeouts / slow inputs (> N× the unmutated time), limit escapes (allocation beyond Limits via a checked wrapper), and disagreements with `opj_decompress` on inputs both accept; `scripts/fuzz.sh` + a CI smoke run | 6.2 | `Fuzz/`, `scripts/fuzz.sh`, `lakefile.lean` (exe), `.github/workflows/ci.yml` (smoke step) | wt | doing (2026-11-25) |
 | 9.2 | Adversarial stream per OpenJPEG/JasPer CVE class | 6.2 | `Tests/adversarial/`, `Tests/Adversarial.lean` | new | todo |
 | 9.3 | Lenient mode + conservativity theorem (lenient = strict on valid streams) | 7.1e | `JPEG2000/Lenient.lean`, `Spec/Lenient.lean` | new | todo |
 | 9.4 | Independent kernel re-check (lean4lean, as safe-pdf) | 7.5 | `scripts/lean4lean-check.sh` | new | todo |
