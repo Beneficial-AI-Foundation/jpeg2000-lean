@@ -531,3 +531,29 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.DWT97.liftPass97_spec
 #print axioms JPEG2000.DWT97.scalePass97_spec
 #print axioms JPEG2000.DWT97.lift1d97_eq
+
+-- Phase 5, task 5.4: RCT/ICT, DC shift, C7, C8 for ICT (Spec/MCT.lean, JPEG2000/MCT.lean)
+#print axioms JPEG2000.MCT.shrK
+#print axioms JPEG2000.MCT.sat_toInt
+#print axioms JPEG2000.MCT.rctSample_eq
+#print axioms JPEG2000.MCT.rctSample_exact
+#print axioms JPEG2000.MCT.ictSample_eq
+#print axioms JPEG2000.MCT.ictRow_err
+#print axioms JPEG2000.MCT.ict_c8
+#print axioms JPEG2000.MCT.reconIrrev_sat
+#print axioms JPEG2000.MCT.DcShift.make_wf
+#print axioms JPEG2000.MCT.DcShift.rev_eq
+#print axioms JPEG2000.MCT.DcShift.irrev_eq
+#print axioms JPEG2000.MCT.map1_get
+#print axioms JPEG2000.MCT.map3_get
+#print axioms JPEG2000.Spec.MCT.rctInv_rctFwd
+#print axioms JPEG2000.Spec.MCT.rctFwd_rctInv
+#print axioms JPEG2000.Spec.MCT.ictInv_ictFwd
+#print axioms JPEG2000.Spec.MCT.ictInv_ictFwd_ne
+#print axioms JPEG2000.Spec.MCT.clamp_mem
+#print axioms JPEG2000.Spec.MCT.clamp_of_mem
+#print axioms JPEG2000.Spec.MCT.sampleMin_le_max
+#print axioms JPEG2000.Spec.MCT.reconRev_mem
+#print axioms JPEG2000.Spec.MCT.reconRev_unsigned
+#print axioms JPEG2000.Spec.MCT.reconRev_signed
+#print axioms JPEG2000.Spec.MCT.roundFix_err

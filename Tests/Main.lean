@@ -24,6 +24,8 @@ import Tests.DWT53
 import Tests.Tier2Headers
 import Tests.Quant
 import Tests.DWT97
+import Tests.MCT
+import Tests.Color
 import Tests.MQRoundTrip
 
 /-!
@@ -69,7 +71,9 @@ def suites : List Suite :=
     { name := "dwt53", run := JPEG2000.Tests.DWT53.run },
     { name := "tier2headers", run := JPEG2000.Tests.Tier2Headers.run },
     { name := "quant", run := JPEG2000.Tests.Quant.run },
-    { name := "dwt97", run := JPEG2000.Tests.DWT97.run } ]
+    { name := "dwt97", run := JPEG2000.Tests.DWT97.run },
+    { name := "mct", run := JPEG2000.Tests.MCT.run },
+    { name := "color", run := JPEG2000.Tests.Color.run } ]
 
 end JPEG2000.Tests
 

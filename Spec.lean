@@ -11,6 +11,7 @@ import Spec.Progression
 import Spec.DWT53
 import Spec.Quant
 import Spec.DWT97
+import Spec.MCT
 import Spec.Tier1Equiv.Basic
 import Spec.Tier1Equiv.Rel
 import Spec.Tier1Equiv.Nb

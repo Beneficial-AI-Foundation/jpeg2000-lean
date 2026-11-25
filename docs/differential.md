@@ -187,3 +187,4 @@ available when a hash mismatch needs explaining.)
 Styles seen: `sty` ∈ {0, 4, 5, 10, 16, 25, 32, 40, 52}. p0_10 prints OpenJPEG's
 "color_sycc_to_rgb CAN NOT CONVERT" on stderr (an output colour-conversion message, same with the
 stock binary).
+* `numbps` is printed as `OPJ_UINT32` and wraps when zbp > Mb (ROI streams, e.g. p0_06: 4294967288); `segment-dump` mirrors this.

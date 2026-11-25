@@ -17,7 +17,6 @@ Design document: Plan.md
   becomes current. Proof tasks name their theorem IDs from Plan.md §4 (S1–S6, C1–C10).
 
 ## Current wave
-Wave 12: 4.6b (wt), 5.4 (new), 6.1 (new)
 
 ## Branches and PRs
 | Phase | Branch | Base | PR | State |
@@ -89,9 +88,9 @@ Plan.md §7 row 3, §5.2 "Tier-1", Annex D. Exit: **M3**: C3 proved for plain mo
 | 3.4b | Fast Tier-1, other modes (reset, termall, causal, segsym, predictable termination, bypass) = 3.3's spec | 3.3, 3.4a | `JPEG2000/Tier1/`, `Tests/Tier1Fast.lean` | wt | | done (2026-11-25) |
 | 3.5 | Reference Tier-1 encoder, plain mode | 3.2, 2.2 | `Encode/Tier1.lean`, `Tests/Tier1Enc.lean` | new | done (2026-11-25) |
 | 3.6 | C3 for plain mode: simulation relation flag words ↔ spec state, preserved by each pass | 3.4a | `Spec/Tier1Equiv.lean`, `Spec/Tier1Equiv/` | new | | done (2026-11-25) |
-| 3.7 | Tests: every mode combination fast = spec on random code-blocks; T.803 code-blocks vs OpenJPEG (coefficients from the 4.6a dump) | 3.3, 3.4b, 3.5, 4.4, 4.6b | `Tests/Tier1.lean`, `scripts/diff-codeblocks.py` | new | todo |
-| 3.8 | M3 check | 3.1–3.7 | — | solo | todo |
-Exit criterion checked: [ ]
+| 3.7 | Tests: every mode combination fast = spec on random code-blocks; T.803 code-blocks vs OpenJPEG (coefficients from the 4.6a dump) | 3.3, 3.4b, 3.5, 4.4, 4.6b | `Tests/Tier1.lean`, `scripts/diff-codeblocks.py` | new | done (2026-11-25: covered by 3.3 (spec, 64 styles), 3.4b (fast = spec, 64 styles) and 4.6b (`diff-segments.py`: 32/32 files, coefficients identical to OpenJPEG)) |
+| 3.8 | M3 check | 3.1–3.7 | — | solo | done (2026-11-25) |
+Exit criterion checked: [x] (2026-11-25 on the wave-12 tree: C3 plain proved — `Spec.Tier1Equiv.c3_plain`; other modes tested against the spec — `tier1spec` (64-style encoder round trips) and `tier1fast` (fast = spec, 64 styles, 960 blocks default); `python3 -I scripts/diff-segments.py` → 32/32 files (23 T.803 + 9 JP2), 54 061 code-blocks, coefficients identical to OpenJPEG 2.5.3; axioms OK (477 theorems))
 
 ## Phase 4 — Tier-2
 Plan.md §7 row 4, §5.2 "Tier-2", Annex B. Exit: **M4**: C4, C5 proved; every T.803 stream yields the same per-code-block segments as OpenJPEG.
@@ -104,9 +103,9 @@ Plan.md §7 row 4, §5.2 "Tier-2", Annex B. Exit: **M4**: C4, C5 proved; every T
 | 4.5 | PPM/PPT header sourcing and tile-part ordering | 4.4 | `JPEG2000/Tier2/Headers.lean`, `Tests/Tier2Headers.lean` | new | | done (2026-11-25) |
 | 4.6 | Differential: per-code-block segments vs OpenJPEG on every T.803 stream | — | — | — | split (into 4.6a, 4.6b) |
 | 4.6a | Instrumented OpenJPEG for differentials: `scripts/build-opj-instrumented.sh` fetches OpenJPEG v2.5.3 at a pinned commit (GitHub, SHA-256 of the tarball), applies `scripts/opj-instrument.patch` (dump per code-block: tile, component, resolution, band, precinct, code-block index, zero bit-planes, passes, segment pass counts + SHA-256/bytes of each segment's data; and the decoded Tier-1 coefficients), builds with cmake into `.lake/opj-instrumented/` (git-ignored); `docs/differential.md` | 0.5 | `scripts/build-opj-instrumented.sh`, `scripts/opj-instrument.patch`, `docs/differential.md` | new | done (2026-11-25) |
-| 4.6b | Differential driver: our per-code-block segments (and 3.7's coefficients) vs the instrumented OpenJPEG dump on every T.803 stream | 4.5, 4.6a | `Tests/SegmentDump.lean`, `scripts/diff-segments.py`, `lakefile.lean` (exe), `.github/workflows/ci.yml` | wt | | doing (2026-11-25) |
-| 4.7 | M4 check | 4.1–4.5, 4.6b | — | solo | todo |
-Exit criterion checked: [ ]
+| 4.6b | Differential driver: our per-code-block segments (and 3.7's coefficients) vs the instrumented OpenJPEG dump on every T.803 stream | 4.5, 4.6a | `Tests/SegmentDump.lean`, `scripts/diff-segments.py`, `lakefile.lean` (exe), `.github/workflows/ci.yml` | wt | | done (2026-11-25) |
+| 4.7 | M4 check | 4.1–4.5, 4.6b | — | solo | done (2026-11-25) |
+Exit criterion checked: [x] (2026-11-25 on the wave-12 tree: C4 `Spec.TagTree.decode_encode`, `value_monotone`, `fast_decode_eq`; C5 `Spec.Progression.c5`, `c5_poc`, `forPackets_eq_spec`; `python3 -I scripts/diff-segments.py` → 32/32 files identical (segments) to OpenJPEG 2.5.3, incl. PPM/PPT streams p1_02, p1_05, p1_06)
 
 ## Phase 5 — Reconstruction
 Plan.md §7 row 5, §5.2 "DWT", §5.4, Annexes E–H. Exit: **M5**: C6, C7, C8 proved; T.803 profile 0 and 1 pass (reversible bit-exact, irreversible within class thresholds).
@@ -115,7 +114,7 @@ Plan.md §7 row 5, §5.2 "DWT", §5.4, Annexes E–H. Exit: **M5**: C6, C7, C8 p
 | 5.1 | (landed on `phase-3-tier1`) Dequantisation (derived/expounded/none, guard bits) and ROI max-shift | 1.5 | `JPEG2000/Quant.lean`, `Spec/Quant.lean`, `Tests/Quant.lean` | new | | done (2026-11-25) |
 | 5.2 | (landed on `phase-3-tier1`) 5/3 inverse DWT: Annex F spec over `Int` with symmetric extension, in-place lifting on `Int32` planes, C6 | 1.1 | `Spec/DWT53.lean`, `JPEG2000/DWT53.lean`, `Tests/DWT53.lean` | new | | done (2026-11-25) |
 | 5.3 | (landed on `phase-3-tier1`) 9/7 inverse DWT: `Rat` spec, fixed-point lifting (fractional bits chosen from the C8 bound; Plan §10 open question), C8 for DWT | 5.2 | `Spec/DWT97.lean`, `JPEG2000/DWT97.lean`, `Tests/DWT97.lean` | new | | done (2026-11-25) |
-| 5.4 | RCT/ICT, DC shift, clamping; C7, C8 for ICT | 1.1 | `JPEG2000/MCT.lean`, `Spec/MCT.lean`, `Tests/MCT.lean` | new | | doing (2026-11-25) |
+| 5.4 | (landed on `phase-3-tier1`) RCT/ICT, DC shift, clamping; C7, C8 for ICT | 1.1 | `JPEG2000/MCT.lean`, `Spec/MCT.lean`, `Tests/MCT.lean` | new | | done (2026-11-25) |
 | 5.5 | Assembly and pipeline: tiles, sub-sampling, reduced resolution, `JPEG2000.decodeCodestream` | 3.4b, 4.5, 5.1–5.4 | `JPEG2000/Assemble.lean`, `JPEG2000/Decode.lean` | new | todo |
 | 5.6 | T.803 conformance runner (peak error / MSE per class) | 5.5, 0.5 | `Tests/Conformance.lean`, `scripts/conformance.py` | new | todo |
 | 5.7 | M5 check | 5.1–5.6 | — | solo | todo |
@@ -125,7 +124,7 @@ Exit criterion checked: [ ]
 Plan.md §7 row 6, §1 "What we build", Annex I. Exit: **M6**: the JP2 conformance files and the PDF-extracted corpus render identically to OpenJPEG + colour management to within tolerance.
 | ID | Task | Needs | Owns | Par | Status |
 |---|---|---|---|---|---|
-| 6.1 | Colour: enumerated spaces, ICC pass-through, palette (`pclr`), component mapping (`cmap`), channel definitions (`cdef`, alpha) | 1.2 | `JPEG2000/Color.lean`, `Tests/Color.lean` | new | | doing (2026-11-25) |
+| 6.1 | (landed on `phase-3-tier1`) Colour: enumerated spaces, ICC pass-through, palette (`pclr`), component mapping (`cmap`), channel definitions (`cdef`, alpha) | 1.2 | `JPEG2000/Color.lean`, `Tests/Color.lean` | new | | done (2026-11-25) |
 | 6.2 | Consumer API: `decode : Limits → ByteArray → Except Error Image`, planes + interleaved 8/16-bit, bit-depth scaling, PDF info (`/SMaskInData`) | 5.5, 6.1 | `JPEG2000/Image.lean`, `JPEG2000/Decode.lean` | wt | todo |
 | 6.3 | JP2 conformance + PDF-extracted corpus comparison | 6.2, 0.5 | `Tests/JP2.lean`, `scripts/diff-images.py`, `corpus/manifest.json` | wt | todo |
 | 6.4 | M6 check | 6.1–6.3 | — | solo | todo |
@@ -233,6 +232,10 @@ Exit criterion checked: [ ]
 * Dequantisation (5.1): Nb = Mb − lsbPlane; 5/3: ±(mag + ⌊2^lsb/2⌋) (= index when all planes decoded, midpoint when truncated, = OpenJPEG); 9/7: ±(mag + 2^lsb/2)·Δb in fixed point with F fractional bits (`dequantBlock … F`), T.800 gains (HL/LH 1, HH 2), Int32 cells, saturate + flag. Core `Rat` lacks `div_le_iff`/`sub_mul`: use `Rat.div_mul_cancel`, `Rat.mul_lt_mul_right`, `Rat.not_lt`, `Rat.sub_eq_add_neg`, `Rat.intCast_natCast`; `grind` proves Rat field identities. Unspecified `Nat.pow_add`/`Nat.pow_succ` rewrites can hit literal powers like `2^33` — give arguments. `simp` on big UInt64 literals inside `omega` side goals → kernel deep recursion.
 * 9/7 (5.3): `JPEG2000.DWT97.idwt97 : Plane → Rect → Nat → Except Error Plane` on the Mallat layout; cells hold round(value·2^F) with `fracBits depth = 26 − depth` — 5.5 must call `Quant.dequantBlock` with that F. Constants at C = 30 bits; overflow flag → `idwt97Spec` (exact Rat). Table F.4 decimals as exact rationals define the filter. Core `Rat`: `decide` stalls on decimal literals (`unfold K; grind` works); `Rat.intCast_le_intCast` not `exact_mod_cast` near 2^30; prove `abs_le_iff` once and let `grind` do linear Rat. A constructor name equal to a top-level def in the same namespace shadows it (`Step.lift` hid `lift`). OpenJPEG's `two_invK = 1.625732422` differs from 2/K by ~3·10⁻⁵ relative.
 
+* OpenJPEG dump: `numbps` is `OPJ_UINT32` and wraps when zbp > Mb (ROI, p0_06: 4294967288); `segment-dump` mirrors it. Our code-block numbering (raster over the precinct-band grid) equals OpenJPEG's. `diff-segments.py` takes ~10 s.
+* Colour (6.1): `JPEG2000.Color.resolve L data hdr? sizComponents` → `Info` (space, mapping, formats, layout); `CmapEntry ⟨cmp, mtyp, pcol⟩`. Lean `Int64 /` truncates toward zero (like C); `Float.toInt64` truncates. `syccToRgb` copies one zero plane three times (Phase 8).
+* MCT (5.4): unannotated `2 ^ F / 2` inside an `Int` expression may elaborate as a Nat cast — write `(2 : Int) ^ F`. Variable `Int64` shift: `(x >>> Int64.ofNat k).toInt = x.toInt / 2^k` (k < 64) is `JPEG2000.MCT.shrK`. `omega` fails on conjunctions containing a literal `True`. `grind` with large Rat literals and `.abs` → kernel deep recursion; `generalize` the `.abs` terms first. Useful: `Int64.lt_iff_toInt_lt`, `Int64.toInt_toInt32` + `Int.bmod_eq_of_le`, `Int64.toInt_ofInt_of_le`. `map1_get`/`map3_get` prove plane loops cell-wise.
+
 ## Decisions and deviations from the design document
 * Wave 10: 3.4b and 3.6 run together; 3.4b must leave every plain-path definition of `JPEG2000/Tier1/Decode.lean` unchanged (modes go in new definitions + a dispatching entry point) so 3.6 proves against a stable target. 5.2 is pulled forward (independent files).
 * Wave 8 selection: Phases 1–2 have no further parallel work and Phase 3 has one ready task, so the wave is filled with the ready Phase 4 starters 4.1/4.2 (independent files).
@@ -276,6 +279,10 @@ Exit criterion checked: [ ]
 * 5.1: ROI unshift follows T.800 H (magnitude ≥ 2^s → ROI); OpenJPEG tests the threshold on its doubled value `2m + 2^lsb`, so for background magnitudes ≥ 2^(s−1) the two differ — check against the RGN conformance streams p0_03, p0_06, p0_15, p0_13 in 5.6. 5/3 is always reversible (Δ ignored, as OpenJPEG). With s ≥ 31 every coefficient is background (OpenJPEG zeroes the block). The code-block → plane loop is tested, not proved; the per-coefficient kernels are proved (`revCoeff_eq`, `irrevCoeff_bound`).
 * 5.3 (Plan §10 "fixed-point precision for 9/7", answered for M5): Int32 cells with F = 26 − depth, constants at 30 bits, Int64 intermediates proved exact. Proved C8 (DWT part) per-sample bound with F = 26 − depth: 8-bit 0.021 / 0.097 / 0.46 at NL 4/5/6; 12-bit 0.33 / 1.56 / 7.4; 16-bit 5.3 / 25 / 118 — meets the class-1 peak thresholds for the 8- and 12-bit 9/7 T.803 streams on paper, loose at 16 bits (the bound multiplies per-level gains; measured errors are far smaller, e.g. 7.9 vs 5380 units at NL 4). Three 8-bit 9/7 streams require peak error 0 — only tests can show that. Sharper multi-level analysis / Int64 cells for 16-bit stay open (revisit at M5 if conformance fails). Plane loops / level composition tested, not proved (as 5.2).
 
+* 6.1 (decides the 1.2 METH 3 question): rendering uses the first `colr` with METH 1 or 2; METH 3/4 skipped and PREC/APPROX ignored (T.800 Table I.9 tells JP2 readers to ignore other METH; OpenJPEG — hence MuPDF and pdf.js — does the same; in PDF `/ColorSpace` overrides anyway). The boxes stay in `Jp2Header.colr`. `issue208.jp2` → enumerated CMYK. Palette: index clamped to [0, NE−1] (as OpenJPEG); signed columns sign-extended (OpenJPEG doesn't); > 31/32-bit columns `unsupported`; pclr without cmap ignored; OpenJPEG's "weird cmap" repair replicated; stricter than OpenJPEG on cmap (cmp ≥ Csiz, MTYP > 1, direct with PCOL ≠ 0, PCOL ≥ NPC → malformed) and cdef (each channel once, Cn in range, colour associations complete). Alpha = first Typ 1/2 channel with Asoc 0; no cdef → no alpha. ihdr/bpcc not compared with SIZ (SIZ governs). sYCC uses exact truncation of OpenJPEG's formula (±1 on exact-integer boundary pixels where OpenJPEG's double/FMA output is platform-dependent); chroma replicated on the reference grid (= OpenJPEG for even origins; differs for odd origins and other factors).
+* 5.4: C7 = `Spec.MCT.rctInv_rctFwd` (and `rctFwd_rctInv`: RCT is a bijection of ℤ³); ICT with T.800's decimal constants is not exactly invertible (`ictInv_ictFwd_ne`); C8 for ICT = `MCT.ict_c8` (gain 2.772, rounding 5/2 ulps); combined 9/7 + ICT bound `(2.772·En nl 0 + 2.5)/2^F`. Components > 31-bit unsigned / 32-bit signed are `unsupported` in the fast path (Int32 planes; spec only) — revisit in 5.5/6.2. Exact halves round up (`roundFix`); OpenJPEG `lrintf` rounds half to even — only exact ties differ.
+* 3.7 is satisfied by 3.3 + 3.4b + 4.6b (no separate task work); M3 and M4 ticked together.
+
 ## Blocked / questions for the human
 
 * Benchmark set (Plan §8.4) lacks a ≥ 20 Mpx stream: openjpeg-data has none that decodes. Where may one come from (a licensable large JP2, or one we generate with `opj_compress` from a public-domain image)? Proceeding with the 15-file set meanwhile.
@@ -296,3 +303,4 @@ Exit criterion checked: [ ]
 * 2026-11-25 — wave 9 (phase 3, PR #3): 3.3 (all six Tier-1 modes in the spec, 64-style round trips), 3.4a (fast plain Tier-1 = spec on random blocks), 3.5 (reference Tier-1 encoder, bytes = test encoder), 4.3 (5 progression orders + POC, C5 and fast = spec proved) done; integration fixed `Geom` constructor uses, test adapters to `segments`, and one `split`/`simp` step in `Spec/Progression.lean`; commit "wave 9: 3.3, 3.4a, 3.5, 4.3 — Tier-1 modes, fast Tier-1, Tier-1 encoder, progression (C5)"
 * 2026-11-25 — wave 10 (phase 3, PR #3): 3.4b (fast Tier-1 all 64 styles = spec), 3.6 (C3 plain proved: `c3_plain`, 159 theorems), 4.4 (packet headers; all T.803 + JP2 conformance packets decode, incl. PPM/PPT via test-built header streams), 5.2 (5/3 DWT, C6 proved, 1-D fast = spec proved) done; commit "wave 10: 3.4b, 3.6, 4.4, 5.2 — Tier-1 modes (fast), C3, packet headers, 5/3 DWT (C6)"
 * 2026-11-25 — wave 11 (phase 3, PR #3): 4.5 (PPM/PPT header streams in the decoder; 32 corpus files), 4.6a (instrumented OpenJPEG dump tool, 54 061 code-blocks dumped), 5.1 (dequantisation + ROI, kernels proved), 5.3 (9/7 Rat spec + fixed point, C8 for the DWT proved) done; commit "wave 11: 4.5, 4.6a, 5.1, 5.3 — PPM/PPT, OpenJPEG dump tool, dequantisation, 9/7 DWT (C8)"
+* 2026-11-25 — wave 12 (phase 3, PR #3): 4.6b (segment-dump + diff-segments.py: 32/32 files, 54 061 code-blocks, segments and coefficients identical to OpenJPEG), 5.4 (RCT/ICT, DC shift, C7 and C8-ICT proved), 6.1 (JP2 colour, palette, cmap, cdef, sYCC; METH 3 decided) done; 3.7, 3.8, 4.7 done; M3 and M4 ticked; commit "wave 12: 4.6b, 5.4, 6.1 — OpenJPEG differential (M3, M4), RCT/ICT (C7, C8), JP2 colour"
