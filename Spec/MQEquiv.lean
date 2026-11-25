@@ -20,8 +20,9 @@ table) is related step by step to the specification `JPEG2000.Spec.MQ` (Nat regi
   packed byte decodes (`Spec.MQTable.stateOf`) to the spec context, out-of-range included.
 * `Rel start d s cxs` — both, plus the `DECODE` invariant `0x8000 ≤ A < 0x10000`.
 
-Main results: `bytein_sim`, `renormd_sim`, `decode_sim` (one decision: same bit, relation
-preserved), `init_sim` (for any `data start stop`, with spec data `segment data start stop`),
+Main results: `bytein_sim`, `renormd_sim`, `step_eq_ref` (the allocation-free `Dec.step`,
+whose `RENORMD` runs on unboxed registers (`renormS_eq`), equals the path-by-path flowchart form
+`stepRef`), `decode_sim` (one decision: same bit, relation preserved), `init_sim` (for any `data start stop`, with spec data `segment data start stop`),
 `decodeList_sim`, the general `decode_init_eq` (the form Tier-1 uses: a segment inside a larger
 buffer) and the headline `decodeAll_eq`:
 `JPEG2000.MQ.decodeAll data inits cxList = Spec.MQ.decodeAll data.toList inits cxList` for all
@@ -190,6 +191,21 @@ theorem renormd_sim {start : Nat} {d : Dec} {s : Spec.MQ.State} (h : Sim start d
     Sim start (Dec.renormd d) (Spec.MQ.renormd s) ∧ (Dec.renormd d).cx = d.cx :=
   renormLoop_sim 16 h
 
+/-- `RENORMD` does not touch the stored decision. -/
+theorem renormLoop_bit (n : Nat) (d : Dec) : (Dec.renormLoop n d).bit = d.bit := by
+  induction n generalizing d with
+  | zero => rfl
+  | succ n ih =>
+    have h1 : (Dec.renormStep d).bit = d.bit := by
+      unfold Dec.renormStep Dec.bytein; split <;> (try split) <;> (try split) <;> rfl
+    simp only [Dec.renormLoop]
+    split
+    · exact h1
+    · rw [ih, h1]
+
+/-- `RENORMD` does not touch the stored decision. -/
+theorem renormd_bit (d : Dec) : (Dec.renormd d).bit = d.bit := renormLoop_bit 16 d
+
 /-- The packed context array `cx` stands for the spec context list `cxs`: same length, and
 every index (in range or not) reads the same state. -/
 
@@ -273,9 +289,84 @@ structure Rel (start : Nat) (d : Dec) (s : Spec.MQ.State) (cxs : Spec.MQ.Context
 
 private theorem sim_upd {start : Nat} {d : Dec} {s : Spec.MQ.State} (h : Sim start d s)
     (a c : UInt32)
-    (A C : Nat) (ha : a.toNat = A) (hc : c.toNat = C) (cx : ByteArray) :
-    Sim start { d with a, c, cx } { s with A, C } :=
+    (A C : Nat) (ha : a.toNat = A) (hc : c.toNat = C) (cx : ByteArray) (bit : Bool) :
+    Sim start { d with a, c, cx, bit } { s with A, C } :=
   ⟨hc, ha, h.ct, h.pos, fun j => by simpa [Dec.byteAt] using h.data j⟩
+
+/-! ## The flowchart shape of `Dec.step` -/
+
+/-- `DECODE` (Figure C.15) written path by path, as the flowchart (and as the fast decoder
+was written before task 8.2a): `LPS_EXCHANGE` + `RENORMD`; the MPS path without
+renormalisation; `MPS_EXCHANGE` (both branches) + `RENORMD`. The decision is stored in
+`bit`. `step_eq_ref` proves the scalar-selection form `Dec.step` equal to it. -/
+def stepRef (d : Dec) (i : Nat) : Dec :=
+  let s := ctxGet d.cx i
+  let e := entry s
+  let qe := e >>> 16
+  let mps := s &&& 1 != 0
+  let a := d.a - qe
+  if d.c >>> 16 < qe then
+    -- LPS_EXCHANGE
+    if a < qe then
+      Dec.renormd { d with a := qe, cx := ctxSet d.cx i (e >>> 8).toUInt8, bit := mps }
+    else
+      Dec.renormd { d with a := qe, cx := ctxSet d.cx i e.toUInt8, bit := !mps }
+  else
+    let c := d.c - (qe <<< 16)
+    if a &&& 0x8000 != 0 then
+      { d with a, c, bit := mps }
+    else if a < qe then
+      -- MPS_EXCHANGE, LPS branch
+      Dec.renormd { d with a, c, cx := ctxSet d.cx i e.toUInt8, bit := !mps }
+    else
+      -- MPS_EXCHANGE, MPS branch
+      Dec.renormd { d with a, c, cx := ctxSet d.cx i (e >>> 8).toUInt8, bit := mps }
+
+/-- The scalar `RENORMD` loop `Dec.renormS` is `renormLoop` on the updated record. -/
+theorem renormS_eq (d : Dec) (i : Nat) (ns : UInt8) (bit : Bool) (n : Nat)
+    (a c ct : UInt32) (pos : Nat) :
+    Dec.renormS d i ns bit n a c ct pos =
+      Dec.renormLoop n { d with a, c, ct, pos, cx := ctxSet d.cx i ns, bit } := by
+  induction n generalizing a c ct pos with
+  | zero => rfl
+  | succ n ih =>
+    have hb : ∀ (a c ct : UInt32) (pos j : Nat) (cx : ByteArray) (bit : Bool),
+        Dec.byteAt { d with a, c, ct, pos, cx, bit } j = d.byteAt j := fun _ _ _ _ _ _ _ => rfl
+    simp only [Dec.renormS, Dec.renormLoop, Dec.renormStep, Dec.bytein, ih, hb]
+    by_cases h0 : ct = 0
+    · subst h0
+      by_cases h1 : d.byteAt pos = 0xFF
+      · by_cases h2 : d.byteAt (pos + 1) > 0x8F <;> simp [h1, h2]
+      · simp [h1]
+    · simp [h0]
+
+/-- `ctxSet` of the byte just read leaves the context array unchanged. -/
+theorem ctxSet_ctxGet (cx : ByteArray) (i : Nat) : ctxSet cx i (ctxGet cx i) = cx := by
+  unfold ctxSet ctxGet
+  split
+  · cases cx
+    simp [ByteArray.set, ByteArray.get]
+  · rfl
+
+/-- `Dec.step` is the flowchart `stepRef`. -/
+theorem step_eq_ref (d : Dec) (i : Nat) : d.step i = stepRef d i := by
+  simp only [Dec.step, stepRef, renormS_eq, Dec.renormd]
+  generalize hs : ctxGet d.cx i = s
+  by_cases p1 : d.c >>> 16 < entry s >>> 16
+  · by_cases p2 : d.a - entry s >>> 16 < entry s >>> 16
+    · simp only [p1, p2, decide_true, Bool.not_true, Bool.false_and, Bool.true_bne,
+        Bool.not_false, Bool.true_and, ↓reduceIte, Bool.false_eq_true]
+    · simp only [p1, p2, decide_true, decide_false, Bool.not_true, Bool.false_and,
+        Bool.bne_false, Bool.not_false, Bool.true_and, ↓reduceIte, Bool.false_eq_true]
+  · by_cases p3 : (d.a - entry s >>> 16 &&& 32768 != 0) = true
+    · simp only [p1, p3, decide_false, Bool.not_false, Bool.true_and, Bool.not_true,
+        Bool.false_and, ↓reduceIte, Bool.false_eq_true, Dec.renormLoop]
+      rw [← hs, ctxSet_ctxGet]
+    · by_cases p2 : d.a - entry s >>> 16 < entry s >>> 16
+      · simp only [p1, p2, p3, decide_true, decide_false, Bool.not_false, Bool.true_and,
+          Bool.and_true, Bool.false_bne, ↓reduceIte, Bool.false_eq_true]
+      · simp only [p1, p2, p3, decide_false, Bool.not_false, Bool.true_and,
+          Bool.false_bne, ↓reduceIte, Bool.false_eq_true]
 
 /-- `DECODE` (C.3.2, Figures C.15–C.17): from related states, the fast and the spec decoder
 return the same decision `D` and related states. -/
@@ -296,7 +387,8 @@ theorem decode_sim {start : Nat} {d : Dec} {s : Spec.MQ.State} {cxs : Spec.MQ.Co
   obtain ⟨hq, hn, hl⟩ := hagree
   have hqb := Spec.MQ.qeAt_qe_bounds (cxs.get i).index
   have hcx := h.cx
-  simp only [Dec.decode, Spec.MQ.decode, Spec.MQ.lpsExchange, Spec.MQ.mpsExchange]
+  simp only [Dec.decode, step_eq_ref, stepRef, Spec.MQ.decode, Spec.MQ.lpsExchange,
+    Spec.MQ.mpsExchange]
   generalize entry (ctxGet d.cx i) = e at hq hn hl ⊢
   generalize cxs.get i = st at hq hn hl hmps hqb ⊢
   generalize (Spec.MQ.qeAt st.index).qe = Q at hq hqb ⊢
@@ -317,15 +409,15 @@ theorem decode_sim {start : Nat} {d : Dec} {s : Spec.MQ.State} {cxs : Spec.MQ.Co
     rw [bit_fast, ha]
   simp only [c1, c2, c3, hmps]
   by_cases p1 : s.chigh < Q
-  · have hsim : ∀ cx', Sim start { d with a := e >>> 16, cx := cx' } { s with A := Q } :=
-      fun cx' => sim_upd h.sim _ d.c _ s.C hq hsc cx'
+  · have hsim : ∀ cx' bit, Sim start { d with a := e >>> 16, cx := cx', bit } { s with A := Q } :=
+      fun cx' bit => sim_upd h.sim _ d.c _ s.C hq hsc cx' bit
     by_cases p2 : (s.A - Q) % 65536 < Q
     · simp only [p1, p2, ↓reduceIte]
-      obtain ⟨r1, r2⟩ := renormd_sim (hsim (ctxSet d.cx i (e >>> 8).toUInt8))
-      exact ⟨by trivial, r1, r2 ▸ cxRel_set hcx i _ _ hn⟩
+      obtain ⟨r1, r2⟩ := renormd_sim (hsim (ctxSet d.cx i (e >>> 8).toUInt8) st.mps)
+      exact ⟨renormd_bit _, r1, r2 ▸ cxRel_set hcx i _ _ hn⟩
     · simp only [p1, p2, ↓reduceIte]
-      obtain ⟨r1, r2⟩ := renormd_sim (hsim (ctxSet d.cx i e.toUInt8))
-      exact ⟨by trivial, r1, r2 ▸ cxRel_set hcx i _ _ hl⟩
+      obtain ⟨r1, r2⟩ := renormd_sim (hsim (ctxSet d.cx i e.toUInt8) !st.mps)
+      exact ⟨renormd_bit _, r1, r2 ▸ cxRel_set hcx i _ _ hl⟩
   · have p1' : ¬ s.C / 65536 % 65536 < Q := p1
     have hcc : (d.c - e >>> 16 <<< 16).toNat = (s.chigh - Q) * 65536 + s.C % 65536 := by
       have h16 : (e >>> 16 <<< 16).toNat = Q * 65536 := by
@@ -333,20 +425,20 @@ theorem decode_sim {start : Nat} {d : Dec} {s : Spec.MQ.State} {cxs : Spec.MQ.Co
       have hle2 : e >>> 16 <<< 16 ≤ d.c := by
         rw [UInt32.le_iff_toNat_le, h16, hsc]; omega
       rw [UInt32.toNat_sub_of_le _ _ hle2, h16, hsc]; simp only [Spec.MQ.State.chigh]; omega
-    have hsim : ∀ cx',
-        Sim start { d with a := d.a - e >>> 16, c := d.c - e >>> 16 <<< 16, cx := cx' }
+    have hsim : ∀ cx' bit,
+        Sim start { d with a := d.a - e >>> 16, c := d.c - e >>> 16 <<< 16, cx := cx', bit }
         { s with A := (s.A - Q) % 65536, C := (s.chigh - Q) * 65536 + s.C % 65536 } :=
-      fun cx' => sim_upd h.sim _ _ _ _ ha hcc cx'
+      fun cx' bit => sim_upd h.sim _ _ _ _ ha hcc cx' bit
     by_cases p3 : Spec.MQ.bit15 ((s.A - Q) % 65536) = true
     · simp only [p1, p3, ↓reduceIte]
-      exact ⟨by trivial, hsim d.cx, hcx⟩
+      exact ⟨trivial, hsim d.cx st.mps, hcx⟩
     · by_cases p2 : (s.A - Q) % 65536 < Q
       · simp only [p1, p2, p3, Bool.false_eq_true, ↓reduceIte]
-        obtain ⟨r1, r2⟩ := renormd_sim (hsim (ctxSet d.cx i e.toUInt8))
-        exact ⟨by trivial, r1, r2 ▸ cxRel_set hcx i _ _ hl⟩
+        obtain ⟨r1, r2⟩ := renormd_sim (hsim (ctxSet d.cx i e.toUInt8) !st.mps)
+        exact ⟨renormd_bit _, r1, r2 ▸ cxRel_set hcx i _ _ hl⟩
       · simp only [p1, p2, p3, Bool.false_eq_true, ↓reduceIte]
-        obtain ⟨r1, r2⟩ := renormd_sim (hsim (ctxSet d.cx i (e >>> 8).toUInt8))
-        exact ⟨by trivial, r1, r2 ▸ cxRel_set hcx i _ _ hn⟩
+        obtain ⟨r1, r2⟩ := renormd_sim (hsim (ctxSet d.cx i (e >>> 8).toUInt8) st.mps)
+        exact ⟨renormd_bit _, r1, r2 ▸ cxRel_set hcx i _ _ hn⟩
 
 /-- Decoding a context sequence: same decisions, related final states. -/
 

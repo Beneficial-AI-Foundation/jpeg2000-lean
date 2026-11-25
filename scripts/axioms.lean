@@ -155,6 +155,11 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.MQEquiv.renormStep_sim
 #print axioms JPEG2000.Spec.MQEquiv.renormLoop_sim
 #print axioms JPEG2000.Spec.MQEquiv.renormd_sim
+#print axioms JPEG2000.Spec.MQEquiv.renormLoop_bit
+#print axioms JPEG2000.Spec.MQEquiv.renormd_bit
+#print axioms JPEG2000.Spec.MQEquiv.renormS_eq
+#print axioms JPEG2000.Spec.MQEquiv.ctxSet_ctxGet
+#print axioms JPEG2000.Spec.MQEquiv.step_eq_ref
 #print axioms JPEG2000.Spec.MQEquiv.ctxSet_size
 #print axioms JPEG2000.Spec.MQEquiv.ctxGet_ctxSet
 #print axioms JPEG2000.Spec.MQEquiv.contexts_get_put
