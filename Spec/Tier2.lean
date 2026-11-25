@@ -21,7 +21,8 @@ Task 7.1b. A near-literal transcription of Annex B.10 as a decoder over **lists*
   `Spec.TagTree.exact`, at most `Mb + roiShift`), the number of new passes (B.10.6, Table B.4,
   `numPasses`), the `Lblock` increment (B.10.7.1, `commaCode`) and one length field of
   `Lblock + ⌊log₂ passes⌋` bits per codeword-segment piece (B.10.7.2), the pieces given by
-  `Spec.Tier1.segmentPasses` of the code-block style (D.4, D.6).
+  `Spec.Tier1.segmentPasses` of the code-block style (D.4, D.6; with OpenJPEG's plain-mode
+  cap of 109 passes per codeword segment, task 4.9).
 * **The body** (B.10.8) is a byte list: each included code-block's pieces in header order,
   appended to its codeword segments (a piece continues the code-block's open segment unless
   the pass before it ended one).

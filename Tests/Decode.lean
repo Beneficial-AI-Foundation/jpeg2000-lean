@@ -32,9 +32,9 @@ The PGX reader here is private to this suite (task 5.6a writes the official one)
 
 6. **Passes below bit-plane 0** (task 5.8): the non-regression streams `test_lossless.j2k`
    (5/3, bit-exact) and `kodak_2layers_lrcp.j2c` (9/7 + ICT, two layers) signal more passes
-   than `3K − 2` for some code-blocks; they go through (1)–(3). `kodak_2layers_lrcp.j2c` is
-   compared leniently (`knownDiff`: OpenJPEG's 109-pass segment cap changes its Tier-2
-   parse of that stream).
+   than `3K − 2` for some code-blocks; they go through (1)–(3). `kodak_2layers_lrcp.j2c` also
+   has a plain-mode code-block with 172 passes in one packet: two codeword segments (the
+   109-pass cap, task 4.9), as OpenJPEG; it is compared strictly.
 
 Defaults keep the suite fast: the large streams `p0_07`, `p0_08`, `p0_05`, `p1_03` and
 `file*.jp2` run only with `JPEG2000_DECODE_ALL=1`. Skips cleanly when `corpus/files` or
@@ -236,12 +236,12 @@ impossible. Structure checks still run. -/
 def opjConverts : List String := ["file3"]
 
 /-- Streams with a known, explained difference from `opj_decompress` (compared leniently:
-differences are printed, not failures). `kodak_2layers_lrcp.j2c` has a code-block
-(comp 0, res 5, HL, precinct 18, block 3) that signals 172 passes in one packet; OpenJPEG
-splits a plain-mode codeword segment after 109 passes (`opj_t2_init_seg`, `maxpasses = 109`)
-and so reads two length fields where T.800 B.10.7.1 has one, and the two packet-header
-parses diverge from there (task 5.8 report; Decision 4.4 "known difference"). -/
-def knownDiff : List String := ["kodak_2layers_lrcp.j2c"]
+differences are printed, not failures). Empty since task 4.9: `kodak_2layers_lrcp.j2c` has a
+code-block (comp 0, res 5, HL, precinct 18, block 3) that signals 172 passes in one packet;
+OpenJPEG splits a plain-mode codeword segment after 109 passes (`opj_t2_init_seg`,
+`maxpasses = 109`) and reads two length fields, and so does our Tier-2 now
+(`Spec.Tier1.passEndsSegment`). -/
+def knownDiff : List String := []
 
 /-- Decodes one stream and runs checks (1)–(3) (and (5) for ROI streams). -/
 def checkStream (dir : System.FilePath) (opj : Bool) (name : String) (path : System.FilePath)
@@ -346,7 +346,7 @@ def roiStreams : List String := ["p0_03", "p0_06", "p0_13", "p0_15"]
 
 /-- Non-regression streams that signal more coding passes than `3K − 2` for some code-blocks
 (task 5.8: the passes below bit-plane 0 are dropped, as OpenJPEG does). `test_lossless` is
-5/3 (bit-exact); `kodak_2layers_lrcp` is 9/7 + ICT, 2 layers (`knownDiff`). -/
+5/3 (bit-exact); `kodak_2layers_lrcp` is 9/7 + ICT, 2 layers (109-pass segment cap, 4.9). -/
 def nonregStreams : List String := ["test_lossless.j2k", "kodak_2layers_lrcp.j2c"]
 
 /-- The file of a stream name. -/

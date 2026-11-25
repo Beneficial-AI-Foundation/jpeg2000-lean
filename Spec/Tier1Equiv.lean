@@ -282,20 +282,28 @@ theorem validate_eq (data : ByteArray) (start stop w h : Nat) (band : Band) (Mb 
     JPEG2000.Tier1.validate data start stop w h (Mb - zbp) n =
       (specBlock data start stop w h band Mb zbp n).validate := by
   have hn := specBlock_numPasses data start stop w h band Mb zbp n
-  have hseg : ((specBlock data start stop w h band Mb zbp n).segments.map (·.passes) !=
-      Spec.Tier1.segmentPasses (specBlock data start stop w h band Mb zbp n).mode
-        (specBlock data start stop w h band Mb zbp n).numPasses 0) = false := by
-    rw [hn, Spec.Tier1.segmentPasses_plain _ rfl rfl]
-    simp only [specBlock, CodeBlock.ofData, Spec.Tier1.Segment.single]
-    split <;> simp
-  rw [hn] at hseg
   unfold JPEG2000.Tier1.validate Spec.Tier1.CodeBlock.validate
   rw [hn]
   have h3 : ¬ (start > stop ∨ stop > data.size) := by omega
   have h4 : ¬ (n > 0 ∧ Mb - zbp > 31) := fun ⟨a, c⟩ => by have := hK a; omega
+  by_cases c2 : n > 0 ∧ n > 3 * (Mb - zbp) - 2
+  · simp only [h3, h4, Bool.false_eq_true, ↓reduceIte]
+    by_cases c1 : w > 1024 ∨ h > 1024 ∨ w * h > 4096 <;>
+      simp [c1, c2, specBlock, CodeBlock.ofData, CodeBlock.codedPlanes, JPEG2000.Tier1.tier1Loc,
+        Spec.Tier1.tier1Loc, bind, Except.bind, throw, throwThe, MonadExceptOf.throw]
+  -- within `3K − 2 ≤ 91` passes the 109-pass cap (task 4.9) does not split the segment
+  have h109 : 0 + n ≤ 109 := by
+    by_cases n0 : n = 0
+    · omega
+    · have := hK (by omega); omega
+  have hseg : ((specBlock data start stop w h band Mb zbp n).segments.map (·.passes) !=
+      Spec.Tier1.segmentPasses (specBlock data start stop w h band Mb zbp n).mode n 0) =
+        false := by
+    rw [Spec.Tier1.segmentPasses_plain _ rfl rfl _ _ h109]
+    simp only [specBlock, CodeBlock.ofData, Spec.Tier1.Segment.single]
+    split <;> simp
   simp only [hseg, h3, h4, Bool.false_eq_true, ↓reduceIte]
   by_cases c1 : w > 1024 ∨ h > 1024 ∨ w * h > 4096 <;>
-    by_cases c2 : n > 0 ∧ n > 3 * (Mb - zbp) - 2 <;>
     simp [c1, c2, specBlock, CodeBlock.ofData, CodeBlock.codedPlanes, JPEG2000.Tier1.tier1Loc,
       Spec.Tier1.tier1Loc]
 

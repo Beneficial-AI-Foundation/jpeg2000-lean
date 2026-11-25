@@ -50,9 +50,11 @@ them into a fresh `ByteArray` for a Tier-1 decoder that wants one contiguous buf
 
 `segmentPasses` is transcribed from `Spec.Tier1.segmentPasses` (`JPEG2000/` may not import
 `Spec/`); `Tests/Packet.lean` checks that the two agree on every style byte `0…63` and every
-`(numPasses, firstPass)` up to 200 × 200. It equals OpenJPEG's `opj_t2_init_seg` except that
-OpenJPEG's plain mode caps a segment at 109 passes (`3·37 − 2`); without ROI a code-block has
-at most 109 passes, so this matters only for ROI streams with > 109 passes.
+`(numPasses, firstPass)` up to 200 × 200, and `Spec.Tier2Equiv.segmentPasses_eq` proves it.
+It equals OpenJPEG's `opj_t2_init_seg`, including the plain-mode cap of 109 passes per segment
+(`3·37 − 2`, task 4.9): without ROI a valid code-block has at most 109 passes, but streams
+may signal more (`kodak_2layers_lrcp.j2c`: 172), and then OpenJPEG reads one length field per
+109 passes.
 
 ## Strictness (Plan.md §3; compared with OpenJPEG 2.5 `opj_t2_read_packet_header/_data`)
 
@@ -98,9 +100,10 @@ def locAt (o : Nat) : Location := .atOffset .tier2 o
 /-- D.4, D.6 (Table D.9): with code-block style byte `style` (Table A.19), a codeword
 segment is terminated after pass `i`: always with termination on each pass (bit 2); with
 the bypass (bit 0), after pass 9 and after every later pass that is not a significance
-propagation pass. -/
+propagation pass; otherwise after every 109th pass (OpenJPEG's `maxpasses = 109`, task 4.9). -/
 def passEndsSegment (style i : Nat) : Bool :=
-  style / 4 % 2 == 1 || (style % 2 == 1 && 9 ≤ i && (i == 0 || (i - 1) % 3 != 0))
+  style / 4 % 2 == 1 || (style % 2 == 1 && 9 ≤ i && (i == 0 || (i - 1) % 3 != 0)) ||
+    (!(style % 2 == 1) && i % 109 == 108)
 
 /-- Split the passes `i, …, i+n−1` into runs ending at segment ends (`cur` passes already
 open). -/

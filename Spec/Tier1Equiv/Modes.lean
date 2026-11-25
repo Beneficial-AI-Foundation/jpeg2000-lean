@@ -154,7 +154,7 @@ theorem decodeCodeBlock_plainLike (cb : CodeBlock) (hb : cb.mode.bypass = false)
     Spec.Tier1.decodeCodeBlockExact cb = Spec.Tier1.decodeCodeBlockExact { cb with mode := Mode.plain } := by
   have hval : cb.validate = ({ cb with mode := Mode.plain } : CodeBlock).validate := by
     unfold CodeBlock.validate
-    rw [Spec.Tier1.segmentPasses_plain _ ht hb, Spec.Tier1.segmentPasses_plain _ rfl rfl]
+    rw [Spec.Tier1.segmentPasses_congr (m' := Mode.plain) (by rw [ht]; rfl) (by rw [hb]; rfl)]
     rfl
   have hgeom : cb.geom = ({ cb with mode := Mode.plain } : CodeBlock).geom := by
     simp [CodeBlock.geom, hv, Mode.plain]
@@ -375,7 +375,13 @@ theorem c3_all_exact (data : ByteArray) (segs : Array JPEG2000.Tier1.Seg) (w h :
       obtain ⟨⟨⟨⟨hb, hr⟩, ht⟩, hvc⟩, hs⟩ := hp
       rw [hm.bypass] at hb; rw [hm.reset] at hr; rw [hm.termAll] at ht
       rw [hm.vertCausal] at hvc; rw [hm.segSymbols] at hs
-      rw [Spec.Tier1.segmentPasses_plain _ ht hb] at hsegP
+      -- at most `3K − 2 ≤ 91` passes: the 109-pass cap (task 4.9) does not split the segment
+      have h109 : 0 + N ≤ 109 := by
+        by_cases n0 : N = 0
+        · omega
+        · have := hK (by omega); have := hnK (by omega)
+          simp only [specBlockM, CodeBlock.codedPlanes] at this; omega
+      rw [Spec.Tier1.segmentPasses_plain _ ht hb _ _ h109] at hsegP
       have hpl := decodeCodeBlock_plainLike (specBlockM data segs w h band style Mb zbp)
         (by rw [hmd, hmd']; exact hb) (by rw [hmd, hmd']; exact hr) (by rw [hmd, hmd']; exact ht)
         (by rw [hmd, hmd']; exact hvc) (by rw [hmd, hmd']; exact hs)

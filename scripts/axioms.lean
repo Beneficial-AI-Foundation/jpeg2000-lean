@@ -228,6 +228,7 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.Tier1.segmentPasses_pos
 #print axioms JPEG2000.Spec.Tier1.segmentRuns_noTerm
 #print axioms JPEG2000.Spec.Tier1.segmentPasses_plain
+#print axioms JPEG2000.Spec.Tier1.segmentPasses_congr
 #print axioms JPEG2000.Spec.Tier1.segmentRuns_termAll
 #print axioms JPEG2000.Spec.Tier1.segmentPasses_termAll
 #print axioms JPEG2000.Spec.Tier1.isRawPass_noBypass
@@ -1114,3 +1115,10 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.HeaderWF.headerWF
 #print axioms JPEG2000.Spec.HeaderWF.parse_wf
 #print axioms JPEG2000.Spec.C9.c9
+
+-- Phase 4, tasks 4.9 + 4.8: plain-mode 109-pass segment cap (Spec/Tier1/Modes.lean,
+-- `segmentPasses_congr` above); S3 passes per code-block (Spec/Resources/BlockPasses.lean)
+#print axioms JPEG2000.Spec.Resources.BlockPasses.decodePacket_within
+#print axioms JPEG2000.Spec.Resources.BlockPasses.decodeTilePacketsWith_blockPasses
+#print axioms JPEG2000.Spec.Resources.BlockPasses.decodeWithStream_blockPasses
+#print axioms JPEG2000.Spec.Resources.BlockPasses.decodeAllTileCodeBlocks_blockPasses
