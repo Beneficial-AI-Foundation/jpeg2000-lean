@@ -5,8 +5,8 @@ import JPEG2000.TilePart
 
 Plan.md §4 S2/S3, §8; T.800 A.4 (SOT/SOD/EOC), A.7 (TLM/PLT/PPM/PPT). Hand-built
 codestreams (single tile-part, tiles out of order, interleaved tile-parts, `Psot = 0`,
-`TNsot` mismatch, `Isot` out of range, duplicate/out-of-order `TPsot`, truncation, PPT,
-PLT with multi-byte lengths, TLM, PPM spanning segments, limits) and the 23 T.803 streams.
+`TNsot` mismatch, the one-too-small `TNsot` correction (task 1.9), `Isot` out of range,
+duplicate/out-of-order `TPsot`, truncation, PPT, PLT with multi-byte lengths, TLM, PPM spanning segments, limits) and the 23 T.803 streams.
 
 `opj_dump -i` (OpenJPEG 2.5.3) prints only the main-header codestream index, not tile-part
 positions (its tile index is filled only when tiles are decoded), so the corpus table was
@@ -181,6 +181,44 @@ def structureTests : IO Nat := do
     (parseWith { maxTilePartsPerTile := 2 } (h4 ++ tp 0 0 3 [] [] ++ eoc)))
   f := f + (← expectKind "maxTileParts" "limit"
     (parseWith { maxTileParts := 1 } (h4 ++ tp 0 0 1 [] [] ++ tp 1 0 1 [] [] ++ eoc)))
+  return f
+
+/-- `n` tile-parts `0…n−1` of tile `i`, all declaring `TNsot = tn`, one data byte each. -/
+def parts (i tn n : Nat) : List UInt8 :=
+  (List.range n).foldl (fun acc k => acc ++ tp i k tn [] [k.toUInt8]) []
+
+/-- `(index, tnsot, number of parts)` of each tile of a successful parse. -/
+def tnsots (x : Except Error (Array Tile)) : Option (List (Nat × Nat × Nat)) :=
+  (ok? x).map fun ts => ts.toList.map fun t => (t.index, t.tnsot, t.parts.size)
+
+/-- `TNsot` one too small: OpenJPEG's correction (module doc of `JPEG2000.TilePart`). -/
+def tnsotTests : IO Nat := do
+  let mut f := 0
+  let h4 := mainHdr 32 16
+  f := f + (← expect "TNsot = 2 with 3 parts: corrected"
+    (tnsots (parse (h4 ++ parts 0 2 3 ++ eoc)) == some [(0, 3, 3)]))
+  f := f + (← expect "TNsot = 5 with 6 parts (issue208 shape): corrected"
+    (tnsots (parse (h4 ++ parts 0 5 6 ++ parts 1 5 6 ++ eoc)) == some [(0, 6, 6), (1, 6, 6)]))
+  f := f + (← expectKind "parseSOT TPsot = TNsot" "ok"
+    (parseSOT (rd (be16 0 ++ be32 14 ++ [2, 2]))))
+  f := f + (← expectKind "parseSOT TPsot > TNsot" "malformed"
+    (parseSOT (rd (be16 0 ++ be32 14 ++ [3, 2]))))
+  f := f + (← expectKind "TNsot two too small" "malformed"
+    (parse (h4 ++ parts 0 2 4 ++ eoc)))
+  f := f + (← expectKind "TNsot = 1 with 2 parts (no correction for TNsot = 1)" "malformed"
+    (parse (h4 ++ parts 0 1 2 ++ eoc)))
+  f := f + (← expectKind "extra part declaring TNsot = 0: no correction" "malformed"
+    (parse (h4 ++ parts 0 2 2 ++ tp 0 2 0 [] [] ++ eoc)))
+  -- The decision is taken at the first completed tile and applies to every tile.
+  f := f + (← expect "correction detected on a later-completing tile applies to all"
+    (tnsots (parse (h4 ++ tp 0 0 2 [] [] ++ parts 1 2 3 ++ tp 0 1 2 [] [] ++ tp 0 2 2 [] [] ++
+      eoc)) == some [(0, 3, 3), (1, 3, 3)]))
+  f := f + (← expectKind "correction on: a tile with exactly TNsot parts is short" "malformed"
+    (parse (h4 ++ parts 0 2 3 ++ parts 1 2 2 ++ eoc)))
+  f := f + (← expectKind "first completed tile exact: later TPsot = TNsot rejected" "malformed"
+    (parse (h4 ++ parts 0 2 2 ++ parts 1 2 3 ++ eoc)))
+  f := f + (← expect "correction on: TNsot = 0 tiles unaffected"
+    (tnsots (parse (h4 ++ parts 0 2 3 ++ parts 1 0 2 ++ eoc)) == some [(0, 3, 3), (1, 0, 2)]))
   return f
 
 /-- PLT, PPT, TLM and PPM tests. -/
@@ -378,6 +416,6 @@ def corpus : IO Nat := do
 
 /-- Runs every tile-part test; returns the number of failures. -/
 def run : IO Nat := do
-  return (← structureTests) + (← pointerTests) + (← corpus)
+  return (← structureTests) + (← tnsotTests) + (← pointerTests) + (← corpus)
 
 end JPEG2000.Tests.TilePart
