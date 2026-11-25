@@ -17,6 +17,7 @@ Design document: Plan.md
   becomes current. Proof tasks name their theorem IDs from Plan.md §4 (S1–S6, C1–C10).
 
 ## Current wave
+Wave 15: 6.3a (wt), 6.3b (wt), 7.1b (new), 7.1d (new)
 
 ## Branches and PRs
 | Phase | Branch | Base | PR | State |
@@ -27,7 +28,7 @@ Design document: Plan.md
 | 3 | `phase-3-tier1` | `phase-1-headers` | [#3](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/3) | ready (2026-11-25) |
 | 4 | (shares `phase-3-tier1`) | — | [#3](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/3) | ready (2026-11-25, with phase 3) |
 | 5 | `phase-5-reconstruction` | `phase-3-tier1` | [#4](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/4) | ready (2026-11-25) |
-| 6 | `phase-6-jp2-output` | `phase-5-reconstruction` | — | none |
+| 6 | `phase-6-jp2-output` | `phase-5-reconstruction` | [#5](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/5) | draft |
 | 7 | `phase-7-equivalence` | `phase-6-jp2-output` | — | none |
 | 8 | `phase-8-speed` | `phase-7-equivalence` | — | none |
 | 9 | `phase-9-hardening` | `phase-8-speed` | — | none |
@@ -128,8 +129,10 @@ Plan.md §7 row 6, §1 "What we build", Annex I. Exit: **M6**: the JP2 conforman
 |---|---|---|---|---|---|
 | 6.1 | (landed on `phase-3-tier1`) Colour: enumerated spaces, ICC pass-through, palette (`pclr`), component mapping (`cmap`), channel definitions (`cdef`, alpha) | 1.2 | `JPEG2000/Color.lean`, `Tests/Color.lean` | new | | done (2026-11-25) |
 | 6.2 | (landed on `phase-5-reconstruction`) Consumer API: `JPEG2000.decode : Limits → ByteArray → Except Error Image`, planes + interleaved 8/16-bit, bit-depth scaling, colour composition (palette, cdef, sYCC, sub-sampled upsampling), alpha, PDF info (`/SMaskInData`) | 5.5, 6.1 | `JPEG2000/Image.lean`, `Tests/Image.lean` | new | done (2026-11-25) |
-| 6.3 | JP2 conformance + PDF-extracted corpus comparison | 6.2, 0.5 | `Tests/JP2.lean`, `scripts/diff-images.py`, `corpus/manifest.json` | wt | todo |
-| 6.4 | M6 check | 6.1–6.3 | — | solo | todo |
+| 6.3 | JP2 conformance + PDF-extracted corpus comparison | — | — | — | split (into 6.3a, 6.3b) |
+| 6.3a | JP2 conformance: `JPEG2000.decode` + `interleaved8` vs the 9 `jp2_N.tif` references within the manifest thresholds; for METH 2 ICC files (file5/7/8) apply the embedded profile in the test harness with lcms2 (`tificc`/`transicc`, test-only, apt `liblcms2-utils`) to sRGB as OpenJPEG + colour management does, then compare; extend the conformance runner to include the TIFF entries | 6.2 | `Tests/JP2.lean`, `scripts/icc-apply.py`, `Tests/Conformance.lean` | wt | doing (2026-11-25) |
+| 6.3b | PDF-extracted JPX corpus: find JPXDecode images in real PDFs (safe-pdf's corpus and other fetchable public PDFs), extract the raw JPX streams (`pdfimages -jp2`/`qpdf`/`mutool`), add them to `corpus/manifest.json` (role `pdf-jpx`, SHA-256, source PDF + object), and compare `JPEG2000.decode` vs `opj_decompress` per file (`scripts/diff-images.py`) | 6.2, 0.5 | `scripts/extract-pdf-jpx.py`, `scripts/diff-images.py`, `corpus/manifest.json`, `docs/corpus.md` | wt | doing (2026-11-25) |
+| 6.4 | M6 check | 6.1, 6.2, 6.3a, 6.3b | — | solo | todo |
 Exit criterion checked: [ ]
 
 ## Phase 7 — Equivalence end to end
@@ -138,9 +141,9 @@ Plan.md §7 row 7, §4, §5.3. Exit: **M7**: C9, C10, S2, S3 proved; `#print axi
 |---|---|---|---|---|---|
 | 7.1 | `Spec.decode` composed from the stage specs; C9 from the stage theorems | — | — | — | split (into 7.1a–7.1e) |
 | 7.1a | (landed on `phase-5-reconstruction`) `Spec.decode` (codestream → per-component Int samples, reversible exact / irreversible over Rat) composed from the stage specs, and the C9 composition theorem proved from explicitly stated per-stage equivalence hypotheses (one `Prop` per stage); inventory of which stage obligations are already discharged by existing theorems and which are open | 5.5 | `Spec/Decode.lean`, `Spec/Equiv.lean` | new | done (2026-11-25) |
-| 7.1b | Tier-2 packet decoding spec (B.10 over bit lists, using `Spec.TagTree`) + equivalence with `JPEG2000.Tier2.Packet` | 7.1a | `Spec/Tier2.lean`, `Spec/Tier2Equiv.lean` | new | todo |
+| 7.1b | Tier-2 packet decoding spec (B.10 over bit lists, using `Spec.TagTree`) + equivalence with `JPEG2000.Tier2.Packet` | 7.1a | `Spec/Tier2.lean`, `Spec/Tier2Equiv.lean` | new | | doing (2026-11-25) |
 | 7.1c | Tier-1 modes: fast = spec for all code-block styles (extends C3 beyond plain) | 7.1a | `Spec/Tier1Equiv/Modes.lean` | new | todo |
-| 7.1d | 2-D DWT plane loops (Mallat load/store, level composition) for 5/3 and 9/7 and the dequantisation block loop proved = spec | 7.1a | `Spec/DWTPlane.lean`, `Spec/QuantBlock.lean` | new | todo |
+| 7.1d | 2-D DWT plane loops (Mallat load/store, level composition) for 5/3 and 9/7 and the dequantisation block loop proved = spec | 7.1a | `Spec/DWTPlane.lean`, `Spec/QuantBlock.lean` | new | | doing (2026-11-25) |
 | 7.1e | Discharge the remaining C9 hypotheses and state C9 unconditionally (header, tile assembly, ROI, DC shift) | 7.1b, 7.1c, 7.1d | `Spec/Equiv.lean` | wt | todo |
 | 7.2 | (landed on `phase-5-reconstruction`) Reference encoder end to end (one tile, one layer, LRCP, plain mode, 5/3 + RCT; 9/7 variant) | 3.5, 4.1, 1.6 | `Encode/Encode.lean`, `Encode/Tier2.lean`, `Tests/Encode.lean` | new | done (2026-11-25) |
 | 7.3 | C10: `decode (encode img) = img` for the lossless encoder | 7.1a, 7.2 | `Spec/RoundTrip.lean` | new | todo |
