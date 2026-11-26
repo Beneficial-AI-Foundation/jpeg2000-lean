@@ -325,8 +325,8 @@ the other branches evolve independently.
    exercise Indexed colour before scaling indices and avoid applying opacity twice.
 4. Feed the existing pinned **source PDFs** to the safe-pdf worker. The 81 PDFs
    surveyed in safe-pdf contained zero JPX images. The decoder corpus supplies
-   19 JPX-bearing PDFs, including two differently filtered uses of the same
-   codestream. Check each placement against the page reference at a fixed view
+   19 primary JPX-bearing PDFs plus a twentieth PDF recorded as a filter-chain
+   alias. All 20 are part of the worker check. Check each placement against the page reference at a fixed view
    and tolerance, including masks or repeated streams with different dictionaries.
    Record reference versions, fixture coverage and any mismatch. An extracted
    stream comparison alone cannot establish M10.

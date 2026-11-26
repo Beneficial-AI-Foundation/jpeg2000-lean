@@ -18,7 +18,7 @@ Design document: Plan.md
 
 ## Current wave
 
-M10 is active from the published M7 decoder. Resume M8 and M9 after integration.
+Wave 42 integrated the JPX adapter and source-page gate in safe-pdf. M8 and M9 are deferred.
 
 ## Branches and PRs
 | Phase | Branch | Base | PR | State |
@@ -33,7 +33,7 @@ M10 is active from the published M7 decoder. Resume M8 and M9 after integration.
 | 7 | `phase-7-equivalence` | `phase-6-jp2-output` | [#6](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/6) | ready (2026-11-26) |
 | 8 | `phase-8-speed` | `phase-7-equivalence` | [#7](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/7) | draft, deferred |
 | 9 | `phase-9-hardening` | `phase-8-speed` | — | none |
-| 10 | `phase-10-safe-pdf` | `phase-7-equivalence` | — | local |
+| 10 | `phase-10-safe-pdf` | `phase-7-equivalence` | [decoder #8](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/8) and [safe-pdf #20](https://github.com/Beneficial-AI-Foundation/safe-pdf/pull/20) | draft |
 States: none · draft · awaiting-ci · ready (<date>) · changes-requested · merged · closed.
 
 ## Phase 0 — Infrastructure
@@ -317,10 +317,15 @@ Plan.md §7 row 10, §9. Exit: **M10**: safe-pdf renders every JPX image of its 
 | ID | Task | Needs | Owns | Par | Status |
 |---|---|---|---|---|---|
 | 10.1 | Document the public consumer API, isolate development targets, and verify the M7-based pin from safe-pdf. | 6.2, 7.5 | README.md, docs/api.md, lakefile.lean, safe-pdf Lake files and dependency decision | solo | done (2026-11-26) |
-| 10.2a | Implement the pure Quarantine.JPX adapter. Check original dimensions, propagate budgets and typed errors, preserve native indices and embedded opacity. | 10.1 | safe-pdf Quarantine and adapter tests | wt | todo |
+| 10.1c | Verify the pinned private dependency can be fetched in a clean safe-pdf Actions job. The consumer repository token cannot fetch jpeg2000-lean; an owner decision on a scoped read credential is pending. | 10.1 | safe-pdf CI | solo | blocked (cross-repository read access) |
+| 10.2a | Implement the pure Quarantine.JPX adapter. Check original dimensions, propagate budgets and typed errors, preserve native indices and embedded opacity. | 10.1 | safe-pdf Quarantine and adapter tests | wt | done (2026-11-26) |
 | 10.2b | Wire XObjects, inline images and mask streams into the confined render path. Test PDF colour precedence, Decode and mask rules, premultiplication and reduced rendering. | 10.2a | safe-pdf raster and integration tests | wt | todo |
-| 10.2c | Build a source-PDF corpus gate from the pinned JPX-bearing documents. Verify placements, filter chains, reference versions and image tolerances. | 6.3b | safe-pdf corpus and worker render comparisons | wt | todo |
-| 10.3 | Run consumer tests and worker rendering comparisons, check every JPX occurrence, and record the M10 result. Review the consumer version tag against the tested pin at release. | 10.2b, 10.2c | both repos | solo | todo |
+| 10.2c | Build a source-PDF corpus gate from the pinned JPX-bearing documents. Verify placements, filter chains, reference versions and image tolerances. | 6.3b | safe-pdf corpus and worker render comparisons | wt | done (2026-11-26) |
+| 10.2r | Complete missing references for the six colour-channel placements in jpx_numcomps and the reduced map placement in issue19517. Verify source identity and paint coverage independently of safe-pdf. | 10.2c | safe-pdf differential page gate and reference tooling | wt | todo |
+| 10.2s | Supply a verified JPX-free page reference using the recorded plane for bug_jpx. Check the painted placement in the safe-pdf worker. | 10.2c, 6.7 | safe-pdf recorded-plane reference helper and tests | wt | todo |
+| 10.3 | Run consumer tests and worker rendering comparisons, check every JPX occurrence, and record the M10 result. Review the consumer version tag against the tested pin at release. | 10.1c, 10.2b, 10.2r, 10.2s | both repos | solo | todo |
+Wave 42 integrated the adapter and dedicated stencil validation at safe-pdf `5084cd8`, then the source-page gate at `a17967c`. The standard consumer build, 46 test suites and 1,223 axiom checks passed. At packaging and plan commit `27b4f36`, the decoder passed both Linux, both macOS and both corpus CI jobs. Before the renderer wiring, the two pikepdf placements both failed at 2,764 of 2,970 pixels. The complete gate enumerates 20 PDFs, 22 pages, 46 object occurrences and 42 distinct codestreams. Its baseline has 24 placeholder rows, 13 other placement mismatches, eight mandatory reference gaps and two unpainted thumbnails.
+
 Consumer pin check (2026-11-26): from a fresh safe-pdf worktree at `430203d`,
 Lake initially fetched the M7 SHA and built `JPEG2000.Image` (95 jobs). The example
 in `docs/api.md` decoded the pinned pikepdf object 6 stream to 120 × 44 RGB
@@ -331,6 +336,17 @@ MuPDF 1.25.1 at 72 dpi produced identical reference rasters with 1,220 distinct
 RGB colours. Use this pair to verify both the direct and Flate-prefixed JPX paths
 when wiring the adapter in 10.2b.
 
+An original 48 × 8 worker fixture for 10.2b paints the same one-bit plane three
+times: ordinary DeviceGray with reversed Decode, a red stencil with default
+polarity, and a red stencil with reversed polarity. All 128 native samples
+round-trip exactly. The equivalent unfiltered PDF renders six 8-pixel bands
+(black, white, red, white, white, red) in both safe-pdf and MuPDF 1.25.1,
+matching every expected pixel. The pre-adapter safe-pdf paints the JPX version
+solid gray. MuPDF 1.25.1 also disagrees with the unfiltered control on the JPX
+version, so use the analytic bands as the regression oracle for this fixture.
+The generator, both PDFs and worker pixels are in `/tmp/jpeg2000-next-wave-42`
+for the raster integration tests.
+
 The integration pin is the packaging-only commit `9a8880a`. safe-pdf
 `87bae91` fetched the published revision, compiled the public API, repeated the
 pikepdf sample and limit check, and passed its default build, test/fuzz build,
@@ -340,6 +356,7 @@ build, 36 suites and hygiene (1,756 axiom checks) also passed.
 Exit criterion checked: [ ]
 
 ## Gotchas (append-only; read before every wave, pasted into every brief)
+* M10 raster wiring: a JPX colour image ignores its PDF `/Decode` array, even with an explicit PDF colour space. For a stencil, require one native one-bit channel and apply the stencil polarity. In 10.2b, test the same reversed array on both an ordinary colour image and a stencil. A nonzero `/SMaskInData` takes its opacity from the JPX image and takes precedence over an external `/SMask`. Read PDF Indexed indices before bit-depth scaling. [ISO 32000-1 §7.4.9 and §8.6.6.3](https://opensource.adobe.com/dc-acrobat-sdk-docs/standards/pdfstandards/pdf/PDF32000_2008.pdf#page=45) · [ISO 32000-2 Table 87 corrections](https://pdf-issues.pdfa.org/32000-2-2020/clause08.html).
 * From safe-pdf (same toolchain, same rules): compiled `<<<` and `^` on `Nat` call GMP — hot code uses `UInt32`/`UInt64`/`Int32`/`Int64` (Plan §6.1).
 * Sandbox: egress is limited to GitHub and the Lean release host (+ Debian apt mirrors); loogle/leansearch are blocked — use `lean_local_search` and `exact?`. OpenJPEG tools come from apt (`libopenjp2-tools`).
 
@@ -682,3 +699,5 @@ Exit criterion checked: [ ]
 
 * 2026-11-26 — wave 40 (phase 7, PR #6). Completed 7.5 and verified the M7 exit criterion. The kernel printed the full C9, public native-field and C10 claims, S2 totality, public S3 and ordered allocation-limit claims and the four runtime entry points. All 13 use only propext, Classical.choice and Quot.sound. C9 covers native sample access for every input and reduction, including two-way rejection with potentially different diagnostic details and the C8 rounding allowance on irreversible output. C10 covers every successful reversible encoding at sufficient limits. Rechecked 64 reversible encodings and 1,280 sample reads, four mixed-precision images and 72 reads, and 48 public allocation and interleaving cases. Builds passed (462 and 800 jobs), all 36 suites passed, the hygiene self-test passed, and hygiene audited 1,756 declarations and runtime closures of 3,175, 3,486, 670 and 670 declarations. All 152 corpus hashes and 42 PDF extracts verified, 86 headers matched, T.803 class 1 passed 52/52, JP2 passed 9/9 and three scoped PDF images matched exactly. Class 0 is informational at 12/26. PR readiness awaits the two hosted CI runs on the milestone commit. Commit "Wave 40: audit the end-to-end equivalence milestone".
 * 2026-11-26 — phase 7 milestone. PR #6 marked ready for review. Both GitHub CI runs (45822320707 and 45822329487) passed all six jobs on milestone commit `83f96ba`.
+
+* 2026-11-26 — Wave 42 (M10, decoder #8 / safe-pdf #20): integrated 10.2a and 10.2c at safe-pdf `a17967c`. Added 10.2r and 10.2s for the eight measured reference gaps.
