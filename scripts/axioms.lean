@@ -1213,3 +1213,27 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.RoundTrip.data_bytes
 #print axioms JPEG2000.Spec.RoundTrip.parse_encodeDetailed
 #print axioms JPEG2000.Spec.RoundTrip.parse_encode
+
+-- Phase 7, task 7.3f1: Layout
+#print axioms JPEG2000.Spec.RoundTrip.tileComp_enc
+#print axioms JPEG2000.Spec.RoundTrip.encLayout_coding
+#print axioms JPEG2000.Spec.RoundTrip.encLayout_comp
+#print axioms JPEG2000.Spec.RoundTrip.encLayout_wf
+#print axioms JPEG2000.Spec.RoundTrip.layout_ofHeader_enc
+#print axioms JPEG2000.Spec.RoundTrip.encLayout_maxLevels
+#print axioms JPEG2000.Spec.RoundTrip.encLayout_numPrecincts
+#print axioms JPEG2000.Spec.RoundTrip.iterationWork_enc
+#print axioms JPEG2000.Spec.RoundTrip.encCounts_precincts
+#print axioms JPEG2000.Spec.RoundTrip.iterationWork_check_of_headerFits
+#print axioms JPEG2000.Spec.RoundTrip.iterationWork_enc_le
+#print axioms JPEG2000.Spec.RoundTrip.iterationWork_check_default
+
+-- Phase 7, task 7.3f2: TileBytes
+#print axioms JPEG2000.Spec.RoundTrip.encodeDetailed_tilePackets
+#print axioms JPEG2000.Spec.RoundTrip.tileData_encCodestream
+#print axioms JPEG2000.Spec.RoundTrip.parse_encodeDetailed_tileData
+
+-- Phase 7, task 7.3f3: BlockBounds
+#print axioms JPEG2000.Spec.RoundTrip.encodeCodeBlock_counts
+#print axioms JPEG2000.Spec.RoundTrip.blockOK_encodeCodeBlock
+#print axioms JPEG2000.Spec.RoundTrip.width_le_iff_length_lt
