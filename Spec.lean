@@ -56,6 +56,10 @@ import Spec.RoundTrip.Layout
 import Spec.RoundTrip.TileBytes
 import Spec.RoundTrip.BlockBounds
 import Spec.RoundTrip.PrecinctShape
+import Spec.RoundTrip.PrecinctIndex
+import Spec.RoundTrip.PacketBlocks
+import Spec.RoundTrip.InitAdmission
+import Spec.RoundTrip.TileDecode
 import Spec.RoundTrip
 import Spec.Resources
 import Spec.Resources.BlockPasses

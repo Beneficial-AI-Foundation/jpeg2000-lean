@@ -1246,3 +1246,25 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.RoundTrip.initPrecincts_shape
 #print axioms JPEG2000.Spec.RoundTrip.initPrecincts_geometry
 #print axioms JPEG2000.Spec.RoundTrip.ReversibleTilePackets.precReady
+
+-- Phase 7, task 7.3f5a: disjoint precinct spans and packet index injectivity
+#print axioms JPEG2000.Spec.RoundTrip.initPrecincts_spans_disjoint
+#print axioms JPEG2000.Spec.RoundTrip.initPrecincts_precIdx_injective
+
+-- Phase 7, task 7.3f5d: end-to-end Tier-2 wrapper under explicit admissions
+#print axioms JPEG2000.Spec.RoundTrip.decodeTile_encodeDetailed
+
+-- Phase 7, task 7.3f5b: PacketBlocks
+#print axioms JPEG2000.Spec.RoundTrip.encodeComp_packetBlock
+#print axioms JPEG2000.Spec.RoundTrip.encodeComp_blockRecords
+#print axioms JPEG2000.Spec.RoundTrip.encodeComp_blockOK
+#print axioms JPEG2000.Spec.RoundTrip.ReversibleTilePackets.packetBlock
+#print axioms JPEG2000.Spec.RoundTrip.ReversibleTilePackets.blockOK
+#print axioms JPEG2000.Spec.RoundTrip.ReversibleTilePackets.componentRecords
+#print axioms JPEG2000.Spec.RoundTrip.encodeComp_passes
+#print axioms JPEG2000.Spec.RoundTrip.ReversibleTilePackets.packetPasses
+
+-- Phase 7, task 7.3f5c: InitAdmission
+#print axioms JPEG2000.Spec.RoundTrip.tagTree_create_of_le
+#print axioms JPEG2000.Spec.RoundTrip.initPrecincts_of_encCounts
+#print axioms JPEG2000.Spec.RoundTrip.initPrecincts_of_headerFits
