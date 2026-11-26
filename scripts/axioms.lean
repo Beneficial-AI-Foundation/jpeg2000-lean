@@ -1885,3 +1885,14 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.Resources.DiagnosticBox.public_admission_excess
 #print axioms JPEG2000.Spec.Resources.DiagnosticBox.public_raw
 #print axioms JPEG2000.Spec.Resources.DiagnosticBox.signature_replacement
+#print axioms JPEG2000.Spec.Resources.DiagnosticPacketRanges.parsed_ranges
+#print axioms JPEG2000.Spec.Resources.DiagnosticPacket.public_callback
+#print axioms JPEG2000.Spec.Resources.DiagnosticPacket.admission_free
+#print axioms JPEG2000.Spec.Resources.DiagnosticPacket.storage_le_charge
+#print axioms JPEG2000.Spec.Resources.DiagnosticPacket.decode_work
+#print axioms JPEG2000.Spec.Resources.DiagnosticPacket.header_work
+#print axioms JPEG2000.Spec.Resources.DiagnosticPacket.public_tile_refusal
+#print axioms JPEG2000.Spec.Resources.DiagnosticPacket.visit_records
+#print axioms JPEG2000.Spec.Resources.DiagnosticPacket.public_rank_refusal
+#print axioms JPEG2000.Spec.Resources.DiagnosticPacket.ppm_mismatch
+#print axioms JPEG2000.Spec.Resources.DiagnosticPacket.packed_refusal

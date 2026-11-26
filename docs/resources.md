@@ -489,7 +489,15 @@ an earlier colour-box diagnostic before the main-header parser encounters its
 first error. The combined bound charges both events and gives the exact error
 returned by the native and display decoders.
 
-The whole-path diagnostic bound still needs tile-part headers, header merges and
-geometry, packet callbacks, native reconstruction and image stages. The final S3
+`DiagnosticPacket.decode_work` adds the Tier-2 diagnostic charge to native work.
+For a prefix with `V` visited tiles and `A` attempted packets, the diagnostic
+charge is bounded by `(1 + 2*V + 2*A) * eventBudget (tileCap L data.size)`.
+The first term covers the shared PPM rank check. A packet can discard a failed
+optional SOP read before returning its result. A packed-header length mismatch
+can follow a successful packet iteration and translation of its byte ranges.
+Both public decoders propagate the refusing tile's error and stop visiting tiles.
+
+The whole-path diagnostic bound still needs pointer and tile-part headers, coding
+merges and geometry checks, native reconstruction and image stages. The final S3
 statement must combine those costs with the native, mapping and display bounds and
 identify the limit errors returned when a checked budget is exceeded.
