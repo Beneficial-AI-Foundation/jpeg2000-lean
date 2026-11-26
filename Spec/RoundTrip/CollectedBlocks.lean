@@ -15,12 +15,6 @@ open JPEG2000.Header (CompParams Rect)
 open JPEG2000.Tier2.Geometry
 open JPEG2000.Spec.Decode
 open JPEG2000.Spec.Tier2 (BandOut BlockSt)
-open JPEG2000.Encode.Tier1 (maxMag numBits)
-
-/-- A physical block at its four nested indices in a decoded component. -/
-def ComponentBlockAt (rs : SpecPrecs) (r j bi k : Nat) (b : Band) (sb : BlockSt) : Prop :=
-  ∃ ps bs bo, rs[r]? = some ps ∧ ps[j]? = some bs ∧ bs[bi]? = some bo ∧
-    bo.blocks[k]? = some sb ∧ bo.band = b
 
 private def blockEntries (p : CompParams) (depth r : Nat) (b : Band) (cb : BlockSt) : List Entry :=
   if cb.passes != 0 && !rectEmpty cb.geom.rect then
@@ -209,51 +203,6 @@ theorem blockCoeffs_at {d : Encode.BandData} {rect : Rect} {u v : Nat}
   rw [hm, hd, show rect.y0+y = v by dsimp [y]; omega,
     show rect.x0+x = u by dsimp [x]; omega]
 
-/-- The decoder's returned block at an address has the physical geometry of the
-encoder call at that address, even for a zero-pass codeword. -/
-theorem DecodedEncoderTile.packetBlockAt {L : Limits} {p : Encode.Params} {img : Encode.Image}
-    {e : Encode.Encoded} {prec infos tile} (hp : ReversibleTilePackets p img e prec infos)
-    (ht : DecodedEncoderTile L (encLayout p img e.guardBits e.exponents) prec tile)
-    {c r j bi k : Nat} {rs b sb} (hrs : tile.comps[c]? = some rs)
-    (ha : ComponentBlockAt rs r j bi k b sb) :
-    ∃ pb o, PacketBlockCall Limits.default (encGeom p img e.guardBits e.exponents)
-      ((Encode.bands53 p img (encMct p img)).getD c #[]) r j bi k pb sb.geom o ∧ pb.band = b := by
-  obtain ⟨ps, out, bo, hps, hout, hbo, hsb, rfl⟩ := ha
-  let g := encLayout p img e.guardBits e.exponents
-  let q : Progression.PacketId := ⟨0, r, c, j⟩
-  have hci : c < g.numComps := ht.count ▸ (List.getElem?_eq_some_iff.mp hrs).1
-  obtain ⟨_, hrs', nrs, resAt⟩ := ht.component c hci
-  obtain rfl := Option.some.inj (hrs'.symm.trans hrs)
-  have hrlen := (List.getElem?_eq_some_iff.mp hps).1
-  rw [nrs] at hrlen
-  have hri : r ≤ g.levels c := Nat.le_of_lt_succ hrlen
-  obtain ⟨res, _, hres, hps', nps, precAt⟩ := resAt r hri
-  obtain rfl := Option.some.inj (hps'.symm.trans hps)
-  have hj := (List.getElem?_eq_some_iff.mp hout).1
-  obtain ⟨pg, st, _, hpg, hst, hout', hd⟩ := precAt j hj
-  obtain rfl := Option.some.inj (hout'.symm.trans hout)
-  have hq : g.InPacketSet q := ⟨Nat.zero_lt_succ 0, hci, hri, nps ▸ hj⟩
-  have hbi : bi < (encBands prec q).size := hd.count ▸ (List.getElem?_eq_some_iff.mp hbo).1
-  have hb := Array.getElem?_eq_getElem hbi
-  obtain ⟨_, _, _, hbo', _, nbs, _⟩ := hd.band bi _ hb
-  obtain rfl := Option.some.inj (hbo'.symm.trans hbo)
-  have hx := Array.getElem?_eq_getElem (nbs ▸ (List.getElem?_eq_some_iff.mp hsb).1)
-  obtain ⟨pb, cb, o, call, _, hx'⟩ := hp.packetBlock hq hb hx
-  rw [hx'] at hx
-  have hcomp := encLayout_comp p img e.guardBits e.exponents c
-    ((encLayout_coding p img e.guardBits e.exponents).1 ▸ hci)
-  rw [hcomp] at hres hst
-  obtain ⟨_, _, hbo'', hsb', hband, hgeom, _, _⟩ :=
-    hd.reconstructBlock hres hpg hst hb hx call rfl rfl
-  obtain rfl := Option.some.inj (hbo''.symm.trans hbo')
-  obtain rfl := Option.some.inj (hsb'.symm.trans hsb)
-  exact ⟨pb, o, hgeom.symm ▸ call, hband.symm⟩
-
-/-- The 31-plane C10 bound, quantified only over actual Tier-1 calls of this component. -/
-def ComponentPlanes31 (tc : TileCompGeom) (source : Array (Array Encode.BandData)) : Prop :=
-  ∀ r j bi k pb cb o, PacketBlockCall Limits.default tc source r j bi k pb cb o →
-    numBits (maxMag (packetBlockCoeffs source r bi cb)) ≤ 31
-
 open JPEG2000.Spec.Tier2Equiv (bind_ok)
 open JPEG2000.Tier2.Packet (PrecState)
 open JPEG2000.Spec.Tier2 (PrecSt)
@@ -380,18 +329,14 @@ theorem DecodedEncoderTile.blockAtGeometry {r j bi k : Nat} {res pg pb cb}
   · rw [blockAfter_fresh]
     split <;> rfl
 
-include hp ht hrs hK
-private theorem reconstruct_at {r j bi k : Nat} {b sb} (ha : ComponentBlockAt rs r j bi k b sb) :
-    ReconstructsBlock (encParams p e.guardBits e.exponents) r b sb
-      (packetBlockCoeffs ((Encode.bands53 p img (encMct p img)).getD c #[]) r bi sb.geom) := by
-  obtain ⟨pb, o, call, _⟩ := ht.packetBlockAt hp hrs ha
-  obtain ⟨ps, bs, bo, hps, hbs, hbo, hsb, rfl⟩ := ha
-  exact ht.reconstructBlock hp hrs hps hbs hbo hsb (hK _ _ _ _ pb _ o call)
+variable (blocks : ReconstructsComponentBlocks (encParams p e.guardBits e.exponents)
+  ((Encode.bands53 p img (encMct p img)).getD c #[]) rs)
 
+include blocks in
 /-- **C10 collection.** The real spec loop at zero reduction reaches the inverse DWT
 with exactly the newest-first entries of this component and saturation count zero.
 The only work check is the area of the full-resolution component. -/
-theorem DecodedEncoderTile.tileComp_collected (hrev : p.reversible = true)
+theorem ReconstructsComponentBlocks.tileComp_collected (hrev : p.reversible = true)
     (hw : img.width * img.height ≤ L.maxWorkSamples) (depth F : Nat) :
     Decode.tileComp L (encGeom p img e.guardBits e.exponents) depth F 0 rs =
       finSpec true (collectedEntries (encParams p e.guardBits e.exponents) depth rs)
@@ -400,13 +345,23 @@ theorem DecodedEncoderTile.tileComp_collected (hrev : p.reversible = true)
   · simp [encGeom, encParams, hrev]
   · simpa [encGeom, encRect, Header.Rect.width, Header.Rect.height] using hw
   · intro r j bi k b sb ha
-    obtain ⟨cs, hd, _⟩ := reconstruct_at hp ht hrs hK ha
+    obtain ⟨cs, hd, _⟩ := blocks ha
     exact ⟨cs, hd⟩
 
+include hp ht hrs hK in
+/-- Collection specialized to a component with at most 31 coded planes per block. -/
+theorem DecodedEncoderTile.tileComp_collected (hrev : p.reversible = true)
+    (hw : img.width * img.height ≤ L.maxWorkSamples) (depth F : Nat) :
+    Decode.tileComp L (encGeom p img e.guardBits e.exponents) depth F 0 rs =
+      finSpec true (collectedEntries (encParams p e.guardBits e.exponents) depth rs)
+        (encRect img) p.levels 0 :=
+  (hK.reconstructsComponentBlocks hp ht hrs).tileComp_collected hrev hw depth F
+
+include hp ht hrs blocks in
 /-- **C10 band sample.** At a uniquely covered band coordinate the actual collection's
 5/3 grid equals the encoder band's row-major sample. Uniqueness concerns only physical
 geometry (including blocks with no passes). -/
-theorem DecodedEncoderTile.bandGrid53_collected (depth : Nat) {r j bi k u v : Nat}
+theorem ReconstructsComponentBlocks.bandGrid53_collected (depth : Nat) {r j bi k u v : Nat}
     {b : Band} {sb : BlockSt} (hr : r ≤ p.levels) (ha : ComponentBlockAt rs r j bi k b sb)
     (hxy : BlockContains sb.geom.rect u v)
     (hu : ∀ j' bi' k' pb cb o,
@@ -418,7 +373,7 @@ theorem DecodedEncoderTile.bandGrid53_collected (depth : Nat) {r j bi k u v : Na
     (bandGrid53 (collectedEntries (encParams p e.guardBits e.exponents) depth rs)
       p.levels (bandLevel p.levels r) b).get u v =
       d.vals.getD ((v - d.rect.y0) * d.rect.width + (u - d.rect.x0)) 0 := by
-  apply Eq.trans (grid_at_block hr ha hxy ?_ (reconstruct_at hp ht hrs hK ha)) (blockCoeffs_at hxy)
+  apply Eq.trans (grid_at_block hr ha hxy ?_ (blocks ha)) (blockCoeffs_at hxy)
   intro r' j' bi' k' b' sb' hr' ha' hb hl hxy'
   subst b'
   obtain ⟨pb, o, call, label⟩ := ht.packetBlockAt hp hrs ha
@@ -427,6 +382,22 @@ theorem DecodedEncoderTile.bandGrid53_collected (depth : Nat) {r j bi k u v : Na
     (label ▸ call_band_mem call) hl
   obtain ⟨rfl, rfl, rfl⟩ := hu _ _ _ _ _ _ call' label' hxy'
   exact ⟨rfl, at_functional ha' ha⟩
+
+include hp ht hrs hK in
+/-- Band-grid recovery specialized to a component with at most 31 coded planes per block. -/
+theorem DecodedEncoderTile.bandGrid53_collected (depth : Nat) {r j bi k u v : Nat}
+    {b : Band} {sb : BlockSt} (hr : r ≤ p.levels) (ha : ComponentBlockAt rs r j bi k b sb)
+    (hxy : BlockContains sb.geom.rect u v)
+    (hu : ∀ j' bi' k' pb cb o,
+      PacketBlockCall Limits.default (encGeom p img e.guardBits e.exponents)
+        ((Encode.bands53 p img (encMct p img)).getD c #[]) r j' bi' k' pb cb o →
+      pb.band = b → BlockContains cb.rect u v → j' = j ∧ bi' = bi ∧ k' = k) :
+    let source := (Encode.bands53 p img (encMct p img)).getD c #[]
+    let d := (source.getD r #[]).getD bi default
+    (bandGrid53 (collectedEntries (encParams p e.guardBits e.exponents) depth rs)
+      p.levels (bandLevel p.levels r) b).get u v =
+      d.vals.getD ((v - d.rect.y0) * d.rect.width + (u - d.rect.x0)) 0 :=
+  (hK.reconstructsComponentBlocks hp ht hrs).bandGrid53_collected hp ht hrs depth hr ha hxy hu
 
 end Component
 
