@@ -575,7 +575,25 @@ result under a common scalar bound. A native refusal preserves the exact error
 and every earlier message. A native success appends the display trace in order,
 so earlier messages from recovered compact errors are still counted.
 
-The whole-path diagnostic bound still needs the header stages composed in parser
-order, native allocation and placement, and their composition across tiles. The final S3
-statement must combine those costs with the native, mapping and display bounds and
-identify the limit errors returned when a checked budget is exceeded.
+On a parsed header, `DiagnosticOutput.proposed` bounds both allocation proposals
+before either guard runs. The number of cells is at most
+`maxComponents * maxImageArea`, and the proposed bytes are at most eight times
+that product. A refusing allocator visits zero tiles and both public decoders
+return its typed error. Each reached writer uses the destination left by its
+predecessors, including the current component on a failed write.
+
+`DiagnosticHeader.headerTrace` orders the complete container, marker, geometry,
+coding, pointer and tile-part traces through the final header work check.
+`DiagnosticNative.native_events` preserves this prefix and appends the actual
+native reconstruction trace only after header success. That suffix uses the
+concrete allocator, centred tile-colour callback and destination writer.
+Packet records precede their tile’s component retries, colour and placement
+events. At an admitted reduction, `native_bounds` bounds both diagnostic
+construction work and cumulative temporary storage by
+`eventBudget L data.size * Text.workBound (scalarCap L data.size) 128 24`
+in the `DiagnosticNative` namespace. The final retained record and the caller’s
+oversized reduction have their own bounds.
+
+The remaining public S3 statement must combine those costs with native,
+metadata and display work, output and intermediate storage, and the exact
+errors returned by checked budgets.

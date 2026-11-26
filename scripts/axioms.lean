@@ -1947,3 +1947,5 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.Resources.DiagnosticOutput.allocation_refusal
 #print axioms JPEG2000.Spec.Resources.DiagnosticOutput.public_allocation
 #print axioms JPEG2000.Spec.Resources.DiagnosticOutput.public_writes
+#print axioms JPEG2000.Spec.Resources.DiagnosticNative.native_events
+#print axioms JPEG2000.Spec.Resources.DiagnosticNative.native_bounds

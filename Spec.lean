@@ -144,6 +144,7 @@ import Spec.Resources.DiagnosticCodeBlock
 import Spec.Resources.DiagnosticComponent
 import Spec.Resources.DiagnosticColour
 import Spec.Resources.DiagnosticOutput
+import Spec.Resources.DiagnosticNative
 import Spec.Resources.GeometryInit
 import Spec.Resources.SegmentHistory
 import Spec.Resources.ReconstructionCost
