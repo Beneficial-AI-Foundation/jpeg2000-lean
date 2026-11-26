@@ -115,10 +115,10 @@ def readPgx (p : System.FilePath) : IO (Option Pgx) := do
   return parsePgx (← IO.FS.readBinFile p)
 
 /-- The samples of a decoded component as integers. -/
-def samplesOf (c : DecodedComponent) : Array Int := Id.run do
+def samplesOf (c : CodestreamComponent) : Array Int := Id.run do
   let mut out : Array Int := Array.mkEmpty (c.width * c.height)
   for i in [0:c.width * c.height] do
-    out := out.push ((c.plane.get? i).getD 0).toInt
+    out := out.push ((c.get? i).getD 0)
   return out
 
 /-- Maximum absolute difference and number of differing samples (sizes must match). -/
@@ -181,7 +181,7 @@ def expectedRect (s : SIZ) (c : Component) (r : Nat) : Nat × Nat × Nat × Nat 
   (x0, y0, cdivPow rc.x1 r - x0, cdivPow rc.y1 r - y0)
 
 /-- Structure check (1): component count, rectangles, depths, signedness from SIZ. -/
-def checkStructure (name : String) (img : DecodedImage) (r : Nat) : IO Nat := do
+def checkStructure (name : String) (img : CodestreamImage) (r : Nat) : IO Nat := do
   let s := img.header.siz
   let mut fails := 0
   if img.comps.size != s.csiz then
@@ -191,8 +191,13 @@ def checkStructure (name : String) (img : DecodedImage) (r : Nat) : IO Nat := do
     let c := s.components.getD i default
     let d := img.comps.getD i default
     let (x0, y0, w, hh) := expectedRect s c r
+    let dims := match d with
+      | .compact c => (c.plane.width, c.plane.height)
+      | .native c => match c.storage with
+        | .wide p => (p.width, p.height)
+        | .narrow p => (p.width, p.height)
     if d.x0 != x0 || d.y0 != y0 || d.width != w || d.height != hh || d.depth != c.depth.toNat ||
-        d.signed != c.signed || d.plane.width != w || d.plane.height != hh then
+        d.signed != c.signed || dims != (w, hh) then
       IO.println s!"  FAIL {name} comp {i}: got ({d.x0},{d.y0}) {d.width}×{d.height} depth {d.depth} signed {d.signed}, expected ({x0},{y0}) {w}×{hh} depth {c.depth.toNat}"
       fails := fails + 1
   return fails
@@ -200,7 +205,7 @@ def checkStructure (name : String) (img : DecodedImage) (r : Nat) : IO Nat := do
 /-- Compares a decode with OpenJPEG's output. Reversible components must be bit-exact
 (unless `lenient`, for the ROI streams); 9/7 components print their maximum difference and
 fail beyond the sanity bound. Returns the failures and the per-component `(max, count)`. -/
-def compareOpj (name : String) (img : DecodedImage) (ref : Array Pgx) (lenient : Bool) :
+def compareOpj (name : String) (img : CodestreamImage) (ref : Array Pgx) (lenient : Bool) :
     IO (Nat × Array (Nat × Nat)) := do
   let mut fails := 0
   let mut res := #[]
@@ -316,7 +321,7 @@ def checkReduceZero (path : System.FilePath) : IO Nat := do
   let data ← IO.FS.readBinFile path
   match decodeCodestream Limits.default data, decodeCodestream Limits.default data 0 with
   | .ok a, .ok b =>
-    if a.comps.map (·.plane.data) == b.comps.map (·.plane.data) then return 0
+    if a.comps.map samplesOf == b.comps.map samplesOf then return 0
     IO.println "  FAIL reduce 0 differs from the default decode"
     return 1
   | _, _ =>

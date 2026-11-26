@@ -757,7 +757,7 @@ theorem tier2WF : Spec.Equiv.Tier2WF := by
 discharged (`tier2WF`). -/
 theorem c9_of_hdr (hHd : Spec.Equiv.HeaderWF) :
     ∀ (L : Limits) (data : ByteArray) (reduce : Nat),
-      Spec.Equiv.ERel Spec.Equiv.C9Rel (decodeCodestream L data reduce) (Spec.Decode.decode L data reduce) :=
+      Spec.Equiv.ERel Spec.Equiv.C9Rel (decodeCodestreamNarrow L data reduce) (Spec.Decode.decode L data reduce) :=
   Spec.Tier1Wire.c9_of_header tier2WF hHd
 
 end JPEG2000.Spec.Tier2WF

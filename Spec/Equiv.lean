@@ -11,7 +11,7 @@ equivalence theorem per stage, composed into C9); T.800 Annexes B, D, E, F, G, H
 ## The statement
 
 `c9_of_stages : Tier2Equiv → Tier2WF → Tier1Equiv → DequantLoopEquiv → DWT53PlaneEquiv →
-DWT97PlaneErr → HeaderWF → ∀ L data reduce, ERel C9Rel (decodeCodestream L data reduce)
+DWT97PlaneErr → HeaderWF → ∀ L data reduce, ERel C9Rel (decodeCodestreamNarrow L data reduce)
 (Spec.Decode.decode L data reduce)`, proved (no `sorry`). The relation `ERel C9Rel` is the
 `≈` of C9:
 
@@ -37,7 +37,7 @@ fast decoder saturates to `Int32` by design (Decisions 5.1, 5.5), and the exact 
 
 ## How the composition works
 
-`Spec.Decode` writes the three levels of the fast decoder (`decodeCodestream`,
+`Spec.Decode` writes the three levels of the fast decoder (`decodeCodestreamNarrow`,
 `Assemble.decodeTile`, `Assemble.reconstructTileComp`) as skeletons with the stages as
 parameters; the fast decoder is the skeleton instantiated with the fast stages **by `rfl`**
 (`decodeCodestream_eq_with`, `decodeTile_eq_with`, `reconstructTileComp_eq_with`). The spec's
@@ -222,10 +222,10 @@ theorem decodeTile_eq_with (L : Limits) (h : Header) (data : ByteArray) (t reduc
         L h t reduce tcb := by
   cases tcb <;> rfl
 
-/-- The fast `decodeCodestream` *is* the skeleton `codestreamWith` with the fast stages
+/-- The fast `decodeCodestreamNarrow` *is* the skeleton `codestreamWith` with the fast stages
 (definitional). -/
 theorem decodeCodestream_eq_with (L : Limits) (data : ByteArray) (reduce : Nat) :
-    decodeCodestream L data reduce =
+    decodeCodestreamNarrow L data reduce =
       codestreamWith Tier2.Headers.decodeWithStream (·.passes)
         (fun h t tcb => Assemble.decodeTile L h data t reduce tcb) (·.saturated) id JPEG2000.Decode.place
         (fun h info planes sat =>
@@ -1745,7 +1745,7 @@ def PlaceEquiv : Prop :=
     ERel (fun ps' ss' => PlaneArr R b ps' ss' ∧ SameDims ss ss')
       (JPEG2000.Decode.place info ps o) (Decode.place info ss s)
 
-/-- **The C9 relation between `decodeCodestream` and `Spec.decode` results**: same header and
+/-- **The C9 relation between `decodeCodestreamNarrow` and `Spec.decode` results**: same header and
 component count; per component the same geometry, depth and signedness; the fast plane has the
 component's size; and when the decoder reports no saturated code-block, every sample satisfies
 `SampleRel` (reversible: equal; irreversible: within C8's bound), under the numeric-range
@@ -2097,7 +2097,7 @@ theorem final_rel (h : Header) (reduce : Nat) (info : Array DecodedComponent) (p
   exact hr
 
 /-- **C9 from the stage hypotheses** (Plan.md §4 C9, §5.1). For every limits, input and resolution
-reduction, `decodeCodestream` and `Spec.decode` are related by `ERel C9Rel`: both fail, or the fast
+reduction, `decodeCodestreamNarrow` and `Spec.decode` are related by `ERel C9Rel`: both fail, or the fast
 decoder refuses with `unsupported`, or both succeed with the same header and geometry and — when no
 code-block saturated — every in-range sample equal (reversible paths) or within C8's per-sample
 bound `cellErr + 1` (irreversible paths). Assumes the stage obligations `Tier2Equiv`,
@@ -2108,7 +2108,7 @@ is the composition only: `Spec.Tier2Wire.c9_of_open` supplies the proved hypothe
 theorem c9_of_stages (hT2 : Tier2Equiv) (hT2w : Tier2WF) (hT1 : Tier1Equiv) (hQ : DequantLoopEquiv)
     (h53 : DWT53PlaneEquiv) (h97 : DWT97PlaneErr) (hHd : HeaderWF) :
     ∀ (L : Limits) (data : ByteArray) (reduce : Nat),
-      ERel C9Rel (decodeCodestream L data reduce) (Spec.Decode.decode L data reduce) := by
+      ERel C9Rel (decodeCodestreamNarrow L data reduce) (Spec.Decode.decode L data reduce) := by
   intro L data reduce
   rw [decodeCodestream_eq_with]
   unfold Decode.decode codestreamWith

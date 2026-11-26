@@ -15,7 +15,7 @@ discharged) applied to `Spec.HeaderWF.headerWF`; it has no hypotheses.
 namespace JPEG2000.Spec.C9
 
 /-- **C9 (Plan.md §4): the fast decoder agrees with the executable specification**, for every
-`Limits`, input and reduction, with no hypotheses. `ERel C9Rel (decodeCodestream L data reduce)
+`Limits`, input and reduction, with no hypotheses. `ERel C9Rel (decodeCodestreamNarrow L data reduce)
 (Spec.Decode.decode L data reduce)` means:
 
 * **failures**: both decoders fail (any errors); or the fast one fails with an `unsupported`
@@ -33,7 +33,7 @@ namespace JPEG2000.Spec.C9
 
 See `docs/c9.md` for when the side conditions can fail. -/
 theorem c9 : ∀ (L : Limits) (data : ByteArray) (reduce : Nat),
-    Spec.Equiv.ERel Spec.Equiv.C9Rel (JPEG2000.decodeCodestream L data reduce)
+    Spec.Equiv.ERel Spec.Equiv.C9Rel (JPEG2000.decodeCodestreamNarrow L data reduce)
       (Spec.Decode.decode L data reduce) :=
   Spec.Tier2WF.c9_of_hdr Spec.HeaderWF.headerWF
 

@@ -166,7 +166,7 @@ def checkDecoder (img : Image) (exact : Bool) (cs : ByteArray) : Option String Ã
         let src := (img.comps.getD c default).samples
         let dc := di.comps.getD c default
         let got := (Array.range (dc.width * dc.height)).map fun k =>
-          ((dc.plane.get? k).getD 0).toInt
+          (dc.get? k).getD 0
         match maxErr got src with
         | none => (acc.1 <|> some s!"component {c}: size {dc.width}x{dc.height}", acc.2)
         | some e =>

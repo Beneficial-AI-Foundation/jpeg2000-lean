@@ -91,6 +91,12 @@ headline ones:
 | per tile: packet iteration work (`iterationWork`, ≥ packets visited) | `maxPackets` | `decodeTilePacketsWith_ok`, `decodeWithStream_ok` |
 | coding passes of all tiles | `maxCodingPasses` | `decodeAllTileCodeBlocks_passes` |
 
+The Int32 plane theorems in this table apply to `decodeCodestreamNarrow`. The ordinary
+codestream entry point uses those planes on compact headers. Its mixed-depth branch
+preserves the reduced SIZ layout and the aggregate work and byte bounds by
+`Spec.CodestreamDispatch.native_geometry`. Each native backing has its exact byte
+size by `Spec.NativeOutput.backing_size`.
+
 **Declared versus allocated (task 6.5).** The header bounds what the stream *declares*
 (side, area, tiles, tile-components, at full resolution: absurd headers are refused before
 the tile-parts are read); `maxWorkSamples`/`maxDecodedBytes` bound what is *allocated*, at
@@ -120,7 +126,7 @@ header (the check runs after the tile-part headers are parsed).
 
 The statements name checked quantities (`GeometryWithin` mirrors `checkGeometry`;
 `allocOutput_ok`/`outputCells`/`outputBytes` the reduced output grids; `tileCells` the
-per-tile set). The proofs unfold `decodeCodestream`, `Decode.allocOutput`, `decode`,
+per-tile set). The proofs unfold `decodeCodestreamNarrow`, `Decode.allocOutput`, `decode`,
 `Assemble.decodeTile`, `reconstructTileComp`, `Header.checkGeometry`/`checkWork`,
 `Tier2.Packet.decodeTilePacketsWith` and `Tier2.Headers.decodeAllTileCodeBlocks`: an edit
 there must re-check `lake env lean Spec/Resources.lean` (as with the C9 skeletons). Task 6.5

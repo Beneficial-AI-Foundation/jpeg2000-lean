@@ -11,7 +11,7 @@ and ICC profile needed to convert, and the raw per-component planes. `Image.inte
 
 ## Pipeline
 
-1. `decodeCodestream` (task 5.5): one plane per codestream component on its own grid
+1. `decodeCodestreamNarrow` (task 5.5): one plane per codestream component on its own grid
    (T.800 B.2, B-12, B-14 for `reduce`).
 2. `Color.resolve` (task 6.1): colour space (T.800 I.5.3.3), `pclr`/`cmap` mapping
    (I.5.3.4, I.5.3.5), `cdef` layout (I.5.3.6).
@@ -200,7 +200,7 @@ pipeline of the module doc. Every stage's error propagates; every allocation is 
 against `L` first. -/
 def decode (L : Limits) (data : ByteArray) (opts : DecodeOptions := {}) :
     Except Error Image := do
-  let d ← decodeCodestream L data opts.reduce
+  let d ← decodeCodestreamNarrow L data opts.reduce
   let siz := d.header.siz
   let hdr? := d.header.container.bind (·.header)
   let info ← Color.resolve L data hdr? siz.components
