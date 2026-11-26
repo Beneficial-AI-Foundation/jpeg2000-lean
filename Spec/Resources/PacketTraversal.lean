@@ -307,6 +307,71 @@ def measureGrid {P T : Type} (L : Limits) (h : Header) (data : ByteArray) (initi
   before (chunks L h) fun idx =>
     grid (visit L h data tile saturated write idx) (numTiles h.siz) 0 (initial, 0, 0, 0)
 
+/-- Execute the first `n` grid entries from the ordinary initial state. The
+returned destination, passes, saturation and tile-part cursor are the actual
+arguments to the next tile. -/
+def gridPrefix {P T : Type} (L : Limits) (h : Header) (data : ByteArray) (initial : P)
+    (tile : Nat → Option TileCodeBlocks → Except Error T) (saturated : T → Nat)
+    (write : P → T → Except Error P) (idx : Array (Array Nat)) (n : Nat) :
+    Except Error (P × Nat × Nat × Nat) :=
+  (grid (visit L h data tile saturated write idx) n 0 (initial, 0, 0, 0)).2
+
+private theorem grid_before {P : Type}
+    (f : Nat → State P → TileVisit × Except Error (State P)) (I : State P → Prop)
+    (preserve : ∀ t s z, I s → (f t s).2 = .ok z → I z)
+    (n t : Nat) (s : State P) (initial : I s) {pre v vs}
+    (atVisit : (grid f n t s).1 = pre ++ v :: vs) :
+    ∃ z, (grid f pre.length t s).2 = .ok z ∧
+      (f (t+pre.length) z).1 = v ∧ I z := by
+  induction n generalizing t s pre with
+  | zero => simp [grid] at atVisit
+  | succ n ih =>
+    cases step : f t s with
+    | mk first res =>
+      cases pre with
+      | nil =>
+        refine ⟨s,rfl,?_,initial⟩
+        cases res <;> simpa [grid,step] using (congrArg List.head? atVisit)
+      | cons p pre =>
+        cases res with
+        | error e => simp [grid,step] at atVisit
+        | ok next =>
+          simp only [grid,step,List.cons_append,List.cons.injEq] at atVisit
+          obtain ⟨z,before,hit,valid⟩ := ih (t+1) next
+            (preserve t s next initial (by rw [step])) atVisit.2
+          refine ⟨z,?_,?_,valid⟩
+          · simpa only [List.length_cons,grid,step] using before
+          · simpa [Nat.add_assoc,Nat.add_comm,Nat.add_left_comm] using hit
+
+/-- Every visited tile retains its incoming destination after exactly its
+successful predecessors. Any invariant preserved by successful writes holds
+there, including when reconstruction or placement of this tile fails. -/
+theorem prefix_destination {P T : Type} {L : Limits} {h : Header} {data : ByteArray}
+    {initial : P} {tile : Nat → Option TileCodeBlocks → Except Error T} {saturated : T → Nat}
+    {write : P → T → Except Error P} (I : P → Prop) (start : I initial)
+    (preserve : ∀ d t q, I d → write d t = .ok q → I q) {pre v vs}
+    (atVisit : (measureGrid L h data initial tile saturated write).1 = pre ++ v :: vs) :
+    ∃ idx dst sat, (if h.ppm.segments.isEmpty then pure #[] else ppmChunkIndex L h) = .ok idx ∧
+      gridPrefix L h data initial tile saturated write idx pre.length =
+        .ok (dst,v.passesBefore,sat,v.cursor) ∧ v.tile = pre.length ∧ I dst := by
+  unfold measureGrid at atVisit
+  cases ranks : chunks L h with
+  | error => simp [ranks,before] at atVisit
+  | ok idx =>
+    simp only [ranks,before] at atVisit
+    apply Exists.intro idx
+    have keep (t : Nat) (s z : State P) (old : I s.1)
+        (ok : (visit L h data tile saturated write idx t s).2 = .ok z) : I z.1 := by
+      obtain ⟨a,_,ok⟩ := Tier2Equiv.bind_ok ok
+      obtain ⟨out,_,ok⟩ := Tier2Equiv.bind_ok ok
+      obtain ⟨next,wrote,last⟩ := Tier2Equiv.bind_ok ok
+      cases last
+      exact preserve _ _ _ old wrote
+    obtain ⟨⟨dst,pb,sat,j⟩,before,atV,valid⟩ := grid_before _ (fun s => I s.1)
+      keep _ _ _ start atVisit
+    subst v
+    exact ⟨dst,sat,ranks,before,Nat.zero_add _,valid⟩
+
 /-- The public result consumes the measured final destination and saturation; the counters
 and trace can be dropped on both success and failure. -/
 theorem measureTiles_finish {P T α : Type} (L : Limits) (h : Header) (data : ByteArray) (initial : P)
