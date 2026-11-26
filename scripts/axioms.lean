@@ -1506,3 +1506,16 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.IrreversibleDispatch.parsed_tile_c8
 
 #print axioms JPEG2000.Spec.NativeTraversal.decode_of_stages
+
+#print axioms JPEG2000.Spec.NativePlacement.parsed_depth
+#print axioms JPEG2000.Spec.NativePlacement.allocation
+#print axioms JPEG2000.Spec.NativePlacement.guarded_allocation
+#print axioms JPEG2000.Spec.NativePlacement.blit_reads
+#print axioms JPEG2000.Spec.NativePlacement.tile_grid
+#print axioms JPEG2000.Spec.NativePlacement.tile_reduction
+#print axioms JPEG2000.Spec.NativePlacement.place_components
+#print axioms JPEG2000.Spec.NativePlacement.source_dcSpec
+#print axioms JPEG2000.Spec.NativePlacement.placement
+#print axioms JPEG2000.Spec.NativePlacement.placement_sim
+#print axioms JPEG2000.Spec.NativePlacement.finalize
+#print axioms JPEG2000.Spec.NativeComposition.of_tiles

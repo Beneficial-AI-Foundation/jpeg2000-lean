@@ -83,6 +83,12 @@ import Spec.Resources
 import Spec.NativeResources
 import Spec.NativeEquiv
 import Spec.NativeTraversal
+import Spec.NativePlacement.Allocation
+import Spec.NativePlacement.Blit
+import Spec.NativePlacement.Geometry
+import Spec.NativePlacement.Place
+import Spec.NativePlacement
+import Spec.NativeComposition
 import Spec.WidePlane
 import Spec.WideOutput
 import Spec.NativeOutput
