@@ -515,7 +515,17 @@ invalid range is in a later segment. For a block in the visited packet store,
 and each admitted Tier-1 schedule by 91 compact or 874 wide coding passes.
 Component reconstruction can charge the two attempts separately when it retries.
 
+`DiagnosticImage.image_diagnostics` covers the public image path after native
+decoding succeeds. Mapping, sYCC conversion, upsampling and channel selection
+construct at most one diagnostic string in total. A typed refusal retains its
+computed value and the corresponding limit. The display checks examine work
+samples before decoded bytes. Their respective folds are bounded by
+`maxImageArea * maxComponents` and eight times that product, including the
+channel that caused a refusal. On a successful image, `interleaver_diagnostics`
+also covers independent 8- or 16-bit output limits. A byte refusal stores the
+required output size and the interleaver caller's byte ceiling.
+
 The whole-path diagnostic bound still needs tile-part headers, coding
-merges and geometry checks, native reconstruction and image stages. The final S3
+merges and geometry checks, and native reconstruction. The final S3
 statement must combine those costs with the native, mapping and display bounds and
 identify the limit errors returned when a checked budget is exceeded.

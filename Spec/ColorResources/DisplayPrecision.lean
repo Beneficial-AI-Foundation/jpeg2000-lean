@@ -164,6 +164,15 @@ private theorem convertedDepth {L active cols ox oy cs out b t}
     · omega
   · omega
 
+/-- The luma depth used as a diagnostic argument is already bounded when mapping
+finishes, even if conversion or a subsequent display admission fails. -/
+theorem mapped_precision {L data opts d info cs}
+    (native : decodeCodestream L data opts.reduce = .ok d)
+    (resolved : resolve L data (d.header.container.bind (·.header)) d.header.siz.components = .ok info)
+    (mapped : applyMapping L (chosenMapping opts info d) (rawChannels d) = .ok cs) :
+    ∀ c ∈ cs, c.format.depth ≤ 38 :=
+  depths (rawDepth native) (chosenDepth opts d resolved) mapped
+
 /-- All actual public display channels have bounded scaler exponents, regardless of the
 palette option, sYCC projection, selected grid, or choice of colour/alpha/other. -/
 theorem channel_precision {L data opts img} (ok : JPEG2000.decode L data opts = .ok img)
@@ -173,7 +182,7 @@ theorem channel_precision {L data opts img} (ok : JPEG2000.decode L data opts = 
   obtain ⟨info,m,_,cs,full,_,_,hinfo,rfl,hm,_,hc,_,_,_,_,_,_,_,_,_,map,_,_,_,cols,alpha,other,_⟩ :=
     (decode_resources ok).colour
   have mem := sel.elim (cols c) (fun h => h.elim (alpha c) (other c))
-  have cap := convertedDepth hc (depths (rawDepth hd) (chosenDepth opts _ hinfo) hm)
+  have cap := convertedDepth hc (mapped_precision hd hinfo hm)
   rw [Array.mapM_eq_mapM_toList] at map
   cases hl : cs.toList.mapM (Resources.upsampleChannel img.x0 img.y0 img.width img.height) with
   | error e => rw [hl] at map; cases map
