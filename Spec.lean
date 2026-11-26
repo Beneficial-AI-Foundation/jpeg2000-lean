@@ -103,6 +103,7 @@ import Spec.WideReversible
 import Spec.WideICT
 import Spec.WideDWT97
 import Spec.Resources.BlockPasses
+import Spec.Resources.WideArithmetic
 import Spec.Tier1Equiv.Basic
 import Spec.Tier1Equiv.Rel
 import Spec.Tier1Equiv.Nb

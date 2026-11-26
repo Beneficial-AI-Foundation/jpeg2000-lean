@@ -86,6 +86,25 @@ A rejecting packet still counts as an attempt. For example, the pinned
 A zero-pass budget records the first attempt and returns the exact limit error
 for its proposed seven passes.
 
+### Wide integer arithmetic
+
+`Spec.Resources.WideArithmetic` bounds the operands of dequantisation, integer
+lifting and the inverse colour transforms before the final clamp. For a parsed
+tile, the per-block inputs are a magnitude below `2^292` and a last plane at
+most 291. The effective quantisation parameters then give a magnitude bound
+of `2^372` through coefficient assembly, including the biased dividend before
+division. A 5/3 level adds at most 12 to the magnitude exponent. A 9/7 level
+adds at most 540, including the two axes and the operands of the rounded
+fixed-point products. RCT adds at most 3, and ICT adds at most 21.
+
+Given the per-block bounds, `WideArithmetic.parsed_tile` proves that every
+centred sample returned by the tile dispatcher has magnitude at most
+`2^(393 + 540 × L.maxDecompLevels)`. The corresponding signed width bound is
+`395 + 540 × L.maxDecompLevels` bits, or 17,675 bits at the default limit.
+This is a conservative bound on the number of bits needed to represent a
+value. Converting it to live storage requires the number of simultaneous
+values and a size model for their representation.
+
 ### Colour, replication and display
 
 `JPEG2000.Spec.ColorResources.decode_resources` applies to every successful public
@@ -182,7 +201,7 @@ also account for the work performed before an error.
   pass admission, and the setup of progression volumes even when empty. Bound
   Tier-1 cell and reader operations for the actual selected block invocations.
 * **Reconstruction (7.4c2w, 7.4c2s).** The checked decoder can retry using wide
-  coefficients. Bound intermediate integer widths, both attempts, lifting and
+  coefficients. Apply the wide integer bounds to both attempts and bound lifting and
   colour-transform visits, temporary line arrays and live planes across levels.
 * **Parsing and gathering (7.4c3).** Bound the box, marker and tile-part scans,
   geometry initialization, packed-header storage and segment assembly. A bound
