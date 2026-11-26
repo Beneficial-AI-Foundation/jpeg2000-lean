@@ -1297,3 +1297,33 @@ end AxiomsSelfCheck
 -- Phase 7, task 7.3d1: BlockReconstruction
 #print axioms JPEG2000.Spec.RoundTrip.DecodedEncoderBands.reconstructBlock
 #print axioms JPEG2000.Spec.RoundTrip.DecodedEncoderTile.reconstructBlock
+
+-- Phase 7, task 7.3d4a: TilePlacement
+#print axioms JPEG2000.Spec.RoundTrip.blitRow_samples
+#print axioms JPEG2000.Spec.RoundTrip.blitRows_samples
+#print axioms JPEG2000.Spec.RoundTrip.blit_fullTile
+#print axioms JPEG2000.Spec.RoundTrip.place_fullTile
+#print axioms JPEG2000.Spec.RoundTrip.place_encTile
+#print axioms JPEG2000.Spec.RoundTrip.outputCells_encSIZ
+#print axioms JPEG2000.Spec.RoundTrip.outputBytes_encSIZ
+#print axioms JPEG2000.Spec.RoundTrip.place_encTile_of_limits
+
+-- Phase 7, task 7.3d3b: SubbandInverse
+#print axioms JPEG2000.Spec.RoundTrip.reversibleBand_eq
+#print axioms JPEG2000.Spec.RoundTrip.reversibleBand_sample
+#print axioms JPEG2000.Spec.RoundTrip.idwt_reversibleRow
+
+-- Phase 7, task 7.3d3a: BandCoverage
+#print axioms JPEG2000.Spec.RoundTrip.sample_raster
+#print axioms JPEG2000.Spec.RoundTrip.BandBlockAt.indices
+#print axioms JPEG2000.Spec.RoundTrip.BandBlockAt.unique
+#print axioms JPEG2000.Spec.RoundTrip.encBandCoverage
+#print axioms JPEG2000.Spec.RoundTrip.encBandCoverage_of_headerFits
+#print axioms JPEG2000.Spec.RoundTrip.blockCoeffs_sample
+
+-- Phase 7, task 7.3d3c: CollectedBlocks
+#print axioms JPEG2000.Spec.RoundTrip.blockCoeffs_at
+#print axioms JPEG2000.Spec.RoundTrip.DecodedEncoderTile.packetBlockAt
+#print axioms JPEG2000.Spec.RoundTrip.DecodedEncoderTile.blockAtGeometry
+#print axioms JPEG2000.Spec.RoundTrip.DecodedEncoderTile.tileComp_collected
+#print axioms JPEG2000.Spec.RoundTrip.DecodedEncoderTile.bandGrid53_collected

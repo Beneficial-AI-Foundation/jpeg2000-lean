@@ -65,6 +65,10 @@ import Spec.RoundTrip.ImageBudget
 import Spec.RoundTrip.Link
 import Spec.RoundTrip.BlockReconstruction
 import Spec.RoundTrip.DisplayReconstruction
+import Spec.RoundTrip.TilePlacement
+import Spec.RoundTrip.SubbandInverse
+import Spec.RoundTrip.BandCoverage
+import Spec.RoundTrip.CollectedBlocks
 import Spec.RoundTrip
 import Spec.Resources
 import Spec.Resources.BlockPasses
