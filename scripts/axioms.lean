@@ -1797,3 +1797,14 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.Resources.SegmentHistory.tile_translation_work
 #print axioms JPEG2000.Spec.Resources.SegmentHistory.present_mem
 #print axioms JPEG2000.Spec.Resources.ReconstructionCost.public_work
+#print axioms JPEG2000.Spec.Resources.HeaderPayload.arrayReads_work
+#print axioms JPEG2000.Spec.Resources.HeaderPayload.varintReads_work
+#print axioms JPEG2000.Spec.Resources.HeaderPayload.rank_work
+#print axioms JPEG2000.Spec.Resources.HeaderPayload.pointerSorts_work
+#print axioms JPEG2000.Spec.Resources.HeaderPayload.tileSorts_work
+#print axioms JPEG2000.Spec.Resources.HeaderPayload.rank_table
+#print axioms JPEG2000.Spec.Resources.HeaderPayload.parse_work
+#print axioms JPEG2000.Spec.Resources.HeaderPayload.sort_calls
+#print axioms JPEG2000.Spec.Resources.HeaderPayload.chunks_work
+#print axioms JPEG2000.Spec.Resources.HeaderPayload.selection_work
+#print axioms JPEG2000.Spec.Resources.HeaderPayload.decode_header_work

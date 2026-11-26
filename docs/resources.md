@@ -379,6 +379,30 @@ actual output spans by `maxPrecincts * K`. For input of length `N` and at most
 fragmented block charges at most `(2*K+S)*(K*N)` byte writes. A direct block
 borrows the input.
 
+### Header parsing and packed packet headers
+
+`HeaderPayload.parse_work` follows the public parser through JP2 boxes,
+marker payloads, tile-part assembly and geometry admission. Its result
+includes the exact error on a rejecting input. The charge counts reached
+callbacks, sort operations and logical descriptor slots. For instance, a
+truncated payload can incur array reads even though the parser returns no
+header.
+
+`sort_calls` bounds the number of calls to the four byte-key sorts by
+`2 + maxTiles * (1 + maxTilePartsPerTile)`. The two main-header sorts order
+TLM and PPM records. Tile assembly sorts PPT records once per present tile
+and PLT records once per part. Empty tables still pass through the sort.
+A duplicate PPM index stops the parser at its second sort.
+
+`decode_header_work` includes the public decoder's reduction check, its
+header parse, the once-per-grid PPM rank construction, and packed-stream
+selection at each visited tile cursor. The rank step is reached only after
+native destination allocation succeeds. With input length `N`, `V` visited
+tiles and a logical price `B` for a wide integer slot, the combined header
+and placement charge is bounded by
+`headerBudget L N + rankBudget L + V * (selectionBudget L N + placementBudget B L)`.
+`V ≤ maxTiles` gives the bound in terms of caller limits and input length.
+
 ### Maintenance
 
 The statements name checked quantities (`GeometryWithin` mirrors `checkGeometry`;
