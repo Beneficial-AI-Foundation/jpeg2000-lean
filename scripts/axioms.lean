@@ -1719,3 +1719,20 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.Resources.component_signed_width
 #print axioms JPEG2000.Spec.Resources.TileColorPlacement.component_backing_bytes
 #print axioms JPEG2000.Spec.Resources.TileColorPlacement.centeredTile_backing_bytes
+
+-- Task 7.4c1h, progression setup and packet callback prefixes.
+#print axioms JPEG2000.Spec.Resources.PacketSortWork.sort_work
+#print axioms JPEG2000.Spec.Resources.ProgressionFields.parsed_limits
+#print axioms JPEG2000.Spec.Resources.PacketLocalWork.takePieces_extent
+#print axioms JPEG2000.Spec.Resources.PacketLocalWork.addPieces_storage
+#print axioms JPEG2000.Spec.Resources.PacketLocalWork.body_range_bytes
+#print axioms JPEG2000.Spec.Resources.PacketLocalWork.packet_prefix_storage
+#print axioms JPEG2000.Spec.Resources.PacketLocalWork.packet_work
+#print axioms JPEG2000.Spec.Resources.PacketLocalWork.stream_attempt
+#print axioms JPEG2000.Spec.Resources.PacketLocalWork.decode_attempts
+#print axioms JPEG2000.Spec.Resources.PacketLocalWork.positionTable_work
+#print axioms JPEG2000.Spec.Resources.PacketLocalWork.progression_work
+#print axioms JPEG2000.Spec.Resources.PacketLocalWork.table_limit
+#print axioms JPEG2000.Spec.Resources.PacketLocalWork.parsed_setup
+#print axioms JPEG2000.Spec.Resources.PacketLocalWork.preflight_work
+#print axioms JPEG2000.Spec.Resources.PacketLocalWork.completed_store

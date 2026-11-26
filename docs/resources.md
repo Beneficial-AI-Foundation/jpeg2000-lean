@@ -123,6 +123,27 @@ A rejecting packet still counts as an attempt. For example, the pinned
 A zero-pass budget records the first attempt and returns the exact limit error
 for its proposed seven passes.
 
+Before the packet quota check, `PacketLocalWork.preflight_work` bounds the
+calculation of the actual progression schedule size from parsed limits. After
+precinct initialization, `parsed_setup` covers the loops for all five
+progression orders, including empty volumes and repeated component scans.
+A spatial progression table holds at most
+`maxComponents * (maxDecompLevels + 1) * maxPrecincts` entries. The measured
+merge sort on `n` entries costs at most `n + 8*n² + 1` charged operations.
+
+`PacketLocalWork.decode_attempts` connects each attempted packet in the public
+trace to its incoming precinct state and reader. The reservation for all
+attempts is at most `maxTiles * maxPackets * attemptBudget L`. It includes
+tag-tree walks, packet bit reads, segment-length decoding and body construction
+before a cumulative pass refusal. `body_range_bytes` bounds bytes skipped by
+the unread body extent, including the completed pieces of a failing contribution.
+`packet_prefix_storage` bounds growth in segment and range records before
+translation to the original tile-part byte ranges. For a completed tile,
+`completed_store` identifies the actual final precinct states and the table
+used to translate every output range. Their pre-translation records total at
+most `out.packets * recordGrowth L`, with `out.packets ≤ maxPackets` and one
+table entry per source tile-part.
+
 ### Tier-1 block work
 
 The compact and wide meters follow the segment schedule, raw or MQ decisions,
@@ -296,9 +317,6 @@ The public codestream and image output sizes, palette backing, per-channel domai
 and interleaver lengths above are proved. To finish S3, the following bounds must
 also account for the work performed before an error.
 
-* **Local packet operations (7.4c1h).** Price the work
-  inside each attempted packet, including tag-tree and segment handling before
-  pass admission, and the setup of progression volumes even when empty.
 * **Reconstruction (7.4c2s2 and 7.4c2s4).** The checked decoder can retry using wide
   coefficients. Apply the wide integer bounds to both attempts and bound lifting and
   colour-transform visits, temporary line arrays and live planes across levels.

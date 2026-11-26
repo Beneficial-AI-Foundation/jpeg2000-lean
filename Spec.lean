@@ -85,6 +85,9 @@ import Spec.Resources.PacketSchedule
 import Spec.Resources.PacketPrefix
 import Spec.Resources.PacketTraversal
 import Spec.Resources.PublicPacketWork
+import Spec.Resources.PacketSortWork
+import Spec.Resources.ProgressionFields
+import Spec.Resources.PacketLocalWork
 import Spec.NativeResources
 import Spec.NativeEquiv
 import Spec.NativeTraversal

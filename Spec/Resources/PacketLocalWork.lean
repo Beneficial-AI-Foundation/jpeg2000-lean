@@ -1342,21 +1342,20 @@ theorem decode_attempts (L : Limits) (data : ByteArray) (reduce : Nat) :
   obtain ⟨er,_,calls,positions,charge,_⟩ := PublicPacketWork.decode_packet_work L data reduce
   refine ⟨er,Nat.mul_le_mul_right _ (by omega),?_⟩
   unfold PublicPacketWork.measure
-  cases check : L.check JPEG2000.Decode.loc .decompLevels reduce with
+  cases admission : PublicPacketWork.prepareTiles L data reduce with
   | error => simp [before]
-  | ok u =>
-    cases parsed : Header.parse L data with
-    | error => simp [before]
-    | ok h =>
-      cases alloc : JPEG2000.NativeOutput.allocOutput L h.siz reduce with
-      | error => simp [before,alloc]
-      | ok initial =>
-        simp only [before,alloc,measureTiles_finish,afterRun]
-        intro v mem p a hit entered
-        have trace := (measureGrid_trace parsed initial (JPEG2000.Decode.centeredTile L h data reduce)
-          (·.saturated) (fun dst t => JPEG2000.NativeOutput.writeTile L h.siz reduce t.layout t.coding dst t.sources)).1
-        obtain ⟨tp,hs,sel,parts,packed,obs⟩ := sourced_attempt parsed (trace_source trace mem) entered hit
-        exact ⟨h,tp,hs,rfl,sel,parts,packed,obs⟩
+  | ok pair =>
+    unfold PublicPacketWork.prepareTiles at admission
+    obtain ⟨_,_,tail⟩ := Tier2Equiv.bind_ok admission
+    obtain ⟨h,parsed,tail⟩ := Tier2Equiv.bind_ok tail
+    obtain ⟨initial,_,ret⟩ := Tier2Equiv.bind_ok tail
+    cases ret
+    simp only [before,measureTiles_finish,afterRun]
+    intro v mem p a hit entered
+    have trace := (measureGrid_trace parsed initial (JPEG2000.Decode.centeredTile L h data reduce)
+      (·.saturated) (fun dst t => JPEG2000.NativeOutput.writeTile L h.siz reduce t.layout t.coding dst t.sources)).1
+    obtain ⟨tp,hs,sel,parts,packed,obs⟩ := sourced_attempt parsed (trace_source trace mem) entered hit
+    exact ⟨h,tp,hs,parsed,sel,parts,packed,obs⟩
 
 
 /-! ## Position-driven progression preparation (B.12.1.3–5)
@@ -1699,5 +1698,57 @@ theorem preflight_work {L : Limits} {h : Header} {data : ByteArray} {t g c}
     change 1+2*c.poc.size+3*g.numComps+(vs.zipIdx.map w).sum ≤ 1+2*L.maxPocEntries+3*L.maxComponents+(L.maxPocEntries+1)*cap
     omega
 
+
+
+/-- Shape and pre-translation history of a completed packet store. The part
+table used by every output block has one entry per source tile-part. -/
+def CompletedStore (L : Limits) (tp : TileParams) (out : TileCodeBlocks) : Prop :=
+  ∃ (s : LoopState) (parts : List (Nat × Nat × Nat)) (spans : Array (Array (Nat × Nat))),
+    parts.length = tp.tile.parts.size ∧ s.seq = out.packets ∧ s.seq ≤ L.maxPackets ∧
+    tileRecords s ≤ s.seq * recordGrowth L ∧
+    out.comps = spans.map (fun si => si.map fun (start,n) =>
+      (Array.range n).map fun k => (s.precs.getD (start+k) default).out parts k)
+
+private theorem raw_completed {L : Limits} {h : Header} {data : ByteArray} {tp : TileParams}
+    {hs : Option HeaderStream} {pb : Nat} {out : TileCodeBlocks}
+    (parsed : Header.parse L data = .ok h)
+    (ok : decodeTilePacketsWith L h data tp (hs.map (·.bytes)) pb = .ok out) :
+    CompletedStore L tp out := by
+  unfold decodeTilePacketsWith at ok
+  obtain ⟨⟨g,c⟩,layout,tail⟩ := Tier2Equiv.bind_ok ok
+  obtain ⟨_,quota,tail⟩ := Tier2Equiv.bind_ok tail
+  obtain ⟨⟨ps,base,spans⟩,init,tail⟩ := Tier2Equiv.bind_ok tail
+  obtain ⟨⟨buf,parts⟩,input,tail⟩ := Tier2Equiv.bind_ok tail
+  obtain ⟨s,run,ret⟩ := Tier2Equiv.bind_ok tail
+  cases ret
+  have wf := Tier2Equiv.ofHeader_wf (Equiv.parse_dxdy parsed) layout
+  change forPackets g c.progression c.poc (packetStep L c base (hs.map (·.bytes)).isNone pb)
+    (firstState ps buf hs) = .ok s at run
+  rw [forPackets_schedule g wf] at run
+  have initial : tileRecords (firstState ps buf hs) ≤ (firstState ps buf hs).seq * recordGrowth L := by
+    rw [initial_records init]; exact Nat.zero_le _
+  obtain ⟨records,count⟩ := prefix_records L _ _ _ _ _ _ (initial_valid parsed layout init) initial run
+  have charged := visits_tests_le_charge (schedule g [] (volumes g c.progression c.poc))
+  rw [schedule_charge g wf] at charged
+  have allowed := (Limits.check_eq_ok_iff ..).1 quota
+  change iterationWork g c.progression c.poc ≤ L.maxPackets at allowed
+  change s.seq ≤ 0+(schedule g [] (volumes g c.progression c.poc)).length at count
+  exact ⟨s,parts,spans,((HeaderWork.tileData_copy_charge data tp.tile).2.2 buf parts input).2,
+    rfl,by omega,records,rfl⟩
+
+/-- A successful tile at the public header-stream callback exposes the actual
+pre-translation states, a packet-count limit and the retained history bound. -/
+theorem completed_store {L : Limits} {h : Header} {data : ByteArray} {tp : TileParams}
+    {hs : Option HeaderStream} {pb : Nat} {out : TileCodeBlocks}
+    (parsed : Header.parse L data = .ok h)
+    (ok : JPEG2000.Tier2.Headers.decodeWithStream L h data tp hs pb = .ok out) :
+    CompletedStore L tp out := by
+  unfold JPEG2000.Tier2.Headers.decodeWithStream at ok
+  obtain ⟨tile,decoded,tail⟩ := Tier2Equiv.bind_ok ok
+  cases hs with
+  | none => cases tail; exact raw_completed (hs := none) parsed decoded
+  | some stream =>
+    simp only at tail
+    split at tail <;> first | contradiction | (cases tail; exact raw_completed (hs := some stream) parsed decoded)
 
 end JPEG2000.Spec.Resources.PacketLocalWork
