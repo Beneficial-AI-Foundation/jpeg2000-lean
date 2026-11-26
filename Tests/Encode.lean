@@ -2,7 +2,7 @@ import Encode.Encode
 import JPEG2000.Tier2.Headers
 import JPEG2000.Tier1.WidePlain
 import JPEG2000.Decode
-import Spec.Decode
+import Tests.SpecDecode
 
 /-!
 # Tests: the reference encoder (task 7.2)
@@ -331,7 +331,11 @@ private def coded32 : IO Nat := do
       | return ← expect (name ++ ": wide block decode failed") false
     if cells.map (·.value) != src.vals then
       return ← expect (name ++ ": wide coefficients differ") false
-  return ← expect name (wideBlocks.size == 2 && actual == img.comps.map (·.samples))
+  let .ok (compact, reconstructed) := Tests.SpecDecode.reversibleRGB enc.codestream
+    | return ← expect (name ++ ": reversible packet dispatch failed") false
+  let expected := img.comps.map (·.samples)
+  return ← expect name (enc.codestream.size == 704 && wideBlocks.size == 2 &&
+    compact == #[true, false, false] && reconstructed == expected && actual == expected)
 
 /-- Runs the suite. -/
 def run : IO Nat := do
