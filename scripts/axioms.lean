@@ -1847,6 +1847,8 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.Resources.DiagnosticCost.Text.bounds
 #print axioms JPEG2000.Spec.Resources.DiagnosticCost.public_admission
 #print axioms JPEG2000.Spec.Resources.DiagnosticCost.built_cost
+#print axioms JPEG2000.Spec.Resources.DiagnosticCost.Text.Within.raiseCap
+#print axioms JPEG2000.Spec.Resources.DiagnosticCost.Trace.raiseCap_events
 #print axioms JPEG2000.Spec.Resources.DiagnosticCost.trace_cost
 #print axioms JPEG2000.Spec.Resources.DiagnosticCost.trace_storage
 #print axioms JPEG2000.Spec.Resources.DiagnosticCost.trace_retained

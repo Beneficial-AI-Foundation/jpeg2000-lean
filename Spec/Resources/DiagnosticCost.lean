@@ -328,6 +328,43 @@ structure Trace {α : Type} (cap : Nat) (run : Except Error α) (count : Nat) wh
     | .truncated _ s | .malformed _ s | .unsupported _ s => ∃ m ∈ messages, m.1 = s
     | .limitExceeded _ _ v _ => v ≤ cap)
 
+/-- A bound on the numeric leaves can be enlarged without changing the expression. -/
+theorem Text.Within.raiseCap {a b lit nodes : Nat} {t : Text}
+    (h : Text.Within a t lit nodes) (hab : a ≤ b) : Text.Within b t lit nodes := by
+  induction h with
+  | fixed s => exact .fixed s
+  | dec h => exact .dec (Nat.le_trans h hab)
+  | hex h => exact .hex (Nat.le_trans h hab)
+  | boxName t => exact .boxName t
+  | cat _ _ l r => exact .cat l r
+
+private def raiseMessage {a b : Nat} (h : a ≤ b) (m : Σ s, Built a s) : Σ s, Built b s :=
+  ⟨m.1, { m.2 with shape := m.2.shape.raiseCap h }⟩
+
+/-- Reuse a stage trace under a common upper bound for scalar values and offsets
+when composing decoder stages. Every charged message keeps its original expression. -/
+def Trace.raiseCap {α : Type} {a b count : Nat} {run : Except Error α}
+    (t : Trace a run count) (h : a ≤ b) : Trace b run count where
+  messages := t.messages.map (raiseMessage h)
+  countBound := by simpa using t.countBound
+  origin := by
+    intro e he
+    obtain ⟨off, src⟩ := t.origin e he
+    refine ⟨Nat.le_trans off h, ?_⟩
+    cases e with
+    | limitExceeded => exact Nat.le_trans src h
+    | _ =>
+      obtain ⟨m, hm, eq⟩ := src
+      exact ⟨raiseMessage h m, List.mem_map.mpr ⟨m, hm, rfl⟩, eq⟩
+
+/-- Enlarging a trace's scalar bound preserves its ordered messages and construction
+trees, including eager constructions discarded before the returned result. -/
+theorem Trace.raiseCap_events {α : Type} {a b count : Nat} {run : Except Error α}
+    (t : Trace a run count) (h : a ≤ b) :
+    ((t.raiseCap h).messages.map fun m => (m.1, m.2.tree)) =
+      (t.messages.map fun m => (m.1, m.2.tree)) := by
+  simp [Trace.raiseCap, List.map_map, Function.comp_def, raiseMessage]
+
 /-- Cumulative conversion, copying and storage charge across the entire observed
 prefix, plus the retained bytes in its eventual error. -/
 theorem trace_cost {α : Type} {cap count : Nat} {run : Except Error α} (t : Trace cap run count) :

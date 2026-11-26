@@ -458,6 +458,11 @@ such prefixes. A failed JP2 signature check can construct and then discard a nes
 box error. The proofs also cover the PPM count mismatch, SOP, colour resolver errors
 and the counts retained by the two interleavers.
 
+Each parser stage may bound its own offsets and numeric fields. Before joining stages,
+`Trace.raiseCap` places their traces under a common upper bound. The ordered strings
+and their expression trees stay identical, so the composed trace retains each stage's
+actual digit conversions, copies and temporary storage.
+
 An oversized reduction yields a typed error that refers to the caller's natural.
 `reduction_storage` bounds the decoder-owned payload by seven logical units.
 `caller_render_unbounded` proves that formatting this error after the call can
