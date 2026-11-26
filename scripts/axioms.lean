@@ -1942,3 +1942,8 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.Resources.DiagnosticColour.source_geometry
 #print axioms JPEG2000.Spec.Resources.DiagnosticColour.messages
 #print axioms JPEG2000.Spec.Resources.DiagnosticColour.public_colour
+#print axioms JPEG2000.Spec.Resources.DiagnosticOutput.proposed
+#print axioms JPEG2000.Spec.Resources.DiagnosticOutput.destinationRow
+#print axioms JPEG2000.Spec.Resources.DiagnosticOutput.allocation_refusal
+#print axioms JPEG2000.Spec.Resources.DiagnosticOutput.public_allocation
+#print axioms JPEG2000.Spec.Resources.DiagnosticOutput.public_writes
