@@ -310,32 +310,42 @@ def indexedPlane (tbl : Array Int) (src : SamplePlane) : SamplePlane :=
   .view src.width src.height fun i =>
     tbl.getD (min ((src.get? i).getD 0).toNat (tbl.size - 1)) 0
 
+/-- Apply one validated JP2 source. Check the running palette area and the length
+of its lookup column before constructing the table, including for empty index planes. -/
+def mapSource (L : Limits) (m : Mapping) (comps : Array Channel)
+    (state : Array Channel × Nat) (entry : Source × Format) : Except Error (Array Channel × Nat) := do
+  let (out, total) := state
+  let (src, fmt) := entry
+  match src with
+  | .direct c =>
+    let some ch := comps[c]? | throw (malformed s!"component {c} missing")
+    return (out.push ch, total)
+  | .palette c col =>
+    let some ch := comps[c]? | throw (malformed s!"component {c} missing")
+    let some p := m.palette | throw (malformed "palette mapping without pclr")
+    let total := total + ch.plane.width * ch.plane.height
+    L.check (.at .color) .workSamples total
+    L.check (.at .color) .paletteEntries p.ne
+    let tbl := paletteColumn p col
+    let plane ← match ch.plane.compact? with
+      | some src =>
+        if tbl.all (fun v => -2147483648 ≤ v && v ≤ 2147483647) then
+          SamplePlane.compact <$> palettePlane L (tbl.map Int32.ofInt) src
+        else pure (indexedPlane tbl ch.plane)
+      | none => pure (indexedPlane tbl ch.plane)
+    return (out.push { plane, format := fmt }, total)
+
 /-- Builds the output channels from the codestream components (`comps`, in component order)
 by a validated mapping. Direct channels share the component's plane. Palette channels with
 compact indices and values use the four-byte kernel. Others borrow the index plane and
-retain exact table entries. The running palette area is checked against `maxWorkSamples`. -/
+retain exact table entries. Source count, column length and running palette area are checked
+against `maxComponents`, `maxPaletteEntries` and `maxWorkSamples` respectively. -/
 def applyMapping (L : Limits) (m : Mapping) (comps : Array Channel) :
     Except Error (Array Channel) := do
+  L.check (.at .color) .components m.sources.size
   let fmts := m.formats (comps.map (·.format))
   let (out, _) ← (m.sources.zip fmts).foldlM (init := ((#[] : Array Channel), 0))
-    fun (out, total) (src, fmt) => do
-      match src with
-      | .direct c =>
-        let some ch := comps[c]? | throw (malformed s!"component {c} missing")
-        return (out.push ch, total)
-      | .palette c col =>
-        let some ch := comps[c]? | throw (malformed s!"component {c} missing")
-        let some p := m.palette | throw (malformed "palette mapping without pclr")
-        let total := total + ch.plane.width * ch.plane.height
-        L.check (.at .color) .workSamples total
-        let tbl := paletteColumn p col
-        let plane ← match ch.plane.compact? with
-          | some src =>
-            if tbl.all (fun v => -2147483648 ≤ v && v ≤ 2147483647) then
-              SamplePlane.compact <$> palettePlane L (tbl.map Int32.ofInt) src
-            else pure (indexedPlane tbl ch.plane)
-          | none => pure (indexedPlane tbl ch.plane)
-        return (out.push { plane, format := fmt }, total)
+    (mapSource L m comps)
   return out
 
 /-- Validates `pclr` + `cmap` against the components and applies them (T.800 I.5.3.4,
@@ -482,6 +492,35 @@ def syccLoop (off upb : Int64) (w : Nat) (y cb cr : Plane)
       else (r, g, b) else (r, g, b) else (r, g, b)
     else (r, g, b)
 
+/-- Number of leading zero-chroma columns by luma row for the Annex I edge convention.
+The aligned case uses an empty table. -/
+def zeroChromaCols (ox oy w h : Nat) (y cb cr : Format) : Array Nat :=
+  if y.dx == 1 && y.dy == 1 && cb.dx == 2 && cr.dx == 2 &&
+      cb.dy == cr.dy && (cb.dy == 1 || cb.dy == 2) then
+    let dy := cb.dy
+    let offx := ox % 2
+    let offy := oy % dy
+    if offx == 0 && offy == 0 then #[] else
+      (Array.range h).map fun row =>
+        if row < offy then w else if (row - offy) % dy == 0 then offx else 0
+  else #[]
+
+/-- The three lazy sRGB views borrow the same three sources and five index arrays. -/
+def syccViews (off upb : Int64) (w h : Nat) (y cb cr : Channel)
+    (cbx cby crx cry zeroCols : Array Nat) (fmt : Format) : Channel × Channel × Channel :=
+  let channel (plane : SamplePlane) : Channel := { plane, format := fmt }
+  let pixel (i : Nat) :=
+    let x := i % w
+    let row := i / w
+    let chroma (c : Channel) (xs ys : Array Nat) :=
+      if x < zeroCols.getD row 0 then 0 else
+        ((c.plane.get? (ys.getD row 0 * c.plane.width + xs.getD x 0)).getD 0).toInt64
+    syccPixel off upb ((y.plane.get? i).getD 0).toInt64
+      (chroma cb cbx cby) (chroma cr crx cry)
+  (channel (.view w h fun i => (pixel i).1.toInt),
+   channel (.view w h fun i => (pixel i).2.1.toInt),
+   channel (.view w h fun i => (pixel i).2.2.toInt))
+
 /-- Converts sYCC channels (Y, Cb, Cr) to sRGB at the luma channel's resolution (T.800 Table
 I.10, OpenJPEG `color_sycc_to_rgb`). `ox`, `oy` are the image area origin `XOsiz`, `YOsiz`.
 Sub-sampled chroma is replicated (see the module doc). The luma depth `p` must be ≤ 38; the
@@ -502,16 +541,7 @@ def syccToRgb (L : Limits) (ox oy : Nat) (y cb cr : Channel) :
   let cby := chromaIndex oy y.format.dy cb.format.dy cb.plane.height h
   let crx := chromaIndex ox y.format.dx cr.format.dx cr.plane.width w
   let cry := chromaIndex oy y.format.dy cr.format.dy cr.plane.height h
-  let zeroCols :=
-    if y.format.dx == 1 && y.format.dy == 1 && cb.format.dx == 2 && cr.format.dx == 2 &&
-        cb.format.dy == cr.format.dy && (cb.format.dy == 1 || cb.format.dy == 2) then
-      let dy := cb.format.dy
-      let offx := ox % 2
-      let offy := oy % dy
-      if offx == 0 && offy == 0 then #[] else
-        (Array.range h).map fun row =>
-          if row < offy then w else if (row - offy) % dy == 0 then offx else 0
-    else #[]
+  let zeroCols := zeroChromaCols ox oy w h y.format cb.format cr.format
   let off : Int64 := Int64.ofNat (2 ^ (p - 1))
   let upb : Int64 := Int64.ofNat (2 ^ p - 1)
   let fmt : Format := { y.format with signed := false }
@@ -523,16 +553,6 @@ def syccToRgb (L : Limits) (ox oy : Nat) (y cb cr : Channel) :
       return (channel r, channel g, channel b)
   -- Parsed 38-bit palette columns occupy at most five bytes including padding.
   -- The chroma products and sums in syccPixel therefore fit Int64 on either path.
-  let pixel (i : Nat) :=
-    let x := i % w
-    let row := i / w
-    let chroma (c : Channel) (xs ys : Array Nat) :=
-      if x < zeroCols.getD row 0 then 0 else
-        ((c.plane.get? (ys.getD row 0 * c.plane.width + xs.getD x 0)).getD 0).toInt64
-    syccPixel off upb ((y.plane.get? i).getD 0).toInt64
-      (chroma cb cbx cby) (chroma cr crx cry)
-  return (channel (.view w h fun i => (pixel i).1.toInt),
-          channel (.view w h fun i => (pixel i).2.1.toInt),
-          channel (.view w h fun i => (pixel i).2.2.toInt))
+  return syccViews off upb w h y cb cr cbx cby crx cry zeroCols fmt
 
 end JPEG2000.Color
