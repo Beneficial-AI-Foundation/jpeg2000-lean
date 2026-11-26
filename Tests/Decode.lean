@@ -1,4 +1,5 @@
 import JPEG2000.Decode
+import Tests.Pgx
 
 /-!
 # Tests: the decoding pipeline `JPEG2000.decodeCodestream` (task 5.5)
@@ -80,7 +81,7 @@ private def readNum (b : ByteArray) : Nat → Nat → Nat → Nat × Nat
     if 48 ≤ c ∧ c ≤ 57 then readNum b k (i + 1) (acc * 10 + (c - 48).toNat) else (acc, i)
 
 /-- Parses a PGX file (`PG ML|LM [+|-]depth width height` then one whitespace byte, then
-1/2/4-byte samples). -/
+1/2/4/8-byte samples). -/
 def parsePgx (b : ByteArray) : Option Pgx := do
   if b.size < 8 ∨ b.get! 0 != 80 ∨ b.get! 1 != 71 then none
   let n := b.size
@@ -96,7 +97,7 @@ def parsePgx (b : ByteArray) : Option Pgx := do
   let i := skipSp b n i
   let (h, i) := readNum b n i 0
   let start := i + 1
-  let bps := if depth ≤ 8 then 1 else if depth ≤ 16 then 2 else 4
+  let bps := JPEG2000.Tests.Pgx.bytesPer depth
   if start + w * h * bps > b.size then none
   let mut out : Array Int := Array.mkEmpty (w * h)
   for k in [0:w * h] do

@@ -28,7 +28,7 @@ img <k> <colour|alpha|other> <w> <h> <depth> <signed>
 If `decode` fails but `decodeCodestream` succeeds, the raw planes are still written and the
 line `error image <message>` is printed (exit 0); if the codestream itself fails,
 `error decode <message>` and exit 1. PGX files are big-endian (`PG ML ±d w h`), 1, 2, 4 or 8
-bytes per sample, as OpenJPEG writes them.
+bytes per sample. The eight-byte form preserves the full precision of 33–38-bit native channels.
 -/
 
 namespace JPEG2000.Tests.ImageDump
@@ -37,7 +37,7 @@ open JPEG2000 JPEG2000.Bytes
 
 /-- PGX bytes of a `w × h` plane with the given depth and sign (two's complement storage). -/
 def pgx (w h depth : Nat) (signed : Bool) (p : Color.SamplePlane) : ByteArray := Id.run do
-  let bps := if depth ≤ 8 then 1 else if depth ≤ 16 then 2 else if depth ≤ 32 then 4 else 8
+  let bps := JPEG2000.Tests.Pgx.bytesPer depth
   let hdr := s!"PG ML {if signed then "-" else "+"}{depth} {w} {h}\n"
   let mut out := ByteArray.emptyWithCapacity (hdr.utf8ByteSize + w * h * bps)
   out := out.append hdr.toUTF8
@@ -50,6 +50,14 @@ def pgx (w h depth : Nat) (signed : Bool) (p : Color.SamplePlane) : ByteArray :=
     if bps ≥ 2 then out := out.push (v >>> 8).toUInt8
     out := out.push v.toUInt8
   return out
+
+-- A signed 38-bit dump must preserve its upper bits and both endpoints in each reader.
+private def wideSamples : Array Int := #[-(2^37), -1, 2^37 - 1]
+private def wideDump : ByteArray :=
+  pgx 3 1 38 true (.view 3 1 (fun i => wideSamples.getD i 0))
+
+#guard ((JPEG2000.Tests.Pgx.parse wideDump).toOption.map (·.samples)) == some wideSamples
+#guard ((JPEG2000.Tests.Decode.parsePgx wideDump).map (·.samples)) == some wideSamples
 
 /-- Writes the raw codestream components; returns the description lines. -/
 def dumpRaw (d : CodestreamImage) (pre : String) : IO (Array String) := do

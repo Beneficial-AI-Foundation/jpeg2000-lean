@@ -265,6 +265,8 @@ conversion. The peak error limit per component is 0 for reversible coding and 1 
 irreversible coding, with an additional 1 for sYCC conversion. Both decoders use the
 manifest's resolution reduction (`issue19517-8` uses 2). The default size limit is 40
 megapixels at the reduced resolution.
+The project’s PGX dumps use eight bytes per sample for depths 33–38. Both the Lean
+readers and the Python differential reader preserve signed values and the full unsigned range.
 
 With OpenJPEG 2.5.3, **42/42 PDF streams passed**, including every JP2 comparison.
 With `--jp2`, 51/51 files passed, with zero known deviations, failures, size skips or
