@@ -92,24 +92,22 @@ def encCase (name : String) (p : Encode.Params) (img : Encode.Image) (reduce : N
     if !p.reversible then IO.println s!"  spec-decode {name}: max irreversible difference {m}"
     return n
 
-/-- Two 31-bit signed pixels with 31 coded planes, reversible 5/3 and RCT.
-The Y and Cr low/high subbands are opposite, so intermediate values can exceed
-Int32 and still produce a final red sample strictly inside the declared range. -/
-def rctCancellationStream : Except Error ByteArray := do
-  let comp : Encode.Component := { depth := 8, signed := true, samples := #[0, 0] }
-  let base ← Encode.encode { levels := 1, mct := true }
-    { width := 2, height := 1, comps := #[comp, comp, comp] }
+/-- Serialize a one-row, three-component image from its LL quantisation indices.
+At higher resolutions each detail coefficient is the opposite of its LL value. -/
+private def cancellationStream (w : Nat) (depth : UInt8) (params : Encode.Params)
+    (qcd : Marker.QCD) (ll : Array Int) : Except Error ByteArray := do
+  let comp : Encode.Component := { depth := 8, signed := true, samples := Array.replicate w 0 }
+  let base ← Encode.encode params { width := w, height := 1, comps := #[comp, comp, comp] }
   let header ← Header.parse Limits.default base
-  let siz := { header.siz with components := header.siz.components.map fun c => { c with depth := 31 } }
+  let siz := { header.siz with components := header.siz.components.map fun c => { c with depth } }
   let cod := header.main.cod
-  let qcd : Marker.QCD := { guardBits := 2, quant := .none #[30, 30, 30, 30] }
-  let params ← Header.mkComp 0 cod.style qcd 0
-  let rect : Header.Rect := ⟨0, 0, 2, 1⟩
-  let m : Int := 2 ^ 31 - 1
+  let coding ← Header.mkComp 0 cod.style qcd 0
+  let rect : Header.Rect := ⟨0, 0, w, 1⟩
   let mut precs := #[]
-  for (index, low) in (#[(0, m), (1, 0), (2, -m)] : Array (Nat × Int)) do
-    let tc := Tier2.Geometry.tileComp rect (siz.components.getD index default) params
-    let bands := Encode.compBands 2 1 1 fun _ b _ _ => if b == .LL then low else -low
+  for index in [0:ll.size] do
+    let low := ll.getD index 0
+    let tc := Tier2.Geometry.tileComp rect (siz.components.getD index default) coding
+    let bands := Encode.compBands w 1 params.levels fun _ b _ _ => if b == .LL then low else -low
     let (prec, _) ← Encode.encodeComp Limits.default tc index bands
     precs := precs.push prec
   let data := Encode.Tier2.encodeTileLRCP precs
@@ -119,6 +117,20 @@ def rctCancellationStream : Except Error ByteArray := do
   return marker Marker.Code.SOC ++ seg Marker.Code.SIZ (Encode.Marker.serializeSIZ siz) ++
     seg Marker.Code.COD (Encode.Marker.serializeCOD cod) ++ seg Marker.Code.QCD (Encode.Marker.serializeQCD qcd) ++
     seg Marker.Code.SOT (Encode.TilePart.serializeSOT sot) ++ marker Marker.Code.SOD ++ data ++ marker Marker.Code.EOC
+
+/-- Two 31-bit signed pixels with 31 coded planes, reversible 5/3 and RCT.
+The Y and Cr low/high subbands are opposite, so intermediate values can exceed
+Int32 and still produce a final red sample strictly inside the declared range. -/
+def rctCancellationStream : Except Error ByteArray :=
+  let m : Int := 2 ^ 31 - 1
+  cancellationStream 2 31 { levels := 1, mct := true }
+    { guardBits := 2, quant := .none #[30, 30, 30, 30] } #[m, 0, -m]
+
+/-- One signed 8-bit RGB pixel whose Y and Cr fixed-point inputs exceed the Int32
+range. Annex G yields red −201/1000 before rounding. -/
+def ictCancellationStream : Except Error ByteArray :=
+  cancellationStream 1 8 { levels := 0, reversible := false, mct := true }
+    { guardBits := 7, quant := .expounded #[{ exponent := 8, mantissa := 0 }] } #[14020, 0, -10000]
 
 /-- Check all six final values using the codestream specification and the wide
 spatial/colour kernels on the defining Mallat coefficients. -/
@@ -172,6 +184,13 @@ def run : IO Nat := do
   | .ok true => pure ()
   | .ok false => n := n + (← fail "31-plane RCT cancellation" "samples differ")
   | .error e => n := n + (← fail "31-plane RCT cancellation" (toString e))
+  match ictCancellationStream >>= fun cs => Spec.Decode.decode Limits.default cs 0 with
+  | .error e => n := n + (← fail "ICT cancellation" (toString e))
+  | .ok img =>
+    let samples := img.comps.map fun c => c.samples.map (·.value)
+    let red := ((img.comps.getD 0 default).samples.getD 0 default).exact
+    if red != -201 / 1000 || samples != #[#[0], #[127], #[127]] then
+      n := n + (← fail "ICT cancellation" s!"pre-DC red {red}, samples {samples}")
   n := n + (← corpusCase "p0_01.j2k" 2)
   n := n + (← corpusCase "p0_09.j2k" 0)
   n := n + (← corpusCase "p0_12.j2k" 0)
