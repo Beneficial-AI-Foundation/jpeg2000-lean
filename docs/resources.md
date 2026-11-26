@@ -17,57 +17,18 @@ that it is a genuine definition:
 |---|---|
 | No `partial` (opaque constant with a hidden recursive implementation), `unsafe`, `implemented_by`, `extern` in the decoder | `scripts/hygiene.py` (textual, every file under `JPEG2000/`, `Spec/`, `Encode/`); and the closure audit below (semantic, on the constants `decode` actually uses) |
 | No `panic!`, `get!`, `xs[i]!` | `scripts/hygiene.py` |
-| No `sorry` in the definitions | `#print axioms JPEG2000.decode` and `#print axioms JPEG2000.decodeCodestream` print `[propext, Classical.choice, Quot.sound]` (`#print axioms` works on definitions; add both lines to `scripts/axioms.lean`) |
+| No `sorry` in the definitions | `#print axioms JPEG2000.decode` and `#print axioms JPEG2000.decodeCodestream` print `[propext, Classical.choice, Quot.sound]` (both declarations are in `scripts/axioms.lean`) |
 | Every loop terminates | kernel: structural recursion or fuel; each fuel is a size already checked against `Limits` (Plan.md §3 rule 2) |
 
-**Closure audit** (run 2026-11-25, scratch file, `lake env lean`): walking the types and
-values of all constants reachable from `JPEG2000.decode` (3236 constants, 1843 in
-`JPEG2000.*`), there is no `unsafe` constant, and no project constant that is opaque
-(`partial`), `implemented_by` or `extern`, apart from the compiler-generated `T.ctorIdx` of
-enumerations (6 of them, `implemented_by T.toCtorIdx` by Lean itself). The only opaque constant
-in the closure is core's `String.Internal.append` (error messages). Same result for
-`decodeCodestream` (2950), `Image.interleaved8/16` (584 each). A self-test with a `partial def`
-in `JPEG2000.*` is reported. Proposed as a guard (`scripts/closure.lean`, outside the
-libraries, run like `scripts/axioms.lean`; `partial` is fine there):
-
-```lean
-import JPEG2000
-import Lean
-open Lean Elab Command
-
-partial def reach (env : Environment) (todo : List Name) (seen : NameSet) : NameSet :=
-  match todo with
-  | [] => seen
-  | n :: rest =>
-    if seen.contains n then reach env rest seen
-    else
-      let seen := seen.insert n
-      match env.find? n with
-      | none => reach env rest seen
-      | some ci =>
-        let cs := ci.type.getUsedConstants ++ (ci.value?.map (·.getUsedConstants) |>.getD #[])
-        reach env (cs.toList ++ rest) seen
-
-elab "#check_closure " id:ident : command => do
-  let env ← getEnv
-  let all := reach env [id.getId] {}
-  let mut bad : Array String := #[]
-  for n in all.toList do
-    let some ci := env.find? n | continue
-    if ci.isUnsafe then bad := bad.push s!"unsafe {n}"
-    if n == ``sorryAx then bad := bad.push "sorryAx"
-    -- `T.ctorIdx` of an enumeration is compiler-generated (implemented_by `T.toCtorIdx`)
-    if (`JPEG2000).isPrefixOf n && n.getString! != "ctorIdx" then
-      if (Compiler.implementedByAttr.getParam? env n).isSome then bad := bad.push s!"implemented_by {n}"
-      if isExtern env n then bad := bad.push s!"extern {n}"
-      if ci matches .opaqueInfo _ then bad := bad.push s!"opaque/partial {n}"
-  if bad.isEmpty then logInfo m!"{id.getId}: closure OK ({all.size} constants)"
-  else logError m!"{id.getId}: {bad}"
-
-#check_closure JPEG2000.decode
-#check_closure JPEG2000.Image.interleaved8
-#check_closure JPEG2000.Image.interleaved16
-```
+The hygiene guard runs `lake env lean scripts/closure.lean` on `decodeCodestream`,
+`decode` and both image interleavers. The audit resolves each entry point, walks the
+types and values in its kernel dependency graph and reports how many declarations it
+visited. It rejects reachable unsafe declarations and `sorryAx`, as well as project
+axioms, opaque definitions, externs and implementation overrides. Lean's generated
+constructor index is recognized by its parent inductive and the pinned compiler's
+`T.ctorIdx._impl` replacement. Lean core primitives remain part of the trusted runtime.
+A negative check through a private wrapper detected a hidden partial function, and a
+separate check detected a safe-looking definition with a replacement implementation.
 
 ## S3 — bounded resources
 
