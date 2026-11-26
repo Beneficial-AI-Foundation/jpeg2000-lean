@@ -362,6 +362,23 @@ logical entry reservations or initializations. This includes building arrays
 before the aggregate precinct or block check rejects them. The returned
 store carries bounded precinct, band and code-block counts at every resolution.
 
+For each tile reached by the native decoder, `ReconstructionCost.decode_work`
+charges packed assembly, its possible wide retry, transforms, colour and
+placement through the first failing component or write. The parameters in
+`Prices` let callers count visits, headers, references, logical bytes or
+visits weighted by operand width. A wide Tier-1 cell occupies up to 43 logical
+bytes with flags. The wide Mallat input uses up to 47 bytes per cell.
+`live_workspace` accounts for already reconstructed components beside packed
+and wide work planes and transform scratch. At the public decoder, `ReconstructionCost.public_work` obtains all five caps
+from the actual header and packet history. A block has at most
+`S = maxPackets * 6 * maxCodeBlocks * (1 + maxPassesPerCodeBlock)` segment
+descriptors and at most `K = S * maxTilePartsPerTile` translated ranges.
+`SegmentHistory.tile_translation_work` bounds source-range probes across the
+actual output spans by `maxPrecincts * K`. For input of length `N` and at most
+`M` tile parts, the tile gather charges at most `M*(N+M*N)` byte writes. A
+fragmented block charges at most `(2*K+S)*(K*N)` byte writes. A direct block
+borrows the input.
+
 ### Maintenance
 
 The statements name checked quantities (`GeometryWithin` mirrors `checkGeometry`;

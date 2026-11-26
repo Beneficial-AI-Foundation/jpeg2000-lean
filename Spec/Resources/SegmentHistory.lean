@@ -1,4 +1,4 @@
-import Spec.Resources.PacketLocalWork
+import Spec.Resources.GeometryInit
 import Spec.Resources.AssemblyCost
 import Spec.RoundTrip.PrecinctShape
 import Spec.ColorResources.Layout
@@ -139,10 +139,6 @@ theorem completed_history {L : Limits} {h : Header} {data : ByteArray} {tp : Til
   rw [Array.size_map,← len]
   exact ⟨by omega,Nat.le_trans (block_ranges parts orig) (Nat.mul_le_mul_right _ (by omega))⟩
 
-private def Geometry (L : Limits) (a : Store) : Prop :=
-  ∀ r, (a.getD r #[]).size ≤ L.maxPrecincts ∧ ∀ p ∈ a.getD r #[],
-    p.bands.size ≤ 3 ∧ ∀ b ∈ p.bands, b.blocks.size ≤ L.maxCodeBlocks
-
 private theorem initialized_shape {L : Limits} {tc : TileCompGeom} {r k res pg st}
     (hr : resolution L tc r = .ok res) (hp : precinct L res k = .ok pg)
     (hi : PrecState.init L tc.params r pg = .ok st) :
@@ -162,60 +158,6 @@ private theorem initialized_shape {L : Limits} {tc : TileCompGeom} {r k res pg s
   obtain ⟨_,_,read⟩ := Tier2Equiv.bind_ok read
   cases read
   simpa [Tier2WF.bshape] using blocks geom hg
-
-private theorem raw_geometry {L : Limits} {h : Header} {data : ByteArray} {tp : TileParams}
-    {hs : Option ByteArray} {pb : Nat} {out : TileCodeBlocks}
-    (ok : decodeTilePacketsWith L h data tp hs pb = .ok out) (i : Nat) :
-    Geometry L (selected (some out) i) := by
-  unfold decodeTilePacketsWith at ok
-  obtain ⟨⟨g,c⟩,_,ok⟩ := Tier2Equiv.bind_ok ok
-  obtain ⟨_,_,ok⟩ := Tier2Equiv.bind_ok ok
-  obtain ⟨⟨precs,base,spans⟩,init,ok⟩ := Tier2Equiv.bind_ok ok
-  obtain ⟨⟨buf,parts⟩,_,ok⟩ := Tier2Equiv.bind_ok ok
-  obtain ⟨s,run,ok⟩ := Tier2Equiv.bind_ok ok
-  cases ok
-  have shapes := Tier2WF.forPackets_pres
-    (fun s : LoopState => s.precs.map Tier2WF.pshape = precs.map Tier2WF.pshape)
-    g c.progression c.poc _ (fun _ _ _ before step =>
-      (Tier2WF.fastStep_pres (L := L) (sop := c.sop) (eph := c.eph) (same := hs.isNone)
-        (base := base) (pb := pb) step).trans before) _ s rfl run
-  obtain ⟨_,outer,inner⟩ := RoundTrip.initPrecincts_shape init
-  intro r
-  dsimp only [selected,Option.map,Option.getD]
-  rw [Tier2WF.getD_map_arr _ _ _ #[] (by simp), Tier2WF.getD_map_arr _ _ _ (0,0) (by simp)]
-  by_cases ci : i < g.numComps
-  · by_cases ri : r ≤ g.levels i
-    · obtain ⟨res,hr,_,lookup,states⟩ := RoundTrip.initPrecincts_geometry init ci ri
-      rw [Array.getD_eq_getD_getElem?,lookup]
-      simp only [Option.getD_some,Array.size_map,Array.size_range,Array.mem_map,Array.mem_range]
-      refine ⟨?_,?_⟩
-      · by_cases pos : 0 < res.numPrecincts
-        · obtain ⟨_,_,hp,_,_⟩ := states 0 pos
-          exact (HeaderWork.precinct_geometry hr hp).1
-        · omega
-      · intro p ⟨k,hk,eq⟩
-        subst p
-        obtain ⟨pg,st,hp,hi,lookup⟩ := states k hk
-        have eq := congrArg (fun a => a[((base.getD i #[]).getD r 0)+k]?) shapes
-        simp only [Array.getElem?_map,lookup,Option.map_some] at eq
-        generalize ((base.getD i #[]).getD r 0)+k = j at eq ⊢
-        cases actual : s.precs[j]? with
-        | none => simp [actual] at eq
-        | some st' =>
-          have same : Tier2WF.pshape st' = Tier2WF.pshape st := by simpa [actual] using eq
-          obtain ⟨nb,blocks⟩ := initialized_shape hr hp hi
-          rw [← same] at nb blocks
-          simp only [Array.getD_eq_getD_getElem?,actual,Option.getD_some,PrecState.out,Array.size_map,
-            Array.mem_map]
-          refine ⟨by simpa [Tier2WF.pshape] using nb,?_⟩
-          rintro b ⟨bs,hbs,rfl⟩
-          simpa [Tier2WF.bshape] using blocks _ (Array.mem_map_of_mem hbs)
-    · have outside : (spans.getD i #[])[r]? = none := Array.getElem?_eq_none (by
-        rw [(inner i ci).2]; omega)
-      rw [Array.getD_eq_getD_getElem?,outside]
-      simp
-  · have outside : spans[i]? = none := Array.getElem?_eq_none (by omega)
-    simp [Array.getD_eq_getD_getElem?,outside]
 
 private theorem stream_raw {L : Limits} {h : Header} {data : ByteArray} {tp : TileParams}
     {hs : Option HeaderStream} {pb : Nat} {out : TileCodeBlocks}
@@ -243,7 +185,7 @@ theorem store_bounds {L : Limits} {h : Header} {data : ByteArray} {tp : TilePara
   have seq := Nat.mul_le_mul_right (recordGrowth L) count
   have parts := (HeaderWork.parse_tile_storage parsed tp member).1
   intro r
-  obtain ⟨prec,bands⟩ := raw_geometry (stream_raw ok) i r
+  obtain ⟨prec,bands⟩ := GeometryInit.decoded_store_geometry ok i r
   refine ⟨prec,?_⟩
   intro p hp
   obtain ⟨nb,blocks⟩ := bands p hp
@@ -265,7 +207,8 @@ def packetStore (L : Limits) (h : Header) (data : ByteArray) (idx : Array (Array
     let out ← decodeWithStream L h data tp hs pb
     pure (some out)
 
-private theorem present_mem {h : Header} {t j : Nat} {tp : TileParams}
+/-- The packet cursor selects an actual tile record from the parsed header. -/
+theorem present_mem {h : Header} {t j : Nat} {tp : TileParams}
     (found : presentAt h t j = some tp) : tp ∈ h.tiles := by
   unfold presentAt at found
   split at found <;> try contradiction

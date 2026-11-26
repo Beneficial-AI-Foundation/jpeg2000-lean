@@ -1,4 +1,4 @@
-import Spec.Resources.AssemblyCost
+import Spec.Resources.SegmentHistory
 import Spec.Resources.WaveletCost
 import Spec.Resources.PublicPacketWork
 
@@ -576,7 +576,7 @@ theorem tile_work {L : Limits} {h : Header} {data : ByteArray} {t red : Nat}
 /-- Required packet-history bridge for a parsed input. Only actual successful
 packet outputs and their matching layouts occur. Omitted tiles have empty stores. -/
 def ParsedStores (caps : StoreCaps) (L : Limits) (h : Header) (data : ByteArray) : Prop :=
-  ∀ (tp : TileParams) hs incoming a, JPEG2000.Tier2.Headers.decodeWithStream L h data tp hs incoming = .ok a →
+  ∀ (tp : TileParams), tp ∈ h.tiles → ∀ hs incoming a, JPEG2000.Tier2.Headers.decodeWithStream L h data tp hs incoming = .ok a →
     ∀ g c, Progression.Layout.ofHeader h tp.index = .ok (g,c) → caps.Holds g (some a)
 
 private theorem emptyStore (caps : StoreCaps) (g : Progression.Layout) : caps.Holds g none := by
@@ -616,6 +616,7 @@ private theorem visit_le {L : Limits} {h : Header} {data : ByteArray} (parsed : 
       unfold PacketTraversal.presentAt at pick
       split at pick <;> try contradiction
       split at pick <;> simp_all
+    have member := SegmentHistory.present_mem pick
     dsimp only
     cases head : JPEG2000.Tier2.Headers.headerStreamAt h data tp (idx.getD v.cursor #[]) with
     | error => exact Nat.zero_le _
@@ -630,7 +631,7 @@ private theorem visit_le {L : Limits} {h : Header} {data : ByteArray} (parsed : 
         | ok pair =>
           obtain ⟨g,c⟩ := pair
           exact (prefix_work parsed layout (some a) p caps
-            (stores tp hs v.passesBefore a packet g c (atTile ▸ layout))).2
+            (stores tp member hs v.passesBefore a packet g c (atTile ▸ layout))).2
 
 /-- Sum the two observations on the public prefix. Proof instrumentation replays
 the packet selection to recover the original store. Packet decoding itself has
@@ -695,6 +696,24 @@ theorem decode_work (p : Prices) (L : Limits) (data : ByteArray) (red : Nat) (ca
       · exact Nat.zero_le _
       · exact sumCap vs _ _ (fun v _ => visit_le parsed p caps (stores _ parsed) red _ v)
   exact ⟨work.1,total,Nat.le_trans total (Nat.mul_le_mul_right _ num)⟩
+
+/-- Uniform packet-store bounds at the production call, including range splits
+across all parts of the selected tile. -/
+def storeCaps (L : Limits) : StoreCaps :=
+  ⟨L.maxPrecincts,3,L.maxCodeBlocks,SegmentHistory.segmentLimit L,SegmentHistory.rangeLimit L⟩
+
+/-- Reconstruction work for arbitrary public byte input. Each visited tile
+pays for at most two precision attempts and the native placement. The cap
+depends only on the chosen units, decoder limits and original byte length. -/
+theorem public_work (p : Prices) (L : Limits) (data : ByteArray) (red : Nat) :
+    let m := measure p L data red
+    let budget := prefixBudget p L data.size (storeCaps L) + nativeBudget p L
+    m.1 = decodeCodestream L data red ∧
+    m.2 ≤ (PublicPacketWork.measure L data red).1.length * budget ∧
+    m.2 ≤ L.maxTiles * budget := by
+  apply decode_work
+  intro h parsed tp member hs incoming a decoded g c _ i
+  exact SegmentHistory.store_bounds parsed member decoded i.val
 
 private theorem fits_add {b : Nat} {x y : Int} (hx : WideArithmetic.Fits b x)
     (hy : WideArithmetic.Fits b y) : WideArithmetic.Fits (b+1) (x+y) := by
