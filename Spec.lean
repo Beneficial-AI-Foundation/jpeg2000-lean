@@ -126,6 +126,7 @@ import Spec.Resources.WaveletCost
 import Spec.Resources.HeaderSort
 import Spec.Resources.HeaderWork
 import Spec.Resources.HeaderPayload
+import Spec.Resources.NativeCost
 import Spec.Resources.GeometryInit
 import Spec.Resources.SegmentHistory
 import Spec.Resources.ReconstructionCost

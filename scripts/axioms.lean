@@ -1828,3 +1828,17 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.ColorResources.DisplayPrefix.interleaving_work
 #print axioms JPEG2000.Spec.ColorResources.DisplayPrefix.public_interleaving_work
 #print axioms JPEG2000.Spec.ColorResources.DisplayPrefix.selected_reads
+#print axioms JPEG2000.Spec.Resources.HeaderPayload.rank_storage
+#print axioms JPEG2000.Spec.Resources.NativeCost.allocation_work
+#print axioms JPEG2000.Spec.Resources.NativeCost.entry_storage
+#print axioms JPEG2000.Spec.Resources.NativeCost.packetMeter_result
+#print axioms JPEG2000.Spec.Resources.NativeCost.visited_storage
+#print axioms JPEG2000.Spec.Resources.NativeCost.destination_storage
+#print axioms JPEG2000.Spec.Resources.NativeCost.attempted_storage
+#print axioms JPEG2000.Spec.Resources.NativeCost.reconstruction_storage
+#print axioms JPEG2000.Spec.Resources.NativeCost.decode_work
+#print axioms JPEG2000.Spec.Resources.PacketLocalWork.partial_body_store
+#print axioms JPEG2000.Spec.Resources.PacketLocalWork.completed_iteration
+#print axioms JPEG2000.Spec.Resources.PacketTraversal.prefix_destination
+#print axioms JPEG2000.Spec.Resources.SegmentHistory.iteration_translation
+#print axioms JPEG2000.Spec.Resources.SegmentHistory.raw_store_slots

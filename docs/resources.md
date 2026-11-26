@@ -95,8 +95,8 @@ Direct Tier-1 input borrows the original buffer. With `K` source ranges and
 conservative copy charge is at most `(2K + S) × K × N` byte writes when every
 append copies its whole result. `tier1Input_copy_charge` accounts for both copy
 folds, and `tileData_copy_charge` tracks tile-part copies already completed on
-rejection. The multiplicity of ranges in actual packet output remains an input
-to these bounds.
+rejection. `SegmentHistory.store_bounds` supplies the segment and range counts
+for blocks from the public packet decoder.
 
 ### Packet traversal
 
@@ -420,6 +420,23 @@ and placement charge is bounded by
 `headerBudget L N + rankBudget L + V * (selectionBudget L N + placementBudget B L)`.
 `V ≤ maxTiles` gives the bound in terms of caller limits and input length.
 
+### Combined native decoder bound
+
+`NativeCost.decode_work` applies to every byte array, limit record and requested
+reduction. The measured result equals `decodeCodestream`, including its first error.
+For `N` input bytes and `V` tiles actually visited, the charge is at most
+`NativeCost.prefixBudget L N V`. Setting `V = L.maxTiles` gives the input-independent
+tile allowance in `NativeCost.budget L N`.
+
+The charge includes the original `N` bytes, reduced component rectangles, destination
+allocation, header and geometry work, packet traversal, gathers and reconstruction.
+Shared placement work appears once in the combined stage charge. A separate copy
+allowance covers a destination write that needs fresh backing.
+`destination_storage` follows the actual prefix of completed tiles and proves that
+the backing lengths still match the original allocation at the next tile, including
+when that tile fails. Their sum is at most `8 * L.maxWorkSamples` bytes.
+`attempted_storage` accounts for packet contributions consumed before a later failure.
+
 ### Maintenance
 
 The statements name checked quantities (`GeometryWithin` mirrors `checkGeometry`;
@@ -433,18 +450,7 @@ from `GeometryWithin`); `decode_limitExceeded_of_bytes` now rests on `allocOutpu
 
 ### Remaining public resource bounds
 
-The public codestream and image output sizes, palette backing, per-channel domains
-and interleaver lengths above are proved. To finish S3, the following bounds must
-also account for the work performed before an error.
-
-* **Reconstruction (7.4c2s4).** Sum the checked assembly, wavelet, colour
-  and placement costs under the aggregate tile-area guard. Apply the operand
-  widths to the temporary and retained cells of both precision attempts.
-* **Parsing and gathering (7.4c3a–c).** Bound the inner payload, sorting
-  and descriptor operations on early rejection. Derive range and segment
-  multiplicity from actual Tier-2 output and aggregate the copy charges.
-  Include temporary geometry, index and tag-tree storage on failing prefixes
-  and the original input buffer in the storage bound.
-* **Composition (7.4c4).** Give explicit functions of `Limits` and input length
-  for public work and intermediate allocation. Connect each counted operation
-  to its decoder loop, including the prefix traversed before rejection.
+The cost of constructing diagnostic strings on a rejecting path remains open. The
+final S3 theorem must combine this cost with the native, mapping and display bounds
+at the public API and identify the limit errors returned when a checked budget is
+exceeded.
