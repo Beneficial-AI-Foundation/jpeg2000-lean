@@ -498,6 +498,13 @@ split across physical PPM segments and a cumulative TLM count that exceeds the
 limit after both individual segments pass. Both public decoders preserve the
 resulting error and its absolute marker offset.
 
+`DiagnosticTileMarkers.public_header` covers each tile header reached by the
+public parser. For `N` input bytes and a POC-entry limit of `P`, it bounds the
+diagnostic count by `N * (10*P + 285) + 1`. A final short marker read constructs
+both the reader error and its replacement for the missing SOD. Successful
+headers pass the updated, admitted POC count to the next tile-part and keep
+PPT data ranges within the backing input. A PLT length occupies at most 32 bits.
+
 `DiagnosticPacket.decode_work` adds the Tier-2 diagnostic charge to native work.
 For a prefix with `V` visited tiles and `A` attempted packets, the diagnostic
 charge is bounded by `(1 + 2*V + 2*A) * eventBudget (tileCap L data.size)`.
@@ -530,7 +537,7 @@ result under a common scalar bound. A native refusal preserves the exact error
 and every earlier message. A native success appends the display trace in order,
 so earlier messages from recovered compact errors are still counted.
 
-The whole-path diagnostic bound still needs tile-part headers, coding
+The whole-path diagnostic bound still needs the tile-part driver and assembly, coding
 merges and geometry checks, and native reconstruction. The final S3
 statement must combine those costs with the native, mapping and display bounds and
 identify the limit errors returned when a checked budget is exceeded.

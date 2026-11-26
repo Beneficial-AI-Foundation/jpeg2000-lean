@@ -1894,6 +1894,13 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.Resources.DiagnosticPointers.main_ranges
 #print axioms JPEG2000.Spec.Resources.DiagnosticPointers.public_cost
 #print axioms JPEG2000.Spec.Resources.DiagnosticPointers.public_refusal
+#print axioms JPEG2000.Spec.Resources.DiagnosticTileMarkers.plt_bounds
+#print axioms JPEG2000.Spec.Resources.DiagnosticTileMarkers.ppt_range
+#print axioms JPEG2000.Spec.Resources.DiagnosticTileMarkers.header_continuation
+#print axioms JPEG2000.Spec.Resources.DiagnosticTileMarkers.read_count
+#print axioms JPEG2000.Spec.Resources.DiagnosticTileMarkers.main_count
+#print axioms JPEG2000.Spec.Resources.DiagnosticTileMarkers.prefix_fields
+#print axioms JPEG2000.Spec.Resources.DiagnosticTileMarkers.public_header
 #print axioms JPEG2000.Spec.Resources.DiagnosticPacketRanges.parsed_ranges
 #print axioms JPEG2000.Spec.Resources.DiagnosticPacket.public_callback
 #print axioms JPEG2000.Spec.Resources.DiagnosticPacket.admission_free
