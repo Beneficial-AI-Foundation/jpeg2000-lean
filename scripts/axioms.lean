@@ -1751,3 +1751,7 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.Resources.WaveletCost.compact_allocation
 #print axioms JPEG2000.Spec.Resources.WaveletCost.retry53_work
 #print axioms JPEG2000.Spec.Resources.WaveletCost.retry97_work
+
+-- JP2 channel metadata and alpha selection.
+#print axioms JPEG2000.Spec.ColorResources.channelSort_work
+#print axioms JPEG2000.Spec.ColorResources.alpha_work

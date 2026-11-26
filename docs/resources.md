@@ -325,6 +325,12 @@ before any plane is allocated (`allocOutput_ok_iff`, `allocOutput_limitOnly`). B
 `declaredBytes`; the bound moved to what is allocated, so its precondition is now the whole
 header (the check runs after the tile-part headers are parsed).
 
+For a CDEF table with `d` records, `ColorResources.alpha_work` counts the
+pinned array quicksort's comparisons and the subsequent opacity search.
+Together they cost at most `(d-1)*(d+3) + d`. It returns the same optional
+definition used by the channel layout, including its premultiplication type.
+An absent opacity record requires a scan of all sorted definitions.
+
 ### Maintenance
 
 The statements name checked quantities (`GeometryWithin` mirrors `checkGeometry`;

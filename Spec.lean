@@ -142,6 +142,7 @@ import Spec.ReversibleDispatch
 import Spec.IrreversibleDispatch
 
 import Spec.ColorResources.Interleave
+import Spec.ColorResources.ChannelSort
 import Spec.ColorResources.Layout
 import Spec.ColorResources.Mapping
 import Spec.ColorResources.Palette

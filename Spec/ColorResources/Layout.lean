@@ -1,4 +1,5 @@
 import Spec.NativeResources
+import Spec.ColorResources.ChannelSort
 
 /-!
 # Output channel-record counts (Plan.md §§3–5, 7, S3; T.800 I.5.3.6)
@@ -121,5 +122,46 @@ theorem resolved_layout_size {L data hdr comps info} (ok : resolve L data hdr co
     obtain ⟨layout, hl, ok⟩ := Tier2Equiv.bind_ok ok
     cases ok
     exact layout_count hl
+
+
+private def opacity (d : ChannelDef) := (d.typ == 1 || d.typ == 2) && d.asoc == 0
+
+private def firstMatch {α : Type} (pred : α → Bool) : List α → Option α × Nat
+  | [] => (none,0)
+  | x::xs => if pred x then (some x,1) else
+    let tail := firstMatch pred xs
+    (tail.1,tail.2+1)
+
+private theorem firstMatch_work {α : Type} (pred : α → Bool) (xs : List α) :
+    (firstMatch pred xs).1 = xs.find? pred ∧ (firstMatch pred xs).2 ≤ xs.length := by
+  induction xs with
+  | nil => exact ⟨rfl,Nat.zero_le _⟩
+  | cons x xs ih =>
+    simp only [firstMatch,List.find?_cons,List.length_cons]
+    cases pred x with
+    | true => exact ⟨rfl,by simp⟩
+    | false => exact ⟨ih.1,Nat.succ_le_succ ih.2⟩
+
+/-- Sort CDEF records by channel index and scan through the first opacity
+record. Count comparator calls and evaluated opacity predicates. -/
+def measuredAlpha (defs : Array ChannelDef) : Option ChannelDef × Nat :=
+  let sorted := channelSort (fun a b => a.cn < b.cn) defs
+  let found := firstMatch opacity sorted.1.toList
+  (found.1,sorted.2+found.2)
+
+/-- The JP2 alpha selector retains exactly the sorted search result, including
+its premultiplication flag. With `d` CDEF records it costs at most
+`(d-1)*(d+3) + d` comparisons and predicate calls. -/
+theorem alpha_work (defs : Array ChannelDef) :
+    let r := measuredAlpha defs
+    r.1 = (defs.qsort (fun a b => a.cn < b.cn)).find?
+      (fun d => (d.typ == 1 || d.typ == 2) && d.asoc == 0) ∧
+      r.2 ≤ (defs.size-1)*(defs.size+3)+defs.size := by
+  let lt := fun a b : ChannelDef => decide (a.cn < b.cn)
+  obtain ⟨sort,size,cap⟩ := channelSort_work lt defs
+  obtain ⟨found,visits⟩ := firstMatch_work opacity (channelSort lt defs).1.toList
+  change (firstMatch opacity _).1 = (defs.qsort lt).find? opacity ∧ (channelSort lt defs).2 + _ ≤ _
+  exact ⟨found.trans (by rw [Array.find?_toList,sort]),
+    Nat.add_le_add cap (by simpa only [Array.length_toList,size] using visits)⟩
 
 end JPEG2000.Spec.ColorResources
