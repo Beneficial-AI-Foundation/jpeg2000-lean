@@ -1670,3 +1670,22 @@ end AxiomsSelfCheck
 
 #print axioms JPEG2000.Spec.Resources.HeaderWork.measuredSort_work
 #print axioms JPEG2000.Spec.Resources.HeaderWork.sortUnique_work
+
+-- Task 7.4c2s1, coefficient assembly and precision fallback.
+#print axioms JPEG2000.Spec.Resources.AssemblyCost.walk_value
+#print axioms JPEG2000.Spec.Resources.AssemblyCost.walk_bound
+#print axioms JPEG2000.Spec.Resources.AssemblyCost.origin_levels
+#print axioms JPEG2000.Spec.Resources.AssemblyCost.compact_placement
+#print axioms JPEG2000.Spec.Resources.AssemblyCost.wide_place
+#print axioms JPEG2000.Spec.Resources.AssemblyCost.reversible_work
+#print axioms JPEG2000.Spec.Resources.AssemblyCost.irreversible_work
+#print axioms JPEG2000.Spec.Resources.AssemblyCost.parsed_component_work
+#print axioms JPEG2000.Spec.Resources.AssemblyCost.native_budget
+#print axioms JPEG2000.Spec.Resources.AssemblyCost.block_storage
+#print axioms JPEG2000.Spec.Resources.AssemblyCost.mallat_width
+#print axioms JPEG2000.Spec.Resources.AssemblyCost.packed_storage
+#print axioms JPEG2000.Spec.Resources.AssemblyCost.wide_storage
+#print axioms JPEG2000.Spec.Resources.AssemblyCost.native_plane_cells
+#print axioms JPEG2000.Spec.Resources.AssemblyCost.block_workspace
+#print axioms JPEG2000.Spec.Resources.AssemblyCost.block_ceiling
+#print axioms JPEG2000.Spec.Resources.AssemblyCost.topology_split

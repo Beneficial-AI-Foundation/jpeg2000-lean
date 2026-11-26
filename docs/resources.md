@@ -142,6 +142,22 @@ magnitude below `2^292` and a last plane at most 291 for every returned wide cel
 To obtain whole-image work, the per-attempt charges must still be summed over
 the blocks and retries actually selected by reconstruction.
 
+### Coefficient assembly
+
+For each component selected by the native tile dispatcher,
+`AssemblyCost.parsed_component_work` counts the resolutions, precincts, bands
+and block records actually visited, including skipped zero-pass blocks. The meter
+returns the same component result or error. It retains the work of a failed
+compact prefix when the dispatcher restarts assembly at wide precision.
+
+For reduced component area `A`, the bound is `5*A + 2*topology`. The area term
+covers initialising four packed bytes and one wide integer slot per cell across
+both attempts. The topology term includes Tier-1 decoding, fragmented input
+gathering, dequantisation and placement for the supplied block records.
+`AssemblyCost.native_budget` connects `A` to the checked aggregate tile area.
+A bound on segment and byte-range counts from packet history is still needed
+to express the topology term entirely in terms of the input length and limits.
+
 ### Wide integer arithmetic
 
 `Spec.Resources.WideArithmetic` bounds the operands of dequantisation, integer
@@ -255,7 +271,7 @@ also account for the work performed before an error.
 * **Local packet operations (7.4c1h).** Price the work
   inside each attempted packet, including tag-tree and segment handling before
   pass admission, and the setup of progression volumes even when empty.
-* **Reconstruction (7.4c2s1–4).** The checked decoder can retry using wide
+* **Reconstruction (7.4c2s2–4).** The checked decoder can retry using wide
   coefficients. Apply the wide integer bounds to both attempts and bound lifting and
   colour-transform visits, temporary line arrays and live planes across levels.
 * **Parsing and gathering (7.4c3a–c).** Bound the inner payload, sorting

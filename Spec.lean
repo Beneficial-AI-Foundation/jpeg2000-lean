@@ -111,6 +111,7 @@ import Spec.Resources.Tier1Reader
 import Spec.Resources.Tier1Schedule
 import Spec.Resources.Tier1Storage
 import Spec.Resources.Tier1Work
+import Spec.Resources.AssemblyCost
 import Spec.Resources.TileArithmetic
 import Spec.Resources.WideArithmetic
 import Spec.Resources.HeaderSort
