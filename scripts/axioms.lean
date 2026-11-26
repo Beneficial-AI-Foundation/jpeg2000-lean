@@ -1877,3 +1877,9 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.Resources.DiagnosticMarker.inRange_location
 #print axioms JPEG2000.Spec.Resources.DiagnosticMarker.public_main
 #print axioms JPEG2000.Spec.Resources.DiagnosticMarker.public_cost
+#print axioms JPEG2000.Spec.Resources.DiagnosticBox.file_bounds
+#print axioms JPEG2000.Spec.Resources.DiagnosticBox.raw_eq
+#print axioms JPEG2000.Spec.Resources.DiagnosticBox.public_box
+#print axioms JPEG2000.Spec.Resources.DiagnosticBox.public_admission_excess
+#print axioms JPEG2000.Spec.Resources.DiagnosticBox.public_raw
+#print axioms JPEG2000.Spec.Resources.DiagnosticBox.signature_replacement

@@ -128,6 +128,7 @@ import Spec.Resources.HeaderWork
 import Spec.Resources.HeaderPayload
 import Spec.Resources.NativeCost
 import Spec.Resources.DiagnosticCost
+import Spec.Resources.DiagnosticBox
 import Spec.Resources.DiagnosticMarkerOrigin
 import Spec.Resources.DiagnosticMarker
 import Spec.Resources.GeometryInit

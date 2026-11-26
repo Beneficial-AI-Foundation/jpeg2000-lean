@@ -468,6 +468,14 @@ An oversized reduction yields a typed error that refers to the caller's natural.
 `caller_render_unbounded` proves that formatting this error after the call can
 produce arbitrarily many bytes, even for a fixed input and fixed limits.
 
+`DiagnosticBox.public_box` covers the entire JP2 container parser. Its trace
+contains at most `17 + 12 * (L.maxBoxes + 1)` messages. The top-level loop
+descends into at most one JP2 header. It can discard a malformed later colour
+specification after accepting an earlier one. The bound includes both the
+successful checks and the discarded error. On empty input, the raw probe and
+first box read each produce a truncation before the parser returns its signature
+error. Recognizing an admitted raw codestream produces no container messages.
+
 `DiagnosticMarker.public_cost` bounds the main-header diagnostic work and temporary
 storage on every input. It counts the checks reached between SOC and the first SOT,
 including eager messages on successful COD, QCD and other marker payloads. On a
@@ -475,7 +483,7 @@ main-header error, both public decoders return its original marker-stage offset
 within the codestream range. A rejected cumulative POC count can reach twice
 `maxPocEntries` when both contributing counts individually fit the limit.
 
-The whole-path diagnostic bound still needs the container parser, tile-part headers,
-header merges and geometry, packet callbacks, native reconstruction and image stages. The final S3
+The whole-path diagnostic bound still needs tile-part headers, header merges and
+geometry, packet callbacks, native reconstruction and image stages. The final S3
 statement must combine those costs with the native, mapping and display bounds and
 identify the limit errors returned when a checked budget is exceeded.
