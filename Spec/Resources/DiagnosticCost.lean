@@ -281,27 +281,36 @@ theorem built_cost {cap : Nat} {msg : String} (b : Built cap msg) :
   refine ⟨b.erase ▸ Nat.le_trans bytes h, Nat.le_trans work ?_⟩
   exact Nat.mul_le_mul b.nodeBound (Nat.add_le_add_right (Nat.add_le_add_left h 1) _)
 
-private def oneFixed {cap : Nat} (s : String) (hs : s.utf8ByteSize ≤ 128) : Built cap s :=
+/-- A diagnostic consisting of a single bounded UTF-8 literal. -/
+def oneFixed {cap : Nat} (s : String) (hs : s.utf8ByteSize ≤ 128) : Built cap s :=
   ⟨.fixed s,rfl,_,_,.fixed s,hs,by decide⟩
 
 open JPEG2000.Bytes
 
-private structure ExprFor (cap : Nat) (s : String) (literal nodes : Nat) where
+/-- A diagnostic expression for a particular string with its literal bytes and node count. -/
+structure ExprFor (cap : Nat) (s : String) (literal nodes : Nat) where
+  /-- The sequence of digit conversions and appends. -/
   tree : Text
+  /-- Evaluating the expression produces the original diagnostic text. -/
   erase : tree.render = s
+  /-- Numeric operands, literal bytes and nodes meet their declared bounds. -/
   shape : tree.Within cap literal nodes
 
-private def litExpr (cap : Nat) (s : String) : ExprFor cap s s.utf8ByteSize 1 :=
+/-- The expression for a literal fragment. -/
+def litExpr (cap : Nat) (s : String) : ExprFor cap s s.utf8ByteSize 1 :=
   ⟨_, rfl, .fixed s⟩
 
-private def decExpr {cap n : Nat} (h : n ≤ cap) : ExprFor cap (toString n) 0 1 :=
+/-- The decimal expression for a natural number within the given bound. -/
+def decExpr {cap n : Nat} (h : n ≤ cap) : ExprFor cap (toString n) 0 1 :=
   ⟨_, rfl, .dec h⟩
 
-private def catExpr {cap a b i j : Nat} {s t : String}
+/-- Join two fragments and charge their intermediate string construction. -/
+def catExpr {cap a b i j : Nat} {s t : String}
     (x : ExprFor cap s a i) (y : ExprFor cap t b j) : ExprFor cap (s ++ t) (a+b) (i+j+1) :=
   ⟨_, by simp only [Text.render, x.erase, y.erase], .cat x.shape y.shape⟩
 
-private def closeExpr {cap a i : Nat} {s : String} (x : ExprFor cap s a i)
+/-- Certify a complete diagnostic from its fragment and node bounds. -/
+def closeExpr {cap a i : Nat} {s : String} (x : ExprFor cap s a i)
     (ha : a ≤ 128) (hi : i ≤ 24) : Built cap s :=
   ⟨x.tree,x.erase,a,i,x.shape,ha,hi⟩
 
@@ -448,13 +457,16 @@ theorem caller_render_unbounded (L : Limits) (d : ByteArray) (n : Nat) :
 
 /-! ## Composing actual diagnostic events -/
 
-private def doneTrace {α : Type} {cap k : Nat} (x : α) : Trace cap (.ok x) k :=
+/-- A successful operation that constructs no diagnostics. -/
+def doneTrace {α : Type} {cap k : Nat} (x : α) : Trace cap (.ok x) k :=
   ⟨[],Nat.zero_le _,by intros; contradiction⟩
 
-private def widen {α : Type} {cap j k : Nat} {r : Except Error α} (x : Trace cap r j)
+/-- Reuse the same events under a larger event-count allowance. -/
+def widen {α : Type} {cap j k : Nat} {r : Except Error α} (x : Trace cap r j)
     (h : j ≤ k) : Trace cap r k := ⟨x.messages,Nat.le_trans x.countBound h,x.origin⟩
 
-private def bindTrace {α β : Type} {cap i j : Nat} {r : Except Error α}
+/-- Compose traces in execution order and stop at the first error. -/
+def bindTrace {α β : Type} {cap i j : Nat} {r : Except Error α}
     {f : α → Except Error β} (x : Trace cap r i) (y : ∀ a, r = .ok a → Trace cap (f a) j) :
     Trace cap (r >>= f) (j+i) := by
   cases r with
@@ -479,13 +491,15 @@ private def truncated {α : Type} {cap : Nat} {s : String} (l : Location)
     (loc : l.offset.getD 0 ≤ cap) (b : Built cap s) : Trace cap (Except.error (.truncated l s) : Except Error α) 1 :=
   ⟨[⟨s,b⟩], by simp, by intro e he; cases he; exact ⟨loc,⟨s,b⟩,by simp,rfl⟩⟩
 
-private def requireTrace {cap : Nat} (r : Reader) (hr : r.pos ≤ cap)
+/-- Charge the supplied diagnostic even when the marker requirement succeeds. -/
+def requireTrace {cap : Nat} (r : Reader) (hr : r.pos ≤ cap)
     (c : Bool) (s : String) (b : Built cap s) : Trace cap (Marker.require r c s) 1 := by
   cases c
   · exact malformed _ hr b
   · exact ⟨[⟨s,b⟩],by simp,by intros; contradiction⟩
 
-private def endTrace {cap : Nat} (r : Reader) (hr : r.data.size ≤ cap) (s : String)
+/-- Trace a trailing-byte check and its decimal count. -/
+def endTrace {cap : Nat} (r : Reader) (hr : r.data.size ≤ cap) (s : String)
     (hs : s.utf8ByteSize ≤ 96) : Trace cap (Marker.expectEnd r s) 1 := by
   unfold Marker.expectEnd
   split
@@ -496,42 +510,48 @@ private def endTrace {cap : Nat} (r : Reader) (hr : r.data.size ≤ cap) (s : St
     · change s.utf8ByteSize + 2 + 0 + 15 ≤ 128; omega
     · decide
 
-private def checkedTrace {cap : Nat} (L : Limits) (loc : Location) (kind : LimitKind) (n : Nat)
+/-- Trace a typed limit check, including its computed value on rejection. -/
+def checkedTrace {cap : Nat} (L : Limits) (loc : Location) (kind : LimitKind) (n : Nat)
     (hl : loc.offset.getD 0 ≤ cap) (hv : n ≤ cap) : Trace cap (L.check loc kind n) 0 := by
   unfold Limits.check Limits.checkLe
   split
   · exact doneTrace ()
   · exact ⟨[],by simp,by intro e he; cases he; exact ⟨hl,hv⟩⟩
 
-private def u8Trace {cap : Nat} (r : Reader) (hr : r.pos ≤ cap) :
+/-- Trace a byte read, including its truncation diagnostic. -/
+def u8Trace {cap : Nat} (r : Reader) (hr : r.pos ≤ cap) :
     Trace cap r.u8 1 := by
   unfold Reader.u8
   split
   · exact doneTrace _
   · exact truncated _ hr (oneFixed "u8" (by decide))
 
-private def u16beTrace {cap : Nat} (r : Reader) (hr : r.pos ≤ cap) :
+/-- Trace an unsigned 16-bit read and its truncation diagnostic. -/
+def u16beTrace {cap : Nat} (r : Reader) (hr : r.pos ≤ cap) :
     Trace cap r.u16be 1 := by
   unfold Reader.u16be
   split
   · exact doneTrace _
   · exact truncated _ hr (oneFixed "u16" (by decide))
 
-private def u32beTrace {cap : Nat} (r : Reader) (hr : r.pos ≤ cap) :
+/-- Trace an unsigned 32-bit read and its truncation diagnostic. -/
+def u32beTrace {cap : Nat} (r : Reader) (hr : r.pos ≤ cap) :
     Trace cap r.u32be 1 := by
   unfold Reader.u32be
   split
   · exact doneTrace _
   · exact truncated _ hr (oneFixed "u32" (by decide))
 
-private def u64beTrace {cap : Nat} (r : Reader) (hr : r.pos ≤ cap) :
+/-- Trace an unsigned 64-bit read and its truncation diagnostic. -/
+def u64beTrace {cap : Nat} (r : Reader) (hr : r.pos ≤ cap) :
     Trace cap r.u64be 1 := by
   unfold Reader.u64be
   split
   · exact doneTrace _
   · exact truncated _ hr (oneFixed "u64" (by decide))
 
-private def takeTrace {cap : Nat} (r : Reader) (hr : r.pos ≤ cap) (n : Nat) (hn : n ≤ cap) :
+/-- Trace a byte-range read and the requested length on truncation. -/
+def takeTrace {cap : Nat} (r : Reader) (hr : r.pos ≤ cap) (n : Nat) (hn : n ≤ cap) :
     Trace cap (r.take n) 1 := by
   unfold Reader.take
   split
@@ -629,7 +649,8 @@ private def u32beBind {α : Type} {cap j : Nat} {r : Reader} (h : r.data.size �
   bindTrace (u32beTrace _ (reader_pos h)) fun (x,t) hr =>
     tail x t (next_data h (Reader.u32be_pos hr).2.2.1)
 
-private def arrayTrace {α : Type} {cap k : Nat} {f : Reader → Except Error (α × Reader)}
+/-- Trace an array of reads through the first rejection, preserving their common backing buffer. -/
+def arrayTrace {α : Type} {cap k : Nat} {f : Reader → Except Error (α × Reader)}
     (one : ∀ r : Reader, r.data.size ≤ cap → Trace cap (f r) k)
     (same : ∀ r t a, f r = .ok (a,t) → t.data = r.data)
     (a : Array α) (n : Nat) (r : Reader) (hr : r.data.size ≤ cap) :
@@ -870,7 +891,8 @@ private theorem map_failure {α β : Type} (f : α → Except Error β) (xs : Ar
 
 /-! ## JP2 header reads and discarded diagnostics -/
 
-private def includeTrace {α β : Type} {cap i j : Nat} {x : Except Error α} {y : Except Error β}
+/-- Retain the construction events of an earlier operation whose result was discarded. -/
+def includeTrace {α β : Type} {cap i j : Nat} {x : Except Error α} {y : Except Error β}
     (earlier : Trace cap x i) (later : Trace cap y j) : Trace cap y (i+j) := by
   refine ⟨earlier.messages ++ later.messages, ?_, ?_⟩
   · rw [List.length_append]; exact Nat.add_le_add earlier.countBound later.countBound

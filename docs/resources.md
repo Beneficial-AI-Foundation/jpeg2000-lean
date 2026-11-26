@@ -450,7 +450,20 @@ from `GeometryWithin`); `decode_limitExceeded_of_bytes` now rests on `allocOutpu
 
 ### Remaining public resource bounds
 
-The cost of constructing diagnostic strings on a rejecting path remains open. The
-final S3 theorem must combine this cost with the native, mapping and display bounds
-at the public API and identify the limit errors returned when a checked budget is
-exceeded.
+`DiagnosticCost` counts decimal and hexadecimal digits, copied prefixes and temporary
+storage at the construction site. A passed marker check can still evaluate its message.
+The SOC/SIZ prefix constructs at most `6 * L.maxComponents + 24` messages. Each SOT
+prefix constructs at most 14, and the tile-part reader visits at most `data.size`
+such prefixes. A failed JP2 signature check can construct and then discard a nested
+box error. The proofs also cover the PPM count mismatch, SOP, colour resolver errors
+and the counts retained by the two interleavers.
+
+An oversized reduction yields a typed error that refers to the caller's natural.
+`reduction_storage` bounds the decoder-owned payload by seven logical units.
+`caller_render_unbounded` proves that formatting this error after the call can
+produce arbitrarily many bytes, even for a fixed input and fixed limits.
+
+The whole-path diagnostic bound still needs the remaining container and codestream
+headers, packet callbacks, native reconstruction and image stages. The final S3
+statement must combine those costs with the native, mapping and display bounds and
+identify the limit errors returned when a checked budget is exceeded.
