@@ -99,19 +99,19 @@ jobs:
         if: runner.os == 'Linux'
         run: lake build header-dump
 
-      - name: Header differential (opj_dump -i vs header-dump)
-        if: runner.os == 'Linux'
-        run: python3 -I scripts/diff-headers.py
-
-      # PDF-extracted JPX corpus (task 6.3b): the source PDFs come with the corpus fetch
-      # (role pdf-source, pinned GitHub raw URLs); qpdf extracts the JPXDecode streams
-      # (SHA-256-checked against the manifest's pdf_jpx list), then every stream is decoded
-      # by opj_decompress and image-dump and compared per component. Linux only.
-      - name: PDF JPX corpus and image differential (opj_decompress vs image-dump)
+      - name: Extract PDF JPX streams and verify hashes
         if: runner.os == 'Linux'
         run: |
           sudo apt-get install -y qpdf
           python3 -I scripts/extract-pdf-jpx.py
+
+      - name: Header differential for fetched and extracted streams
+        if: runner.os == 'Linux'
+        run: python3 -I scripts/diff-headers.py
+
+      - name: PDF JPX image differential
+        if: runner.os == 'Linux'
+        run: |
           lake build image-dump
           python3 -I scripts/diff-images.py
 

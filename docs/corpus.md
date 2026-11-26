@@ -254,6 +254,15 @@ emit the two 1x1 images that no page draws (`issue19326-11`, `issue19517-13`).
 When rebuilding the list with `--scan`, carry over the hand-written `recorded_plane`,
 `jp2_boxes`, `reduce` and `note` fields for matching SHA-256 values.
 
+### Header differential
+
+After extraction, run `lake build header-dump` and `python3 -I scripts/diff-headers.py`.
+Linux CI compares the merged main header and marker index with `opj_dump -i` for all 44
+fetched codestreams and all 42 PDF extracts. A missing selected stream fails the check.
+The main-header tile index uses the lengths declared by TLM. In `bug_jpx-15.jpx`, TLM
+advertises one tile-part for each of two tiles. The header parser finds three physical
+parts for tile 0 and one for tile 1. Both dump tools report one entry per tile.
+
 ### Image differential (`scripts/diff-images.py`)
 
 Run `lake build image-dump` and `python3 -I scripts/diff-images.py --jp2 --verbose`.
