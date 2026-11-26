@@ -505,6 +505,29 @@ both the reader error and its replacement for the missing SOD. Successful
 headers pass the updated, admitted POC count to the next tile-part and keep
 PPT data ranges within the backing input. A PLT length occupies at most 32 bits.
 
+`DiagnosticTilePart.public_cost` follows the complete tile-part loop and its
+assembly pass. It counts a failed outer marker read before the replacement EOC
+error, sorts PPT indices across a tile and PLT indices within a part, and
+charges the nested decimal expression when a corrected TNsot still disagrees
+with the number of parts. A packet-count refusal includes the full PLT count
+of the tile that pushed the total over its limit.
+
+`DiagnosticCoding.public_cost` covers main defaults, the repeated collection
+of component overrides and per-tile coding. A successful merge contributes no
+message. The first rejecting merge contributes one message with the source
+offset and the values used by that merge. Rebuilding the same main override
+tables after successful main coding still costs work. Its second validation
+cannot emit a duplicate-component diagnostic.
+
+`DiagnosticGeometry.geometry_refusal` gives the first excessive value in
+header geometry order. `work_refusal` identifies the tile, component and
+running totals at the first excess in code-blocks, precincts or packets,
+including tiles with default coding and no tile-part. Both checks retain the
+marker location at offset 2 on raw and JP2 inputs. Each constructs zero text
+messages. For `P = 256 * 2^64`, the computed work-check value fits the maximum
+of `maxCodeBlocks + 3*P`, `maxPrecincts + P` and `maxPackets + 65535*P`
+even when the guard refuses it.
+
 `DiagnosticPacket.decode_work` adds the Tier-2 diagnostic charge to native work.
 For a prefix with `V` visited tiles and `A` attempted packets, the diagnostic
 charge is bounded by `(1 + 2*V + 2*A) * eventBudget (tileCap L data.size)`.
@@ -537,7 +560,7 @@ result under a common scalar bound. A native refusal preserves the exact error
 and every earlier message. A native success appends the display trace in order,
 so earlier messages from recovered compact errors are still counted.
 
-The whole-path diagnostic bound still needs the tile-part driver and assembly, coding
-merges and geometry checks, and native reconstruction. The final S3
+The whole-path diagnostic bound still needs the header stages composed in parser
+order and the native reconstruction stages. The final S3
 statement must combine those costs with the native, mapping and display bounds and
 identify the limit errors returned when a checked budget is exceeded.
