@@ -18,7 +18,7 @@ Design document: Plan.md
 
 ## Current wave
 
-Wave 29 on `phase-7-equivalence`: 7.1i3c, 7.1j3b, 7.1k3r and 7.1k3i (all wt), plus 7.4b1 (public codestream resource theorem).
+Wave 29 on `phase-7-equivalence`: 7.1i3c, 7.1j3b, 7.1k3r and 7.1k3i (all wt), plus 7.4b1 (public codestream resource theorem) and 7.3e1 (lossless native readback under C9).
 
 ## Branches and PRs
 | Phase | Branch | Base | PR | State |
@@ -225,12 +225,14 @@ Plan.md §7 row 7, §4, §5.3. Exit: **M7**: C9, C10, S2, S3 proved; `#print axi
 | 7.3d6a | Remove the separate physical K ≤ 31 premise from the spec coefficient and wavelet reconstruction chain. Compose the actual packet call’s proved 37-plane bound with the band-level reconstruction theorem. Keep the narrower existing interfaces as corollaries where needed. | 7.3d3d, 7.3f5e1 | `Spec/RoundTrip/BlockReconstruction.lean`, `CollectedBlocks.lean`, `WaveletReconstruction.lean` | wt | done (2026-11-26) |
 | 7.3d6b | Construct sufficient decoder limits from a successful encoder result and its physical geometry and sample counts. Prove every packet, allocation and reconstruction bound against those limits, and characterize the additional conditions for default limits. | 7.3f5e3, 7.3d4a | `Spec/RoundTrip/EncoderDomain.lean` | new | done (2026-11-26) |
 | 7.3d6c | Generalise the specification-level image composition to the sufficient limits proved in 7.3d6b and eliminate extraneous image restrictions; retain the specialisation to an admissible default budget. | 7.3d4b3, 7.3d6b | `Spec/RoundTrip/Spec.lean` | wt | done (2026-11-26) |
-| 7.3e | C10 layer 5: prove lossless equality through the actual fast decoder for every successful reversible encoding under sufficient resource limits; specialise to default limits for encodings within them | 7.1l2, 7.3d4b3, 7.3d5, 7.3d6c | `Spec/RoundTrip.lean` | new | todo |
+| 7.3e | C10 layer 5: prove lossless equality through the actual fast decoder for every successful reversible encoding under sufficient resource limits; specialise to default limits for encodings within them | 7.1l2, 7.3d4b3, 7.3d5, 7.3d6c | `Spec/RoundTrip.lean` | new | split (into 7.3e1–7.3e2) |
+| 7.3e1 | Establish reversible flags for every spec sample of a reversible encoding and recover the complete encoder image by checked public sample reads under the C9 image relation. | 7.1j2b2, 7.3d5, 7.3d6c | `Spec/NativeEquiv.lean`, `Spec/RoundTrip/Native.lean` and its spec prerequisites | wt | done (2026-11-26) |
+| 7.3e2 | Discharge the C9 premise for the actual public decoder. Prove the byte-returning lossless round trip at sufficient limits and its default-limits specialization. | 7.1l2, 7.3e1 | `Spec/RoundTrip/Native.lean` | wt | todo |
 | 7.4 | (landed on `phase-6-jp2-output`) S2 totality and S3 resource bounds as theorems over `Limits` | 7.1a | `Spec/Resources.lean` | new | | done (2026-11-25) |
 | 7.4b | Extend S3 to the public mixed-depth codestream and image APIs. Prove aggregate allocation bounds, native storage size, source and output geometry, metadata and safe reduced output at every admitted depth. | 7.1j2b2, 7.1j3b, 7.1k3t | `Spec/Resources.lean`, public native and image resource proofs | wt | split (into 7.4b1–7.4b2) |
 | 7.4b1 | Prove the S3 aggregate declared bytes, actual backing bytes, reduced SIZ geometry, format, order and exact accessor bounds on every successful public codestream decode. | 7.1j2b2, 7.4 | `Spec/NativeResources.lean`, `docs/resources.md` | solo | done (2026-11-26) |
 | 7.4b2 | Extend S3 through public colour processing and interleaving on actual native channels and recheck all resource and totality results after the wide tile dispatch is connected. | 7.4b1, 7.1j3b, 7.1k3t | public image and native output resource proofs, `docs/resources.md` | wt | todo |
-| 7.5 | M7 check (axioms) | 7.1l2, 7.1j3b, 7.2, 7.3e, 7.4, 7.4b2 | — | solo | todo |
+| 7.5 | M7 check (axioms) | 7.1l2, 7.1j3b, 7.2, 7.3e2, 7.4, 7.4b2 | — | solo | todo |
 Exit criterion checked: [ ]
 
 ## Phase 8 — Speed

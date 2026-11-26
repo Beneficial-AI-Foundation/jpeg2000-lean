@@ -67,7 +67,7 @@ def encoderImageOfSpec (si : SpecImage) : Encode.Image :=
     comps := si.comps.map fun c =>
       { depth := c.info.depth, signed := c.info.signed, samples := c.samples.map SpecSample.value } }
 
-private theorem assembled_image {p : Params} {img : Encode.Image} {guard : Nat} {exps : Array Nat}
+theorem assembled_image {p : Params} {img : Encode.Image} {guard : Nat} {exps : Array Nat}
     {packets : ByteArray} {L : Limits} {info : Array DecodedComponent} {ps : Array Plane}
     {t : Spec.Decode.TileOut} (hc : EncCheckFacts p img) (rt : ReconstructedEncoderTile img t)
     (ha : JPEG2000.Decode.allocOutput L (encSIZ img) 0 = .ok (info, ps)) :

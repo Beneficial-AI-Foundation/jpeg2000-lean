@@ -79,6 +79,7 @@ import Spec.RoundTrip.Spec
 import Spec.RoundTrip
 import Spec.Resources
 import Spec.NativeResources
+import Spec.NativeEquiv
 import Spec.WidePlane
 import Spec.WideOutput
 import Spec.NativeOutput

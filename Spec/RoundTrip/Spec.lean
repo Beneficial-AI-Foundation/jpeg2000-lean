@@ -15,6 +15,45 @@ namespace JPEG2000.Spec.RoundTrip
 open JPEG2000 JPEG2000.Encode
 
 /-- Equality of the complete input image for the public spec decoder under admissible packet
+and output limits. Every decoded sample carries the reversible flag used by the public C9 sample relation. -/
+theorem spec_roundtrip_lossless_with_limits {L : Limits} {p : Params} {img : Encode.Image} {e : Encoded}
+    (he : encodeDetailed p img = .ok e) (hrev : p.reversible = true)
+    (fits : HeaderFits L p img e.guardBits e.exponents e.codestream.size)
+    (perBlock : 109 ≤ L.maxPassesPerCodeBlock)
+    (passes : (e.blocks.toList.map BlockInfo.numPasses).sum ≤ L.maxCodingPasses)
+    (work : img.comps.size * (img.width * img.height) ≤ L.maxWorkSamples)
+    (bytes : (img.comps.toList.map fun c => img.width * img.height *
+      Header.bytesPerSample c.depth).sum ≤ L.maxDecodedBytes) :
+    ∃ si, Spec.Decode.decode L e.codestream 0 = .ok si ∧
+      encoderImageOfSpec si = img ∧
+      ∀ i (hi : i < si.comps.size) sample, sample ∈ si.comps[i].samples → sample.reversible = true := by
+  obtain ⟨prec, infos, packets, hparse, out, ht, hd⟩ :=
+    reversible_tile_roundtrip_with_limits he hrev fits perBlock (passesBefore := 0)
+      (by simpa only [Nat.zero_add] using passes)
+  have checked := (encodeDetailed_shape he).check
+  have hc := checkFacts_of_ok checked
+  have area : img.width * img.height ≤ L.maxWorkSamples := by
+    apply Nat.le_trans _ work
+    simpa only [Nat.one_mul] using Nat.mul_le_mul_right (img.width * img.height) hc.comps_pos
+  obtain ⟨t, hr, shape, reversible⟩ := decodeTile_reconstructedEncoderTile_lossless
+    (data := Encode.Tier2.encodeTileLRCP prec) checked hrev work (out := out) (guard := e.guardBits)
+    (exps := e.exponents) (by
+    intro c hic
+    have hi : c < out.comps.length := by
+      rwa [hd.count, (encLayout_coding p img e.guardBits e.exponents).1]
+    have hrs : out.comps[c]? = some (out.comps.getD c []) := by
+      simp only [List.getD_eq_getElem?_getD, List.getElem?_eq_getElem hi, Option.getD_some]
+    exact hd.tileComp_reversibleRow_of_encodeDetailed packets fits hrs he hrev area _ _)
+  obtain ⟨info, ps, ha, placed⟩ := place_encTile_of_limits t checked
+    (Nat.lt_of_le_of_lt hc.width_le (by decide)) (Nat.lt_of_le_of_lt hc.height_le (by decide))
+    work bytes shape.count shape.shape
+  refine ⟨_, decode_encTile hc hparse ha ht hd.hdrLeft hr placed, assembled_image hc shape ha, ?_⟩
+  intro i hi sample hs
+  simp only [Array.size_zipWith, Array.size_map] at hi
+  have hit : i < t.comps.size := Nat.lt_of_lt_of_le hi (Nat.min_le_right ..)
+  exact reversible i hit sample (by simpa only [Array.getElem_zipWith, Array.getElem_map] using hs)
+
+/-- Equality of the complete input image for the public spec decoder under admissible packet
 and output limits. All intermediate tile, wavelet and display stages are discharged. -/
 theorem spec_roundtrip_with_limits {L : Limits} {p : Params} {img : Encode.Image} {e : Encoded}
     (he : encodeDetailed p img = .ok e) (hrev : p.reversible = true)
@@ -26,20 +65,8 @@ theorem spec_roundtrip_with_limits {L : Limits} {p : Params} {img : Encode.Image
       Header.bytesPerSample c.depth).sum ≤ L.maxDecodedBytes) :
     ∃ si, Spec.Decode.decode L e.codestream 0 = .ok si ∧
       encoderImageOfSpec si = img := by
-  apply spec_roundtrip_with_limits_of_tile he hrev fits perBlock passes work bytes
-  intro prec infos out hp ht
-  have checked := (encodeDetailed_shape he).check
-  have n := (checkFacts_of_ok checked).comps_pos
-  have area : img.width * img.height ≤ L.maxWorkSamples := by
-    apply Nat.le_trans _ work
-    simpa only [Nat.one_mul] using Nat.mul_le_mul_right (img.width * img.height) n
-  apply decodeTile_reconstructedEncoderTile checked hrev work
-  intro c hc
-  have hi : c < out.comps.length := by
-    rwa [ht.count, (encLayout_coding p img e.guardBits e.exponents).1]
-  have hrs : out.comps[c]? = some (out.comps.getD c []) := by
-    simp only [List.getD_eq_getElem?_getD, List.getElem?_eq_getElem hi, Option.getD_some]
-  exact ht.tileComp_reversibleRow_of_encodeDetailed hp fits hrs he hrev area _ _
+  obtain ⟨si, ok, image, _⟩ := spec_roundtrip_lossless_with_limits he hrev fits perBlock passes work bytes
+  exact ⟨si, ok, image⟩
 
 /-- The spec decodes every successful reversible encoding exactly at its computed resource limits. -/
 theorem spec_roundtrip {p : Params} {img : Encode.Image} {e : Encoded}

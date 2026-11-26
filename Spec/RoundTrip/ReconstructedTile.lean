@@ -103,7 +103,7 @@ private theorem layout_cells (p : Params) (img : Encode.Image) (guard : Nat) (ex
 /-- At zero reduction the spec reconstructs the full encoder tile whenever each
 tile-component call returns its reversible row and the combined planes fit the
 decoder's work limit. The component calls and work limit use the same limits. -/
-theorem decodeTile_reconstructedEncoderTile {L : Limits} {p : Params} {img : Encode.Image}
+theorem decodeTile_reconstructedEncoderTile_lossless {L : Limits} {p : Params} {img : Encode.Image}
     {guard : Nat} {exps : Array Nat} {data : ByteArray} {out : Spec.Tier2.TileOut}
     (checked : Encode.check Limits.default p img = .ok ()) (hrev : p.reversible = true)
     (work : img.comps.size * (img.width * img.height) ≤ L.maxWorkSamples)
@@ -112,7 +112,8 @@ theorem decodeTile_reconstructedEncoderTile {L : Limits} {p : Params} {img : Enc
         (Assemble.fracBitsOf (encSIZ img) (encMct p img) c) 0 (out.comps.getD c []) = .ok (pl, 0) ∧
       ReversibleRow img.width img.height pl ((reversibleRows p img).getD c #[])) :
     ∃ t, Decode.decodeTile L (encHeader p img guard exps data) 0 0 (some out) = .ok t ∧
-      ReconstructedEncoderTile img t := by
+      ReconstructedEncoderTile img t ∧
+      ∀ i (hi : i < t.comps.size) s, s ∈ t.comps[i].2.samples → s.reversible = true := by
   let g := encLayout p img guard exps
   let comp (i : Nat) := (encSIZ img).components.getD i default
   let recon (i : Nat) := Decode.tileComp L (g.comp i) (comp i).depth.toNat
@@ -132,7 +133,7 @@ theorem decodeTile_reconstructedEncoderTile {L : Limits} {p : Params} {img : Enc
   have hrevAt (i : Nat) (hi : i < img.comps.size) : rev i = true := by
     simp [rev, hgeom i hi, encGeom, encParams, hrev]
   obtain ⟨st, hdc, hs, hpair⟩ := display_loop (n := img.comps.size) qs make
-  refine ⟨⟨0, st.2⟩, ?_, hs, ?_, ?_⟩
+  refine ⟨⟨0, st.2⟩, ?_, ⟨hs, ?_, ?_⟩, ?_⟩
   · have hl := layout_ofHeader_enc p img guard exps data hc
     have hn := (encLayout_coding p img guard exps).1
     have hm : (encCoding p img guard exps).mctApplies (encSIZ img) = encMct p img := by
@@ -166,5 +167,27 @@ theorem decodeTile_reconstructedEncoderTile {L : Limits} {p : Params} {img : Enc
     rw [hpair i hi]
     simp only [make, hrevAt i (hs ▸ hi)]
     exact (hdisplay i (hs ▸ hi)).2.2.2
+  · intro i hi s hsamp
+    rw [hpair i hi] at hsamp
+    simp only [make, hrevAt i (hs ▸ hi), Decode.dcSpec, Array.mem_map] at hsamp
+    obtain ⟨cell, _, rfl⟩ := hsamp
+    rfl
+
+/-- At zero reduction the spec reconstructs the full encoder tile whenever each
+tile-component call returns its reversible row and the combined planes fit the
+decoder's work limit. The component calls and work limit use the same limits. -/
+theorem decodeTile_reconstructedEncoderTile {L : Limits} {p : Params} {img : Encode.Image}
+    {guard : Nat} {exps : Array Nat} {data : ByteArray} {out : Spec.Tier2.TileOut}
+    (checked : Encode.check Limits.default p img = .ok ()) (hrev : p.reversible = true)
+    (work : img.comps.size * (img.width * img.height) ≤ L.maxWorkSamples)
+    (rows : ∀ c < img.comps.size, ∃ pl,
+      Decode.tileComp L (encGeom p img guard exps) ((encSIZ img).components.getD c default).depth.toNat
+        (Assemble.fracBitsOf (encSIZ img) (encMct p img) c) 0 (out.comps.getD c []) = .ok (pl, 0) ∧
+      ReversibleRow img.width img.height pl ((reversibleRows p img).getD c #[])) :
+    ∃ t, Decode.decodeTile L (encHeader p img guard exps data) 0 0 (some out) = .ok t ∧
+      ReconstructedEncoderTile img t := by
+  obtain ⟨t, ht, shape, _⟩ := decodeTile_reconstructedEncoderTile_lossless
+    (data := data) checked hrev work rows
+  exact ⟨t, ht, shape⟩
 
 end JPEG2000.Spec.RoundTrip

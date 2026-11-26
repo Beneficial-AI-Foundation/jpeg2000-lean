@@ -1408,6 +1408,12 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.Tier1Wide.Segments.decodeRanges_equiv
 
 -- Phase 7, tasks 7.3d4b3 and 7.3d6c: spec-level image round trip
+#print axioms JPEG2000.Spec.RoundTrip.assembled_image
+#print axioms JPEG2000.Spec.RoundTrip.decodeTile_reconstructedEncoderTile_lossless
+#print axioms JPEG2000.Spec.RoundTrip.spec_roundtrip_lossless_with_limits
+#print axioms JPEG2000.Spec.RoundTrip.encoderImageOfNative_eq
+#print axioms JPEG2000.Spec.RoundTrip.native_roundtrip_of_c9
+#print axioms JPEG2000.Spec.RoundTrip.encode_native_roundtrip_of_c9
 #print axioms JPEG2000.Spec.RoundTrip.spec_roundtrip_with_limits
 #print axioms JPEG2000.Spec.RoundTrip.spec_roundtrip
 #print axioms JPEG2000.Spec.RoundTrip.spec_roundtrip_default
