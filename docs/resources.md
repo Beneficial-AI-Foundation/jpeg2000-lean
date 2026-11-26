@@ -342,6 +342,26 @@ It applies even when no pixels are produced. The validator alone charges at
 most `3*d + 2*n` and does not allocate its channel-count table until all
 references pass the first scan.
 
+At `Color.resolve`, `resolve_layout_work` bounds the mapped channel count by
+`maxComponents`. Recognised enumerated and ICC colour spaces request at most
+15 colours, including the ICC `FCLR` signature. An unknown colour space uses
+the CDEF count. `retained_cdef` traces the parsed unsigned 16-bit count through
+native decoding. Thus `image_layout_work` gives a limit-only bound at the
+display API with `n = maxComponents` and `d = m = 65535`. The sharper bound
+above applies when the actual record count is known. Early native and mapping
+errors incur zero layout charge. A layout error propagates unchanged through
+the public decoder.
+
+`GeometryInit.image_geometry_work` and `decode_geometry_work` sum header and
+tile geometry through the first failing stage. Write `T = maxTiles`,
+`C = maxComponents`, `B = maxCodeBlocks`, `D = maxDecompLevels + 1` and
+`P = maxPrecincts`. One tile layout costs at most `A = 2 + T + C*(6+T)`;
+packet geometry costs at most `I = C*(5+D*(17+P*(78+87*B)))`. The total is
+at most `4*T + B*(5+5*D) + T*(A+I+A)` visits, descriptor constructions and
+logical entry reservations or initializations. This includes building arrays
+before the aggregate precinct or block check rejects them. The returned
+store carries bounded precinct, band and code-block counts at every resolution.
+
 ### Maintenance
 
 The statements name checked quantities (`GeometryWithin` mirrors `checkGeometry`;

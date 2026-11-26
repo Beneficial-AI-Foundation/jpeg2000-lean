@@ -1758,3 +1758,15 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.ColorResources.cdef_work
 #print axioms JPEG2000.Spec.ColorResources.associations_work
 #print axioms JPEG2000.Spec.ColorResources.layout_work
+#print axioms JPEG2000.Spec.ColorResources.retained_cdef
+#print axioms JPEG2000.Spec.ColorResources.resolve_layout_work
+#print axioms JPEG2000.Spec.ColorResources.decode_layout_error
+#print axioms JPEG2000.Spec.ColorResources.image_layout_work
+
+-- Header and packet geometry on the actual public decoding prefix.
+#print axioms JPEG2000.Spec.Resources.GeometryInit.parsed_init_work
+#print axioms JPEG2000.Spec.Resources.GeometryInit.init_index_rows
+#print axioms JPEG2000.Spec.Resources.GeometryInit.decoded_store_geometry
+#print axioms JPEG2000.Spec.Resources.GeometryInit.parse_geometry_work
+#print axioms JPEG2000.Spec.Resources.GeometryInit.decode_geometry_work
+#print axioms JPEG2000.Spec.Resources.GeometryInit.image_geometry_work

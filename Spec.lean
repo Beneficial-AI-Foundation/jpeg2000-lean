@@ -125,6 +125,7 @@ import Spec.Resources.WaveletCost.Wide
 import Spec.Resources.WaveletCost
 import Spec.Resources.HeaderSort
 import Spec.Resources.HeaderWork
+import Spec.Resources.GeometryInit
 import Spec.Tier1Equiv.Basic
 import Spec.Tier1Equiv.Rel
 import Spec.Tier1Equiv.Nb
@@ -144,6 +145,7 @@ import Spec.IrreversibleDispatch
 import Spec.ColorResources.Interleave
 import Spec.ColorResources.ChannelSort
 import Spec.ColorResources.Layout
+import Spec.ColorResources.ResolveWork
 import Spec.ColorResources.Mapping
 import Spec.ColorResources.Palette
 import Spec.ColorResources.Views

@@ -1,10 +1,11 @@
 import Spec.NativeResources
 
 /-!
-# Retained JP2 palette table (Plan.md §§3–5, 7, S3; T.800 I.5.3.4)
+# Retained JP2 palette and channel-definition tables (Plan.md §§3–5, 7, S3; T.800 I.5.3.4)
 
 The raw header retains the entire parsed row-major table even when mapping is disabled.
 Its UInt64 entries and column tags are counted separately from each expanded lookup column.
+The retained CDEF cardinality comes from its unsigned 16-bit record count.
 -/
 
 namespace JPEG2000.Spec.ColorResources
@@ -82,20 +83,38 @@ private theorem parsed {L b p} (ok : parsePclr L b = .ok p) : PaletteWithin L p 
     have := npc.toNat_lt; omega
   · simpa [hb'] using he'
 
-private def Good (L : Limits) (p : Option Palette) : Prop :=
-  ∀ v, p = some v → PaletteWithin L v
+private theorem parsed_cdef {b defs} (ok : parseCdef b = .ok defs) : defs.size ≤ 65535 := by
+  unfold parseCdef at ok
+  obtain ⟨⟨n,r⟩,_,ok⟩ := Tier2Equiv.bind_ok ok
+  dsimp only at ok
+  split at ok <;> try contradiction
+  split at ok <;> try contradiction
+  obtain ⟨⟨es,r'⟩,he,ret⟩ := Tier2Equiv.bind_ok ok
+  cases ret
+  have len : es.size = n.toNat := by simpa using many _ _ _ _ _ he
+  have := n.toNat_lt
+  change es.size ≤ 65535
+  omega
 
-private theorem add {L a b out} (good : Good L a.pclr) (ok : addHeaderBox L a b = .ok out) :
-    Good L out.pclr := by
+private def Good (L : Limits) (p : Option Palette) (defs : Option (Array ChannelDef)) : Prop :=
+  (∀ v, p = some v → PaletteWithin L v) ∧ (defs.getD #[]).size ≤ 65535
+
+private theorem empty_good (L : Limits) : Good L none none := by simp [Good]
+
+private theorem add {L a b out} (good : Good L a.pclr a.cdef) (ok : addHeaderBox L a b = .ok out) :
+    Good L out.pclr out.cdef := by
   unfold addHeaderBox at ok
   repeat' first
     | (split at ok <;> try contradiction)
     | (obtain ⟨_, _, ok⟩ := Tier2Equiv.bind_ok ok)
   all_goals cases ok
-  all_goals first | exact good | (intro v eq; cases eq; apply parsed; assumption)
+  all_goals first
+    | exact good
+    | exact ⟨fun v eq => by cases eq; apply parsed; assumption,good.2⟩
+    | exact ⟨good.1,parsed_cdef (by assumption)⟩
 
 private theorem headerLoop_good {L : Limits} :
-    ∀ k r a n out, Good L a.pclr → headerLoop L r a n k = .ok out → Good L out.1.pclr
+    ∀ k r a n out, Good L a.pclr a.cdef → headerLoop L r a n k = .ok out → Good L out.1.pclr out.1.cdef
   | 0, r, a, n, out, g, ok => by
     simp only [headerLoop] at ok; split at ok <;> cases ok; exact g
   | k+1, r, a, n, out, g, ok => by
@@ -107,17 +126,17 @@ private theorem headerLoop_good {L : Limits} :
       obtain ⟨a', ha, ok⟩ := Tier2Equiv.bind_ok ok
       exact headerLoop_good k _ _ _ _ (add g ha) ok
 
-private theorem jp2h {L b n h} (ok : parseJp2h L b n = .ok h) : Good L h.1.pclr := by
+private theorem jp2h {L b n h} (ok : parseJp2h L b n = .ok h) : Good L h.1.pclr h.1.cdef := by
   unfold parseJp2h at ok
   obtain ⟨_, _, ok⟩ := Tier2Equiv.bind_ok ok
   obtain ⟨⟨a,n'⟩, ha, ok⟩ := Tier2Equiv.bind_ok ok
-  have g := headerLoop_good _ _ _ _ _ (by intro v hv; cases hv) ha
+  have g := headerLoop_good _ _ _ _ _ (empty_good L) ha
   dsimp only at ok
   repeat' first | (split at ok <;> try contradiction) | (obtain ⟨_, _, ok⟩ := Tier2Equiv.bind_ok ok)
   all_goals cases ok; exact g
 
 private theorem top_good {L : Limits} :
-    ∀ k r h n out, Good L (h.bind Jp2Header.pclr) → topLoop L r h n k = .ok out → Good L out.1.pclr
+    ∀ k r h n out, Good L (h.bind Jp2Header.pclr) (h.bind Jp2Header.cdef) → topLoop L r h n k = .ok out → Good L out.1.pclr out.1.cdef
   | 0, r, h, n, out, g, ok => by simp only [topLoop] at ok; split at ok <;> contradiction
   | k+1, r, h, n, out, g, ok => by
     rw [topLoop] at ok
@@ -135,13 +154,13 @@ private theorem top_good {L : Limits} :
       · exact top_good k _ _ _ _ g ok
 
 private theorem container_good {L data c} (ok : parseFile L data = .ok c) :
-    Good L (c.header.bind Jp2Header.pclr) := by
+    Good L (c.header.bind Jp2Header.pclr) (c.header.bind Jp2Header.cdef) := by
   obtain ⟨a, aux, h⟩ := Tier2Equiv.bind_ok ok
   unfold parseFileAux at aux
   obtain ⟨_, _, aux⟩ := Tier2Equiv.bind_ok aux
   split at h <;> cases h
   split at aux
-  · cases aux; intro v hv; cases hv
+  · cases aux; exact empty_good L
   · dsimp only at aux
     split at aux <;> try contradiction
     obtain ⟨⟨sig,r⟩, _, aux⟩ := Tier2Equiv.bind_ok aux
@@ -153,12 +172,13 @@ private theorem container_good {L data c} (ok : parseFile L data = .ok c) :
     obtain ⟨ft, _, aux⟩ := Tier2Equiv.bind_ok aux
     obtain ⟨⟨h,cs⟩, top, aux⟩ := Tier2Equiv.bind_ok aux
     cases aux
-    exact top_good _ _ _ _ _ (by intro v hv; cases hv) top
+    exact top_good _ _ none _ _ (empty_good L) top
 
 /-- The full original JP2 palette, including columns not selected for display, is
 bounded even when the caller disables palette expansion. -/
 private theorem retained_header {L data h} (ok : Header.parse L data = .ok h) :
-    Good L ((h.container.bind Container.header).bind Jp2Header.pclr) := by
+    Good L ((h.container.bind Container.header).bind Jp2Header.pclr)
+      ((h.container.bind Container.header).bind Jp2Header.cdef) := by
   obtain ⟨c, hc, ok⟩ := Tier2Equiv.bind_ok ok
   unfold Header.parseCodestreamIn at ok
   obtain ⟨r, _, ok⟩ := Tier2Equiv.bind_ok ok
@@ -179,6 +199,15 @@ theorem retained_palette {L data reduce d} (ok : decodeCodestream L data reduce 
   obtain ⟨_, _, tail⟩ := Tier2Equiv.bind_ok ok
   obtain ⟨h, hp, _⟩ := Tier2Equiv.bind_ok tail
   rw [(CodestreamDispatch.native_geometry hp ok).1]
-  exact retained_header hp
+  exact (retained_header hp).1
+
+/-- The raw header retained by native decoding has at most 65535 CDEF records,
+including when subsequent display colour resolution rejects these records. -/
+theorem retained_cdef {L data reduce d} (ok : decodeCodestream L data reduce = .ok d) :
+    (((d.header.container.bind Container.header).bind Jp2Header.cdef).getD #[]).size ≤ 65535 := by
+  obtain ⟨_, _, tail⟩ := Tier2Equiv.bind_ok ok
+  obtain ⟨h, hp, _⟩ := Tier2Equiv.bind_ok tail
+  rw [(CodestreamDispatch.native_geometry hp ok).1]
+  exact (retained_header hp).2
 
 end JPEG2000.Spec.ColorResources
