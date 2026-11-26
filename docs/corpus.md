@@ -268,21 +268,26 @@ OpenJPEG's float 9/7, the ±1 measured on every T.803 stream in task 5.5), +1 fo
 conversion (task 6.1). An entry's `"reduce": k` makes both decoders discard k resolution
 levels (`issue19517-8`: 2). Images whose reduced area is above `--max-mpx` (40) are skipped.
 
-Result (2026-11-25, OpenJPEG 2.5.3, after task 6.5): **39/42 within tolerance** (every
-reversible component bit-exact, every 9/7 component peak ≤ 1, MSE ≤ 0.0012), 3 known
-deviations, 0 failures, 0 skipped (`issue19517-8` compared at reduce 2, codestream and jp2
-levels bit-exact). `--jp2`: 9/9. The known deviations, each recorded with
-its evidence in the entry's `known_deviations`:
+The full task 6.5 run with OpenJPEG 2.5.3 had 39/42 PDF streams within tolerance, three
+known deviations and no skips. All nine JP2 conformance files passed. Task 6.6 rechecked
+the two corrected streams and the even-origin control. Together these runs account for
+**41/42 PDF streams within tolerance**.
 
-* `bug_jpx-15` — OpenJPEG 2.5.3 aborts (`munmap_chunk(): invalid pointer`) on two
-  zero-length tile-parts; with them removed it decodes bit-identically to our decode of
-  the original.
-* `issue12213-16` (jp2 level only) — malformed `pclr` (4-bit columns holding 8-bit
-  values): we keep the low 4 bits, OpenJPEG the byte. The PDF's `/Indexed` colour space
-  overrides the palette, and the index plane is bit-exact.
-* `jpx_subsampling-11` — odd image origin with 2x2 chroma: chroma alignment on row 0 and
-  column 0 differs from OpenJPEG's `sycc420_to_rgb` (the 6.1 decision: replication on the
-  reference grid); the same data at origin 0 (`jpx_subsampling-10`) agrees exactly.
+* `issue12213-16` has two comparisons. The bare codestream yields the 4-bit index plane.
+  The JP2 comparison applies the palette and compares the three channel planes before
+  display scaling. OpenJPEG writes unsigned PGX with declared depth 4 and full stored
+  palette bytes, including 191 and 255. Both comparisons are bit-exact. In the PDF the
+  image dictionary supplies its own `/Indexed` colour space.
+* `jpx_subsampling-11` and its even-origin control `jpx_subsampling-10` are bare
+  codestreams. The comparison uses RGB after OpenJPEG's inferred 4:2:0 sYCC conversion.
+  At origin (1, 1), row 0 takes raw zero Cb and Cr before the chroma offset is subtracted.
+  At column 0 the first row of each subsequent pair takes raw zero and the second row
+  takes the first stored chroma sample. The final unpaired row also starts with raw zero.
+  All three RGB planes are bit-exact for both origins. Ordinary component upsampling
+  still replicates the nearest edge sample.
+* The remaining manifest exception is `bug_jpx-15`. OpenJPEG 2.5.3 aborts
+  (`munmap_chunk(): invalid pointer`) on two zero-length tile-parts. Removing those
+  tile-parts lets it decode bit-identically to our decode of the original.
 
 CI (Linux) runs the fetch, `extract-pdf-jpx.py` and `diff-images.py`; it fails on any
 deviation not recorded in the manifest.

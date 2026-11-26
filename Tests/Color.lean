@@ -81,6 +81,15 @@ def paletteTests : IO Nat := do
   f := f + (← expect "palette: formats"
     ((ok? r).map (·.toList.map fun c => (c.format.depth, c.format.signed))
       == some [(8, true), (8, false)]))
+  let fourBit : Palette :=
+    { ne := 3, npc := 2, bits := #[3, 0x83], entries := #[0x0F, 0x07, 0xBF, 0x08, 0xFF, 0xF3] }
+  let mapped := applyPalette {} fourBit #[⟨0, 1, 0⟩, ⟨0, 1, 1⟩] #[ch8 3 1 [0, 1, 2]]
+  f := f + (← expect "4-bit palette: full unsigned bytes and sign extension at bit 3"
+    (mapped.toOption.map (·.toList.map fun c => (c.format.depth, c.format.signed, vals c.plane))
+      == some [(4, false, [15, 191, 255]), (4, true, [7, -8, 3])]))
+  f := f + (← expect "12-bit unsigned palette: full stored word" (entryValue 11 0xEF34 == 0xEF34))
+  f := f + (← expect "31-bit unsigned palette: stored value must fit the sample plane"
+    (isUnsupported (checkPalette { ne := 1, npc := 1, bits := #[30], entries := #[0x80000000] })))
   let r2 := applyPalette {} pal #[⟨1, 0, 0⟩, ⟨0, 1, 0⟩] #[idx, other]
   f := f + (← expect "palette: direct + palette"
     ((ok? r2).map (·.toList.map (vals ·.plane)) == some [[5, 6, 7, 8], [10, 10, 30, 40]]))
@@ -273,13 +282,24 @@ def syccTests : IO Nat := do
       ([128, 128, 0, 255].getD ci 0)).2.2
   f := f + (← expect "sYCC 4:2:2 B = OpenJPEG loop"
     ((ok? res2).map (fun (_, _, b) => vals b.plane) == some exp2))
-  -- Odd origin XOsiz = 1: luma at grid 1, 2, 3; chroma (dx 2) at grid 2, 4. Luma 1 takes
-  -- chroma sample 0 (replicated; OpenJPEG feeds raw 0), luma 2 and 3 share chroma sample 0.
-  let res3 := syccToRgb {} 1 0 (ch8 3 1 [100, 100, 100]) (ch8 2 1 [200, 10] 2 1)
-    (ch8 2 1 [128, 128] 2 1)
-  let b3 := (opjSycc 128 255 100 200 128).2.2
-  f := f + (← expect "sYCC odd origin replicates"
-    ((ok? res3).map (fun (_, _, b) => vals b.plane) == some [b3, b3, b3]))
+  -- Constant luma isolates chroma selection. Zero denotes the raw Cb/Cr inputs to the
+  -- matrix, so its result differs from both neutral chroma and a replicated edge sample.
+  let checkEdge (ox oy dy : Nat) (samples expected : List Int) := do
+    let h := expected.length / 4
+    let c := ch8 2 (samples.length / 2) samples 2 dy
+    let res := syccToRgb {} ox oy (ch8 4 h (List.replicate (4 * h) 128)) c c
+    let rgb := expected.map fun v => opjSycc 128 255 128 v v
+    expect s!"sYCC 2×{dy} chroma at ({ox}, {oy})"
+      (res.toOption.map (fun (r, g, b) => (vals r.plane, vals g.plane, vals b.plane)) ==
+        some (rgb.map (·.1), rgb.map (·.2.1), rgb.map (·.2.2)))
+  f := f + (← checkEdge 1 1 1 [90, 110, 140, 160]
+    [0, 90, 90, 110, 0, 140, 140, 160])
+  f := f + (← checkEdge 1 0 2 [90, 110]
+    [0, 90, 90, 110, 90, 90, 90, 110])
+  f := f + (← checkEdge 0 1 2 [90, 110]
+    [0, 0, 0, 0, 90, 90, 110, 110, 90, 90, 110, 110])
+  f := f + (← checkEdge 1 1 2 [90, 110, 140, 160]
+    [0, 0, 0, 0, 0, 90, 90, 110, 90, 90, 90, 110, 0, 140, 140, 160])
   f := f + (← expect "sYCC: depth 32 unsupported"
     (isUnsupported (syccToRgb {} 0 0 { ch8 1 1 [0] with format := { depth := 32, signed := false } }
       (ch8 1 1 [0]) (ch8 1 1 [0]))))
