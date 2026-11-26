@@ -11,6 +11,30 @@ source read used by the ordinary codestream tile writer.
 
 namespace JPEG2000.Spec.Resources
 
+private theorem parsedBlocks {L : Limits} {data : ByteArray} {h : Header.Header} {t : Nat}
+    {g : Progression.Layout} {coding : Header.Coding} (parsed : Header.parse L data = .ok h)
+    (layout : Progression.Layout.ofHeader h t = .ok (g,coding)) (red : Nat) (i : Fin g.numComps) :
+    WideArithmetic.BlockBounds data (g.comp i).params (2^292-1) 291 := by
+  intro r b cb cs accepted cell mem
+  have params := (WideHeaderBounds.parsed_component_bounds parsed layout i red).1
+  obtain ⟨mag, plane, _⟩ := (Tier1Work.parsed_cells params data r b cb cs accepted).2 cell mem
+  exact ⟨by omega, plane⟩
+
+/-- Each successful component callback returns samples of bounded signed width,
+including earlier components of a tile that later rejects. -/
+theorem component_signed_width {L : Limits} {data : ByteArray} {h : Header.Header} {t : Nat}
+    {g : Progression.Layout} {coding : Header.Coding} (parsed : Header.parse L data = .ok h)
+    (layout : Progression.Layout.ofHeader h t = .ok (g,coding)) (i : Fin g.numComps)
+    (store : Option JPEG2000.Tier2.Packet.TileCodeBlocks) (red : Nat)
+    {p : JPEG2000.TileDispatch.Spatial}
+    (ok : JPEG2000.TileDispatch.component L h data g coding store i red = .ok p) :
+    ∀ j, (p.source.read j).natAbs.log2 + 2 ≤ 374 + 540 * L.maxDecompLevels := by
+  obtain ⟨levels, fits⟩ := WideArithmetic.parsed_spatial parsed layout i store red
+    (parsedBlocks parsed layout red i) ok
+  intro j
+  have bits := WideArithmetic.magnitude_bits (fits j)
+  split at bits <;> omega
+
 /-- Every post-MCT source of a parsed tile has a bounded signed width before placement. -/
 theorem parsed_tile_signed_width {L : Limits} {data : ByteArray} {h : Header.Header} {t : Nat}
     {g : Progression.Layout} {coding : Header.Coding} (parsed : Header.parse L data = .ok h)
@@ -19,13 +43,8 @@ theorem parsed_tile_signed_width {L : Limits} {data : ByteArray} {h : Header.Hea
     {out : Array JPEG2000.NativeOutput.Source}
     (ok : JPEG2000.TileDispatch.tile L h data g coding store red = .ok out) :
     ∀ s ∈ out, ∀ i, (s.read i).natAbs.log2 + 2 ≤ 395 + 540 * L.maxDecompLevels := by
-  have blocks (i : Fin g.numComps) : WideArithmetic.BlockBounds data (g.comp i).params (2^292-1) 291 := by
-    intro r b cb cs accepted cell mem
-    have params := (WideHeaderBounds.parsed_component_bounds parsed layout i red).1
-    obtain ⟨mag, plane, _⟩ := (Tier1Work.parsed_cells params data r b cb cs accepted).2 cell mem
-    exact ⟨by omega, plane⟩
   intro s hs i
-  have bits := WideArithmetic.magnitude_bits (WideArithmetic.parsed_tile parsed layout store red blocks ok s hs i)
+  have bits := WideArithmetic.magnitude_bits (WideArithmetic.parsed_tile parsed layout store red (parsedBlocks parsed layout red) ok s hs i)
   omega
 
 /-- Bound each centred sample returned by the public traversal, including a missing

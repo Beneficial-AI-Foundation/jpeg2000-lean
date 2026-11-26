@@ -1,4 +1,5 @@
 import Spec.Resources.TileColorLoops
+import Spec.Resources.TileArithmetic
 import Spec.NativeResources
 import Spec.NativePlacement
 import Spec.TileDispatch
@@ -1103,5 +1104,89 @@ theorem placement_read_domain {L : Limits} {data : ByteArray} {h : Header} {t re
   have linear := linear_sum out.sources.toList area 0 3
   simp only [Nat.zero_add,Nat.zero_mul,eq] at linear
   exact ⟨eq,linear ▸ Nat.mul_le_mul_left 3 (NativeResources.centeredTile_work ok).2⟩
+
+
+/-- Byte count for one signed-magnitude integer, rounded up to a whole byte. -/
+def signedBytes (x : Int) := (x.natAbs.log2 + 2 + 7) / 8
+
+/-- Maximum signed-magnitude bytes in a retained native component cell before MCT. -/
+def componentBytes (L : Limits) := (374 + 540*L.maxDecompLevels + 7) / 8
+
+/-- Packed backing keeps its stored bytes. For a wide vector, sum the rounded
+signed-magnitude sizes of its actual integer cells. -/
+def Backing.logicalBytes : Backing → Nat
+  | .compact p => p.data.size
+  | .wide w h v => (List.ofFn (fun i : Fin (w*h) => signedBytes (v.get i))).sum
+
+private theorem cappedSum (xs : List Nat) (n : Nat) (each : ∀ x ∈ xs, x ≤ n) :
+    xs.sum ≤ n*xs.length := by
+  induction xs with
+  | nil => simp
+  | cons x xs ih =>
+    have a := each x (by simp)
+    have b := ih (fun y hy => each y (by simp [hy]))
+    simp only [List.sum_cons, List.length_cons, Nat.mul_succ]
+    omega
+
+private theorem logical_le (L : Limits) (b : Backing)
+    (bits : ∀ j, (b.source.read j).natAbs.log2+2 ≤ 374+540*L.maxDecompLevels) :
+    b.logicalBytes ≤ b.payload (componentBytes L) := by
+  cases b with
+  | compact p => exact Nat.le_refl _
+  | wide w h v =>
+    simp only [Backing.logicalBytes,Backing.payload,Vector.size_toArray]
+    apply Nat.le_trans (cappedSum _ (componentBytes L) ?_)
+    · simp [List.length_ofFn]
+    intro n mem
+    obtain ⟨i,rfl⟩ := List.mem_ofFn.mp mem
+    have width := bits i
+    change (v.get i).natAbs.log2 + 2 ≤ _ at width
+    unfold signedBytes componentBytes
+    omega
+
+/-- Applies to a completed component even when the next component rejects:
+a direct physical backing exists and its logical integer bytes fit the area charge. -/
+theorem component_backing_bytes {L : Limits} {h : Header} {data : ByteArray} {t red : Nat}
+    {g : Progression.Layout} {c : Coding} {a : Option JPEG2000.Tier2.Packet.TileCodeBlocks}
+    (parsed : Header.parse L data = .ok h) (layout : Progression.Layout.ofHeader h t = .ok (g,c))
+    (i : Fin g.numComps) {p : Spatial} (ok : JPEG2000.TileDispatch.component L h data g c a i red = .ok p) :
+    ∃ b : Backing, b.source = p.source ∧ b.logicalBytes ≤ (4+componentBytes L)*area p.source := by
+  obtain ⟨b,eq⟩ := direct_component ok
+  have bits := Resources.component_signed_width parsed layout i a red ok
+  rw [← eq] at bits ⊢
+  exact ⟨b,rfl, Nat.le_trans (logical_le L b bits) (backing_payload _ b)⟩
+
+private theorem logicalSum (L : Limits) (bs : List Backing)
+    (each : ∀ b ∈ bs, b.logicalBytes ≤ b.payload (componentBytes L)) :
+    (bs.map Backing.logicalBytes).sum ≤ (bs.map (Backing.payload (componentBytes L))).sum := by
+  induction bs with
+  | nil => exact Nat.le_refl _
+  | cons b bs ih =>
+    exact Nat.add_le_add (each b (by simp)) (ih (fun v hv => each v (by simp [hv])))
+
+/-- The direct predecessors retained by a successfully centred tile have a
+combined logical payload bounded in bytes, including wide cells at their actual
+signed widths and the original sources shared by a lazy RCT reader. -/
+theorem centeredTile_backing_bytes {L : Limits} {h : Header} {data : ByteArray} {t red : Nat}
+    {a : Option JPEG2000.Tier2.Packet.TileCodeBlocks} {b : Option Spec.Tier2.TileOut}
+    {out : JPEG2000.Decode.CenteredTile} (parsed : Header.parse L data = .ok h)
+    (stores : TileDispatch.Packets L h data t a b) (ok : JPEG2000.Decode.centeredTile L h data red t a = .ok out) :
+    ∃ (ps : Array Spatial) (bs : List Backing),
+      (preColourMeter (componentBytes L) L h data out.layout out.coding a red).1 = .ok ps ∧
+      bs.map Backing.source = ps.toList.map Spatial.source ∧
+      (bs.map Backing.logicalBytes).sum ≤ (4+componentBytes L)*L.maxWorkSamples ∧
+      ∀ s ∈ out.sources, Reader ps s := by
+  obtain ⟨ps,run,_,_,⟨bs,eq,cap⟩,reads⟩ := centeredTile_reads (componentBytes L) parsed stores ok
+  refine ⟨ps,bs,run,eq,Nat.le_trans (logicalSum L bs ?_) cap,reads⟩
+  have layout := (NativeResources.centeredTile_work ok).1
+  rw [pre_value] at run
+  have widths := loop_members _ (fun p : Spatial => ∀ j, (p.source.read j).natAbs.log2+2 ≤
+    374 + 540*L.maxDecompLevels) (fun i hi _ h => Resources.component_signed_width parsed layout ⟨i,hi⟩ a red h) run
+  intro v hv
+  have member : v.source ∈ ps.toList.map Spatial.source := eq ▸ List.mem_map.mpr ⟨v,hv,rfl⟩
+  obtain ⟨p,hp,src⟩ := List.mem_map.mp member
+  have bits := widths p (by simpa using hp)
+  rw [src] at bits
+  exact logical_le L v bits
 
 end JPEG2000.Spec.Resources.TileColorPlacement

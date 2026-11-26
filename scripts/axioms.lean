@@ -1714,3 +1714,8 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.Resources.TileColorPlacement.centeredTile_reads
 #print axioms JPEG2000.Spec.Resources.TileColorPlacement.native_tile_work
 #print axioms JPEG2000.Spec.Resources.TileColorPlacement.placement_read_domain
+
+-- Signed-magnitude byte payloads of retained native component data.
+#print axioms JPEG2000.Spec.Resources.component_signed_width
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.component_backing_bytes
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.centeredTile_backing_bytes

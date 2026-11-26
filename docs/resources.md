@@ -195,6 +195,16 @@ The placement continuation alone costs at most `(2+S)*C + 18*W`.
 by `3*W` over the tile. Component reconstruction before colour, the output
 backing and the later JP2 display stage have separate bounds.
 
+For component rasters retained before MCT, `component_signed_width` proves
+a bound of `374 + 540*maxDecompLevels` signed bits per wide sample. This also
+applies to a completed component when a later component fails.
+`centeredTile_backing_bytes` sums the packed bytes and the actual rounded
+signed-magnitude bytes of the wide cells in the retained predecessor rasters.
+Their total is at most `(4 + ceil((374 + 540*maxDecompLevels)/8))*W`, with
+2,207 bytes per wide sample at the default depth limit. This logical payload
+counts shared lazy RCT predecessors once. Runtime object and allocator overhead
+are outside the byte measure.
+
 ### Colour, replication and display
 
 `JPEG2000.Spec.ColorResources.decode_resources` applies to every successful public
