@@ -1504,3 +1504,5 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.IrreversibleDispatch.sources_c8
 #print axioms JPEG2000.Spec.IrreversibleDispatch.tile_c8
 #print axioms JPEG2000.Spec.IrreversibleDispatch.parsed_tile_c8
+
+#print axioms JPEG2000.Spec.NativeTraversal.decode_of_stages
