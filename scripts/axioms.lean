@@ -1237,3 +1237,12 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.RoundTrip.encodeCodeBlock_counts
 #print axioms JPEG2000.Spec.RoundTrip.blockOK_encodeCodeBlock
 #print axioms JPEG2000.Spec.RoundTrip.width_le_iff_length_lt
+
+-- Phase 7, task 7.3f4: encoder and decoder precinct geometry
+#print axioms JPEG2000.Spec.RoundTrip.encodeComp_shape
+#print axioms JPEG2000.Spec.RoundTrip.ReversibleTilePackets.tileShape
+#print axioms JPEG2000.Spec.RoundTrip.encodeComp_precinctGeometry
+#print axioms JPEG2000.Spec.RoundTrip.encodeComp_precReady
+#print axioms JPEG2000.Spec.RoundTrip.initPrecincts_shape
+#print axioms JPEG2000.Spec.RoundTrip.initPrecincts_geometry
+#print axioms JPEG2000.Spec.RoundTrip.ReversibleTilePackets.precReady

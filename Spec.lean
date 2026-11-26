@@ -55,6 +55,7 @@ import Spec.RoundTrip.Header
 import Spec.RoundTrip.Layout
 import Spec.RoundTrip.TileBytes
 import Spec.RoundTrip.BlockBounds
+import Spec.RoundTrip.PrecinctShape
 import Spec.RoundTrip
 import Spec.Resources
 import Spec.Resources.BlockPasses
