@@ -1605,4 +1605,61 @@ theorem ppmChunks_fuel (L : Limits) (data : ByteArray) (loc : Location) (f g : N
         have hb := (takeRanges_account _ _ _ _ _ ht).2.1
         apply ih <;> simp only [Array.size_push] <;> omega
 
+private def measuredDup : List UInt8 → Option UInt8 × Nat
+  | [] | [_] => (none, 0)
+  | a :: b :: rest =>
+    if a == b then (some a, 1)
+    else
+      let next := measuredDup (b :: rest)
+      (next.1, next.2+1)
+
+private theorem duplicate_checks (xs : List UInt8) :
+    (measuredDup xs).1 = TilePart.firstDup xs ∧ (measuredDup xs).2 ≤ xs.length := by
+  induction xs with
+  | nil => exact ⟨rfl, Nat.zero_le _⟩
+  | cons a xs ih =>
+    cases xs with
+    | nil => exact ⟨rfl, Nat.zero_le _⟩
+    | cons b rest =>
+      simp only [measuredDup, TilePart.firstDup]
+      split
+      · exact ⟨rfl, by simp⟩
+      · exact ⟨ih.1, Nat.succ_le_succ ih.2⟩
+
+/-- Charge sorting comparisons, one key-list entry per pointer, and each adjacent
+key test up to and including the first duplicate. -/
+def measuredSortUnique {α : Type} (key : α → UInt8) (loc : Location)
+    (what : String) (xs : Array α) : Except Error (Array α) × Nat :=
+  let sorted := measuredSort (fun a b => key a < key b) xs
+  let keys := sorted.1.toList.map key
+  let duplicates := measuredDup keys
+  let result := match duplicates.1 with
+    | some z => .error (.malformed loc s!"duplicate {what} = {z}")
+    | none => .ok sorted.1
+  (result, sorted.2 + keys.length + duplicates.2)
+
+/-- The TLM, PPM, PPT and PLT sort uses at most `n*n + 2*n` charged operations
+for `n` entries and preserves the exact result or duplicate-key diagnostic. -/
+theorem sortUnique_work {α : Type} (key : α → UInt8) (loc : Location)
+    (what : String) (xs : Array α) :
+    let m := measuredSortUnique key loc what xs
+    m.1 = TilePart.sortUnique key loc what xs ∧ m.2 ≤ xs.size * xs.size + 2*xs.size := by
+  let lt := fun a b => decide (key a < key b)
+  obtain ⟨sortEq, sortCost⟩ := measuredSort_work lt xs
+  have len : (measuredSort lt xs).1.size = xs.size :=
+    sortEq ▸ (insertionSort_perm lt xs).size_eq
+  obtain ⟨dupEq, dupCost⟩ := duplicate_checks ((measuredSort lt xs).1.toList.map key)
+  simp only [List.length_map, Array.length_toList, len] at dupCost
+  unfold measuredSortUnique TilePart.sortUnique
+  change _ ∧ (measuredSort lt xs).2 + (((measuredSort lt xs).1.toList.map key).length) +
+    (measuredDup ((measuredSort lt xs).1.toList.map key)).2 ≤ _
+  constructor
+  · simp only [lt] at sortEq dupEq
+    dsimp only
+    rw [dupEq, sortEq]
+    cases TilePart.firstDup ((xs.insertionSort fun a b => key a < key b).toList.map key) <;> rfl
+  · simp only [List.length_map, Array.length_toList, len]
+    omega
+
+
 end JPEG2000.Spec.Resources.HeaderWork

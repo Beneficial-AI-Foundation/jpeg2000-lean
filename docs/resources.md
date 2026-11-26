@@ -77,6 +77,12 @@ tile-part loop fuel theorems preserve the error on a rejecting prefix. A
 completed box advances by at least eight bytes, a marker visit by at least two,
 and a completed tile-part edge by at least four.
 
+`HeaderWork.sortUnique_work` covers sorting the TLM, PPM, PPT and PLT byte keys
+before checking for duplicates. For `n` records, the pinned insertion sort calls
+its comparator at most `n²` times. Including the projected key list and adjacent
+duplicate checks gives at most `n² + 2n` charged operations. The measured
+routine returns the same sorted array or the same first-duplicate diagnostic.
+
 After geometry admission, `checkWork_visits` bounds component evaluations by
 `maxCodeBlocks`, including the final evaluation on rejection. Completed precinct
 initialization retains at most `maxPrecincts` states and at most
