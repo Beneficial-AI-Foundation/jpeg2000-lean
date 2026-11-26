@@ -1,4 +1,6 @@
 import JPEG2000.Marker
+import Spec.Resources.DiagnosticMarker
+import Tests.Box
 
 /-!
 # Unit and corpus tests: main-header marker segments (task 1.3)
@@ -345,6 +347,27 @@ def corpus : IO Nat := do
 def expectKind {α : Type} (name : String) (k : String) (x : Except Error α) : IO Nat :=
   expect s!"{name}: expected {k}, got {kind x}" (kind x == k)
 
+-- A later malformed colour box is ignored, seven QCD exponent checks succeed, and
+-- the final marker word fails. Check the constructions as well as the returned error.
+private def diagnosticOrder : IO Nat := do
+  let header := Tests.Box.ihdr 32 64 3 7 ++ Tests.Box.colrEnum 16 ++ Tests.Box.box "colr" []
+  let main := be16 0xFF4F ++ seg 0xFF51 (sizN 3) ++ seg 0xFF52 codBody ++ seg 0xFF5C qcdBody
+  let data := (Tests.Box.sig ++ Tests.Box.ftyp ++ Tests.Box.box "jp2h" header ++
+    Tests.Box.box "jp2c" (main ++ be16 10)).toByteArray
+  let trace := Spec.Resources.DiagnosticMarker.throughMainTrace Limits.default data
+    (Nat.le_max_left ..) (Nat.le_max_right ..)
+  let discarded := "colr shorter than 3 bytes"
+  let exponent := "reserved bits in exponent byte 0x40"
+  let returned := "expected a marker, found 0xa"
+  let labels := (trace.messages.map (·.1)).filter ([discarded, exponent, returned].contains ·)
+  let expected := Error.malformed (.atOffset .marker (data.size - 2)) returned
+  let events ← expect "discarded colr and seven eager QCD checks before marker failure"
+    (labels == [discarded] ++ List.replicate 7 exponent ++ [returned])
+  let result ← expect "invalid marker retains its absolute JP2 offset"
+    (Tests.Box.err? (decodeCodestream Limits.default data 0) == some expected &&
+     Tests.Box.err? (JPEG2000.decode Limits.default data) == some expected)
+  return events + result
+
 /-- Unit tests of the segment parsers and the driver. -/
 def units : IO Nat := do
   let mut f := 0
@@ -562,6 +585,6 @@ def units : IO Nat := do
 
 /-- Runs the suite; returns the number of failures. -/
 def run : IO Nat := do
-  return (← units) + (← corpus)
+  return (← units) + (← diagnosticOrder) + (← corpus)
 
 end JPEG2000.Tests.Marker
