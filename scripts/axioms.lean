@@ -1689,3 +1689,28 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.Resources.AssemblyCost.block_workspace
 #print axioms JPEG2000.Spec.Resources.AssemblyCost.block_ceiling
 #print axioms JPEG2000.Spec.Resources.AssemblyCost.topology_split
+#print axioms JPEG2000.Spec.Resources.AssemblyCost.topology_budget
+#print axioms JPEG2000.Spec.Resources.AssemblyCost.component_budget
+
+-- Task 7.4c2s3, native tile colour and output placement.
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.colourFits_work
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.view_reads
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.packRows_work
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.fill_work
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.map1_work
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.map3_work
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.blitRows_work
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.blitCells_work
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.tabulate_work
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.compactICT_work
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.ict_work
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.rct_work
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.sources_work
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.preColour_work
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.tile_work
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.writeComponent_work
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.writeTile_work
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.centeredTile_placement
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.centeredTile_reads
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.native_tile_work
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.placement_read_domain

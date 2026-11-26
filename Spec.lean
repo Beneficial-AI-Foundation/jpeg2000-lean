@@ -112,6 +112,8 @@ import Spec.Resources.Tier1Schedule
 import Spec.Resources.Tier1Storage
 import Spec.Resources.Tier1Work
 import Spec.Resources.AssemblyCost
+import Spec.Resources.TileColorLoops
+import Spec.Resources.TileColorPlacement
 import Spec.Resources.TileArithmetic
 import Spec.Resources.WideArithmetic
 import Spec.Resources.HeaderSort

@@ -972,4 +972,81 @@ theorem topology_split (nl : Nat) (ps : Store) (w : Nat → Band → CodeBlock �
   apply visitSum_split; intro cb
   split <;> simp
 
+
+/-- Upper bound for one block when its history contains at most `s` segments and
+`k` translated byte ranges. The gather term charges both levels of byte append. -/
+def blockBudget (n nl s k : Nat) : Nat :=
+  1 + 3*s + 2*k + (2*k+s)*(k*n) +
+    (26006 + 8510*s + 66002*874) + (nl+1 + 4096 + 3*4096)
+
+/-- Packet-store bounds consumed by reconstruction: precincts per resolution,
+bands per precinct, blocks per band, and segment and range counts per block. -/
+def StoreBounds (ps : Store) (P B C S K : Nat) : Prop :=
+  ∀ r, (ps.getD r #[]).size ≤ P ∧ ∀ p ∈ ps.getD r #[],
+    p.bands.size ≤ B ∧ ∀ b ∈ p.bands, b.blocks.size ≤ C ∧
+      ∀ cb ∈ b.blocks, cb.segments.size ≤ S ∧ rangeCount cb ≤ K
+
+private theorem visitSum_le {α : Type} (xs : List α) (w : α → Nat) (cap : Nat)
+    (h : ∀ x ∈ xs, w x ≤ cap) : visitSum xs w ≤ xs.length * (1+cap) := by
+  induction xs with
+  | nil => simp [visitSum]
+  | cons x xs ih =>
+    have one := h x (by simp)
+    have rest := ih (fun a ha => h a (by simp [ha]))
+    change 1 + w x + visitSum xs w ≤ (xs.length+1)*(1+cap)
+    rw [Nat.add_mul, Nat.one_mul]
+    omega
+
+private theorem arrayVisits {α : Type} (xs : Array α) (w : α → Nat) (n cap : Nat)
+    (size : xs.size ≤ n) (h : ∀ x ∈ xs, w x ≤ cap) :
+    visitSum xs.toList w ≤ n*(1+cap) := by
+  apply Nat.le_trans (visitSum_le _ _ cap (by simpa using h))
+  simpa using Nat.mul_le_mul_right (1+cap) size
+
+/-- Work of a full assembly traversal from numeric bounds on the selected packet
+store. Empty and skipped entries still pay for their visits. -/
+theorem topology_budget (data : ByteArray) (nl : Nat) (ps : Store) (P B C S K : Nat)
+    (store : StoreBounds ps P B C S K) :
+    topology nl ps (fun _ _ => blockBound data nl) ≤
+      (nl+1) * (1 + P*(1 + B*(1 + C*(1 + blockBudget data.size nl S K)))) := by
+  unfold topology
+  apply Nat.le_trans (visitSum_le _ _ _ ?_)
+  · apply Nat.mul_le_mul_right
+    simpa only [List.length_range'] using Nat.min_le_left (nl+1) ps.size
+  intro r _
+  obtain ⟨plen,precs⟩ := store r
+  apply arrayVisits _ _ P _ plen
+  intro p hp
+  obtain ⟨blen,bands⟩ := precs p hp
+  apply arrayVisits _ _ B _ blen
+  intro b hb
+  obtain ⟨clen,blocks⟩ := bands b hb
+  apply arrayVisits _ _ C _ clen
+  intro cb hc
+  split
+  · obtain ⟨hs,hk⟩ := blocks cb hc
+    apply Nat.le_trans (block_ceiling data nl cb)
+    unfold blockBudget
+    have copy := Nat.mul_le_mul (show 2*rangeCount cb+cb.segments.size ≤ 2*K+S by omega)
+      (Nat.mul_le_mul_right data.size hk)
+    omega
+  · exact Nat.zero_le _
+
+/-- The ordinary tile component dispatcher preserves its exact outcome and has
+an explicit assembly-work bound once packet history supplies the five counts. -/
+theorem component_budget {L : Limits} {data : ByteArray} {h : Header.Header} {t : Nat}
+    {g : Progression.Layout} {coding : Coding} (parsed : Header.parse L data = .ok h)
+    (layout : Progression.Layout.ofHeader h t = .ok (g,coding)) (a : Option TileCodeBlocks)
+    (i : Fin g.numComps) (red P B C S K : Nat) (store : StoreBounds (selected a i) P B C S K)
+    (admitted : Resources.tileCells g red ≤ L.maxWorkSamples) :
+    let nl := (g.comp i).params.levels-red
+    let run := component L h data g coding a i red
+    run.1 = JPEG2000.TileDispatch.component L h data g coding a i red ∧ run.2 ≤
+      5*L.maxWorkSamples + 2*((nl+1) * (1 + P*(1 + B*(1 + C*(1 + blockBudget data.size nl S K))))) := by
+  obtain ⟨erases,_⟩ := parsed_component_work parsed layout a i red
+  have initial := native_budget parsed layout a i red
+  simp only [admitted, ↓reduceIte] at initial
+  exact ⟨erases, Nat.le_trans initial.2 (Nat.add_le_add_left
+    (Nat.mul_le_mul_left 2 (topology_budget _ _ _ _ _ _ _ _ store)) _)⟩
+
 end JPEG2000.Spec.Resources.AssemblyCost

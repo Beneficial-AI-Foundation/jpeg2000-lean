@@ -155,8 +155,10 @@ covers initialising four packed bytes and one wide integer slot per cell across
 both attempts. The topology term includes Tier-1 decoding, fragmented input
 gathering, dequantisation and placement for the supplied block records.
 `AssemblyCost.native_budget` connects `A` to the checked aggregate tile area.
-A bound on segment and byte-range counts from packet history is still needed
-to express the topology term entirely in terms of the input length and limits.
+`AssemblyCost.component_budget` replaces the topology sum with a numeric
+bound given the precincts per resolution, bands per precinct, blocks per band,
+segments per block and translated ranges per block. The remaining packet-history
+proof must establish these counts for the actual packet store.
 
 ### Wide integer arithmetic
 
@@ -176,6 +178,22 @@ successful centred tile, each source read needs at most
 The bound applies before placement and G.1 clamping, including omitted tiles.
 Converting it to live storage requires the number of simultaneous
 values and a size model for their representation.
+
+### Native tile colour and placement
+
+`TileColorPlacement.native_tile_work` follows a parsed tile through the native
+colour transform and output writer, preserving their result and exact errors.
+Let `C = maxComponents`, `S = maxImageSide`, `W = maxWorkSamples` and let `B`
+be the logical charge for one wide integer slot. The combined structural charge
+is at most `6 + (13+S)*C + (42+3*B)*W`. This includes packed ICT and its wide
+retry, the rasters retained when a later component fails, lazy RCT reads, G.1
+clamping and both blitters. The side-length term covers row visits by the packed
+blitter even when the tile has zero width.
+
+The placement continuation alone costs at most `(2+S)*C + 18*W`.
+`placement_read_domain` bounds the three predecessor reads per lazy RCT sample
+by `3*W` over the tile. Component reconstruction before colour, the output
+backing and the later JP2 display stage have separate bounds.
 
 ### Colour, replication and display
 
@@ -271,7 +289,7 @@ also account for the work performed before an error.
 * **Local packet operations (7.4c1h).** Price the work
   inside each attempted packet, including tag-tree and segment handling before
   pass admission, and the setup of progression volumes even when empty.
-* **Reconstruction (7.4c2s2–4).** The checked decoder can retry using wide
+* **Reconstruction (7.4c2s2 and 7.4c2s4).** The checked decoder can retry using wide
   coefficients. Apply the wide integer bounds to both attempts and bound lifting and
   colour-transform visits, temporary line arrays and live planes across levels.
 * **Parsing and gathering (7.4c3a–c).** Bound the inner payload, sorting
