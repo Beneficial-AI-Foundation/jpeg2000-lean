@@ -1,5 +1,5 @@
 import Spec.Decode
-import Spec.RoundTrip.PacketBlocks
+import Spec.RoundTrip.CodewordBudget
 import Spec.RoundTrip.Tier1
 import Spec.RoundTrip.TileDecode
 
@@ -247,21 +247,42 @@ theorem DecodedEncoderBands.reconstructBlock {L M : Limits} {tc : TileCompGeom}
   · rw [hlabel]
     exact reconstruct_packetBlock hstyle hroi hc.encoded
 
-/-- **C10 block reconstruction.** Indexing the actual returned tile of
-`decodeTile_encodeDetailed` supplies all geometry, style and Tier-1 provenance.
-On the C10 domain of at most 31 coded planes the selected block decodes and
-dequantises to the original raster slice of the encoder's 5/3 subband. If
-the reconstruction loop skips it for zero passes, that slice is all zero. -/
-theorem DecodedEncoderTile.reconstructBlock {L : Limits} {p : Encode.Params} {img : Encode.Image}
-    {e : Encode.Encoded} {prec infos tile} (hp : ReversibleTilePackets p img e prec infos)
-    (ht : DecodedEncoderTile L (encLayout p img e.guardBits e.exponents) prec tile)
-    {c r j bi k : Nat} {rs ps out bo sb}
-    (hrs : tile.comps[c]? = some rs) (hps : rs[r]? = some ps) (hout : ps[j]? = some out)
-    (hbo : out[bi]? = some bo) (hsb : bo.blocks[k]? = some sb) :
-    let src := packetBlockCoeffs ((Encode.bands53 p img (encMct p img)).getD c #[]) r bi sb.geom
-    numBits (maxMag src) ≤ 31 →
-      ReconstructsBlock (encParams p e.guardBits e.exponents) r bo.band sb src := by
-  intro src hK
+/-- A physical block at its four nested indices in a decoded component. -/
+def ComponentBlockAt (rs : Spec.Decode.SpecPrecs) (r j bi k : Nat) (b : Band)
+    (sb : BlockSt) : Prop :=
+  ∃ ps bs bo, rs[r]? = some ps ∧ ps[j]? = some bs ∧ bs[bi]? = some bo ∧
+    bo.blocks[k]? = some sb ∧ bo.band = b
+
+/-- Every physical block of a decoded component reconstructs its encoder subband slice,
+including the all-zero slice for a skipped block. -/
+def ReconstructsComponentBlocks (params : Header.CompParams)
+    (source : Array (Array Encode.BandData)) (rs : Spec.Decode.SpecPrecs) : Prop :=
+  ∀ ⦃r j bi k b sb⦄, ComponentBlockAt rs r j bi k b sb →
+    ReconstructsBlock params r b sb (packetBlockCoeffs source r bi sb.geom)
+
+/-- A 31-plane bound on the actual Tier-1 calls of one component. -/
+def ComponentPlanes31 (tc : TileCompGeom) (source : Array (Array Encode.BandData)) : Prop :=
+  ∀ r j bi k pb cb o, PacketBlockCall Limits.default tc source r j bi k pb cb o →
+    numBits (maxMag (packetBlockCoeffs source r bi cb)) ≤ 31
+
+section Component
+
+variable {L : Limits} {p : Encode.Params} {img : Encode.Image} {e : Encode.Encoded}
+  {prec infos tile} (hp : ReversibleTilePackets p img e prec infos)
+  (ht : DecodedEncoderTile L (encLayout p img e.guardBits e.exponents) prec tile)
+  {c : Nat} {rs : Spec.Decode.SpecPrecs} (hrs : tile.comps[c]? = some rs)
+
+include hp ht hrs
+
+private theorem packetBlock_reconstruction {r j bi k : Nat} {b sb}
+    (ha : ComponentBlockAt rs r j bi k b sb) :
+    let source := (Encode.bands53 p img (encMct p img)).getD c #[]
+    ∃ pb o, PacketBlockCall Limits.default (encGeom p img e.guardBits e.exponents)
+      source r j bi k pb sb.geom o ∧ pb.band = b ∧
+      (numBits (maxMag (packetBlockCoeffs source r bi sb.geom)) ≤ 37 →
+        ReconstructsBlock (encParams p e.guardBits e.exponents) r b sb
+          (packetBlockCoeffs source r bi sb.geom)) := by
+  obtain ⟨ps, out, bo, hps, hout, hbo, hsb, rfl⟩ := ha
   let g := encLayout p img e.guardBits e.exponents
   let q : Progression.PacketId := ⟨0, r, c, j⟩
   have hci : c < g.numComps := ht.count ▸ (List.getElem?_eq_some_iff.mp hrs).1
@@ -287,11 +308,60 @@ theorem DecodedEncoderTile.reconstructBlock {L : Limits} {p : Encode.Params} {im
   have hcomp := encLayout_comp p img e.guardBits e.exponents c
     ((encLayout_coding p img e.guardBits e.exponents).1 ▸ hci)
   rw [hcomp] at hres hst
-  obtain ⟨_, _, hbo'', hsb', _, hgeom, _, rec⟩ :=
+  obtain ⟨_, _, hbo'', hsb', hband, hgeom, _, rec⟩ :=
     hd.reconstructBlock hres hpg hst hb hx call rfl rfl
   obtain rfl := Option.some.inj (hbo''.symm.trans hbo')
   obtain rfl := Option.some.inj (hsb'.symm.trans hsb)
   subst cb
+  exact ⟨pb, o, call, hband.symm, rec⟩
+
+/-- **C10 block reconstruction.** For a successful reversible encoding, the packet
+call at each physical address supplies the 37-plane bound for its own coefficients. -/
+theorem DecodedEncoderTile.reconstructsComponentBlocks (he : Encode.encodeDetailed p img = .ok e)
+    (hrev : p.reversible = true) :
+    ReconstructsComponentBlocks (encParams p e.guardBits e.exponents)
+      ((Encode.bands53 p img (encMct p img)).getD c #[]) rs := by
+  intro r j bi k b sb ha
+  obtain ⟨_, _, call, _, rec⟩ := packetBlock_reconstruction hp ht hrs ha
+  exact rec (call.planes_le_37 he hrev)
+
+/-- A component-wise 31-plane bound also suffices to reconstruct every physical block. -/
+theorem ComponentPlanes31.reconstructsComponentBlocks
+    (hK : ComponentPlanes31 (encGeom p img e.guardBits e.exponents)
+      ((Encode.bands53 p img (encMct p img)).getD c #[])) :
+    ReconstructsComponentBlocks (encParams p e.guardBits e.exponents)
+      ((Encode.bands53 p img (encMct p img)).getD c #[]) rs := by
+  intro r j bi k b sb ha
+  obtain ⟨pb, o, call, _, rec⟩ := packetBlock_reconstruction hp ht hrs ha
+  exact rec (Nat.le_trans (hK r j bi k pb sb.geom o call) (by decide))
+
+end Component
+
+/-- The decoded block has the geometry of the encoder call at the same address,
+including when its codeword has zero passes. -/
+theorem DecodedEncoderTile.packetBlockAt {L : Limits} {p : Encode.Params} {img : Encode.Image}
+    {e : Encode.Encoded} {prec infos tile} (hp : ReversibleTilePackets p img e prec infos)
+    (ht : DecodedEncoderTile L (encLayout p img e.guardBits e.exponents) prec tile)
+    {c r j bi k : Nat} {rs b sb} (hrs : tile.comps[c]? = some rs)
+    (ha : ComponentBlockAt rs r j bi k b sb) :
+    ∃ pb o, PacketBlockCall Limits.default (encGeom p img e.guardBits e.exponents)
+      ((Encode.bands53 p img (encMct p img)).getD c #[]) r j bi k pb sb.geom o ∧ pb.band = b := by
+  obtain ⟨pb, o, call, label, _⟩ := packetBlock_reconstruction hp ht hrs ha
+  exact ⟨pb, o, call, label⟩
+
+/-- Tile-block reconstruction specialized to a source slice of at most 31 coded planes. -/
+theorem DecodedEncoderTile.reconstructBlock {L : Limits} {p : Encode.Params} {img : Encode.Image}
+    {e : Encode.Encoded} {prec infos tile} (hp : ReversibleTilePackets p img e prec infos)
+    (ht : DecodedEncoderTile L (encLayout p img e.guardBits e.exponents) prec tile)
+    {c r j bi k : Nat} {rs ps out bo sb}
+    (hrs : tile.comps[c]? = some rs) (hps : rs[r]? = some ps) (hout : ps[j]? = some out)
+    (hbo : out[bi]? = some bo) (hsb : bo.blocks[k]? = some sb) :
+    let src := packetBlockCoeffs ((Encode.bands53 p img (encMct p img)).getD c #[]) r bi sb.geom
+    numBits (maxMag src) ≤ 31 →
+      ReconstructsBlock (encParams p e.guardBits e.exponents) r bo.band sb src := by
+  intro src hK
+  obtain ⟨_, _, _, _, rec⟩ := packetBlock_reconstruction hp ht hrs
+    (show ComponentBlockAt _ r j bi k bo.band sb from ⟨_, _, _, hps, hout, hbo, hsb, rfl⟩)
   exact rec (Nat.le_trans hK (by decide))
 
 end JPEG2000.Spec.RoundTrip
