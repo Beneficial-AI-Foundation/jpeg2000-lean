@@ -1,6 +1,8 @@
 import Encode.Encode
 import JPEG2000.Tier2.Headers
+import JPEG2000.Tier1.WidePlain
 import JPEG2000.Decode
+import Spec.Decode
 
 /-!
 # Tests: the reference encoder (task 7.2)
@@ -301,6 +303,36 @@ def argErrors : IO Nat := do
   f := f + (← expect "NL > 32" (isErr (encode { levels := 33 } img)))
   return f
 
+/-- A lossless 29-bit image whose second-level HH coefficient needs 32 coded planes.
+The separable sign pattern follows the second-level 5/3 analysis filter. Opposite
+RGB channels double its amplitude under the forward RCT. -/
+private def coded32 : IO Nat := do
+  let signs : Array Int := #[0, 0, 1, -1, -1, 1, 1, 1, -1, -1, 1, 0]
+  let samples := Array.ofFn (n := 12 * 12) fun i =>
+    signs.getD (i.val % 12) 0 * signs.getD (i.val / 12) 0 * (2^28 - 1)
+  let c : Component := { depth := 29, signed := true, samples }
+  let img : Image := { width := 12, height := 12, comps := #[c, { c with samples := samples.map (- ·) }, c] }
+  let name := "32-plane lossless reference round trip"
+  let params : Params := { levels := 2, mct := true }
+  let .ok enc := encodeDetailed params img
+    | return ← expect (name ++ ": encoding failed") false
+  let .ok si := Spec.Decode.decode Limits.default enc.codestream 0
+    | return ← expect (name ++ ": spec decode failed") false
+  let actual := si.comps.map fun comp => comp.samples.map Spec.Decode.SpecSample.value
+  let wideBlocks := enc.blocks.filter (·.numPasses == 3 * 32 - 2)
+  let bands := bands53 params img true
+  for block in wideBlocks do
+    let band := (JPEG2000.Tier2.Geometry.bandsOf block.res).getD block.band .LL
+    let src := (((bands.getD block.comp #[]).getD block.res #[]).getD block.band default)
+    let mb := JPEG2000.Tier2.Packet.bandMb (si.header.defaults.comps.getD block.comp default)
+      block.res band
+    let .ok cells := JPEG2000.Tier1.WidePlain.decodeCodeBlock block.data 0 block.data.size
+        src.rect.width src.rect.height band mb block.zeroBitPlanes block.numPasses
+      | return ← expect (name ++ ": wide block decode failed") false
+    if cells.map (·.value) != src.vals then
+      return ← expect (name ++ ": wide coefficients differ") false
+  return ← expect name (wideBlocks.size == 2 && actual == img.comps.map (·.samples))
+
 /-- Runs the suite. -/
 def run : IO Nat := do
   let n := ((← IO.getEnv "JPEG2000_ENCODE_CASES").bind String.toNat?).getD 24
@@ -315,6 +347,7 @@ def run : IO Nat := do
   let (f2, worst, worstOurs) ← randomCases false (max 1 (n / 3)) maxSide 2 opj dir
   f := f + f2
   IO.println s!"  encode: lossy 9/7 max error {worstOurs} (ours){if opj then s!", {worst} (OpenJPEG)" else ""}"
+  f := f + (← coded32)
   f := f + (← determinism)
   f := f + (← argErrors)
   try IO.FS.removeDirAll dir catch _ => pure ()

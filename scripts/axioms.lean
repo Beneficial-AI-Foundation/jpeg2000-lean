@@ -1327,3 +1327,34 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.RoundTrip.DecodedEncoderTile.blockAtGeometry
 #print axioms JPEG2000.Spec.RoundTrip.DecodedEncoderTile.tileComp_collected
 #print axioms JPEG2000.Spec.RoundTrip.DecodedEncoderTile.bandGrid53_collected
+
+-- Phase 7, task 7.3d3d: WaveletReconstruction
+#print axioms JPEG2000.Spec.RoundTrip.DecodedEncoderTile.tileComp_reversibleRow
+#print axioms JPEG2000.Spec.RoundTrip.encodeDetailed_waveletReconstruction
+
+-- Phase 7, task 7.3d4b2: SingleTile
+#print axioms JPEG2000.Spec.RoundTrip.decode_encTile
+#print axioms JPEG2000.Spec.RoundTrip.spec_roundtrip_of_tile
+
+-- Phase 7, task 7.3d5: reversible display for every component count
+#print axioms JPEG2000.Spec.RoundTrip.reversibleRows_size_all_components
+#print axioms JPEG2000.Spec.RoundTrip.mctSpec_reversibleRows_all_components
+#print axioms JPEG2000.Spec.RoundTrip.display_reconstruction_all_components
+
+-- Phase 7, task 7.1j1: exact wide native sample planes
+#print axioms JPEG2000.Bytes.WidePlane.size_eq
+#print axioms JPEG2000.Bytes.WidePlane.get_range
+#print axioms JPEG2000.Bytes.WidePlane.get_zero
+#print axioms JPEG2000.Bytes.WidePlane.get_set
+#print axioms JPEG2000.Spec.WidePlane.zeroChecked_spec
+#print axioms JPEG2000.Spec.WidePlane.zeroChecked_layout
+#print axioms JPEG2000.Spec.WidePlane.get?_eq_none_iff
+#print axioms JPEG2000.Spec.WidePlane.set?_layout
+#print axioms JPEG2000.Spec.WidePlane.set?_spec
+
+-- Phase 7, task 7.1i1: wide plain Tier-1 equivalence
+#print axioms JPEG2000.Spec.Tier1Wide.cellOf_value
+#print axioms JPEG2000.Spec.Tier1Wide.runPasses_equiv
+#print axioms JPEG2000.Spec.Tier1Wide.decodeCodeBlockSegs_equiv
+#print axioms JPEG2000.Spec.Tier1Wide.decodeCodeBlock_equiv
+#print axioms JPEG2000.Spec.Tier1Wide.codedPlanes_le_of_header
