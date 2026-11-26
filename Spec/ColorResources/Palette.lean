@@ -178,17 +178,7 @@ theorem retained_palette {L data reduce d} (ok : decodeCodestream L data reduce 
     ∀ p, ((d.header.container.bind Container.header).bind Jp2Header.pclr) = some p → PaletteWithin L p := by
   obtain ⟨_, _, tail⟩ := Tier2Equiv.bind_ok ok
   obtain ⟨h, hp, _⟩ := Tier2Equiv.bind_ok tail
-  cases hc : h.siz.components.all JPEG2000.NativeOutput.compact with
-  | false =>
-    rw [(CodestreamDispatch.native_geometry hp hc ok).1]
-    exact retained_header hp
-  | true =>
-    rw [CodestreamDispatch.compact_dispatch hp hc] at ok
-    cases hn : decodeCodestreamNarrow L data reduce with
-    | error e => simp [hn, Except.map] at ok
-    | ok n =>
-      rw [hn] at ok
-      cases ok
-      exact retained_header (Resources.decodeCodestream_ok hn).2.1
+  rw [(CodestreamDispatch.native_geometry hp ok).1]
+  exact retained_header hp
 
 end JPEG2000.Spec.ColorResources

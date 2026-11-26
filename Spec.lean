@@ -115,6 +115,13 @@ import Spec.TilePartRoundTrip
 import Spec.ReversibleDispatch
 import Spec.IrreversibleDispatch
 
+import Spec.ColorResources.Interleave
+import Spec.ColorResources.Layout
+import Spec.ColorResources.Mapping
+import Spec.ColorResources.Palette
+import Spec.ColorResources.Views
+import Spec.ColorResources
+
 /-!
 # Executable specifications
 

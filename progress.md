@@ -18,7 +18,7 @@ Design document: Plan.md
 
 ## Current wave
 
-Wave 30 on `phase-7-equivalence`: 7.1k3t, 7.1l2p, 7.1l2f and 7.4b2a (all wt).
+Wave 30 integrated on `phase-7-equivalence`. Next wave covers public packet, Tier-1, reconstruction arithmetic and header resource bounds.
 
 ## Branches and PRs
 | Phase | Branch | Base | PR | State |
@@ -235,7 +235,7 @@ Plan.md §7 row 7, §4, §5.3. Exit: **M7**: C9, C10, S2, S3 proved; `#print axi
 | 7.4b | Extend S3 to the public mixed-depth codestream and image APIs. Prove aggregate allocation bounds, native storage size, source and output geometry, metadata and safe reduced output at every admitted depth. | 7.1j2b2, 7.1j3b, 7.1k3t | `Spec/Resources.lean`, public native and image resource proofs | wt | split (into 7.4b1–7.4b2) |
 | 7.4b1 | Prove the S3 aggregate declared bytes, actual backing bytes, reduced SIZ geometry, format, order and exact accessor bounds on every successful public codestream decode. | 7.1j2b2, 7.4 | `Spec/NativeResources.lean`, `docs/resources.md` | solo | done (2026-11-26) |
 | 7.4b2 | Extend S3 through public colour processing and interleaving on actual native channels and recheck all resource and totality results after the wide tile dispatch is connected. | 7.4b1, 7.1j3b, 7.1k3t | public image and native output resource proofs, `docs/resources.md` | wt | split (into 7.4b2a–7.4b2b) |
-| 7.4b2a | Bound colour, upsampling and interleaving storage and work on the public native image pipeline, including retained backing, borrowed views, palette and sYCC tables. Prove exact channel read bounds for colour, alpha and other channels. | 7.4b1, 7.1j3b | `Spec/ColorResources.lean`, colour proof helpers, `docs/resources.md` | wt | doing (2026-11-26) |
+| 7.4b2a | Bound colour, upsampling and interleaving storage and work on the public native image pipeline, including retained backing, borrowed views, palette and sYCC tables. Prove exact channel read bounds for colour, alpha and other channels. | 7.4b1, 7.1j3b | `Spec/ColorResources.lean`, colour proof helpers, `docs/resources.md` | wt | done (2026-11-26) |
 | 7.4b2b | Recheck totality and compose final public S3 after native tile dispatch, including bounded work and intermediate storage for checked narrow and wide reconstruction and all supported depths. | 7.4b2a, 7.1k3t | final S3 theorems and `docs/resources.md` | wt | split (into 7.4c1–7.4c4) |
 | 7.4c1 | Bound packet and Tier-1 work on the actual public traversal: cumulative passes across present and absent tiles, packet/header and segment byte inspections, pass-by-cell visits, checked fallback retries, and coefficient magnitude/plane width through all admitted styles. Include the work preceding rejection. | 7.1k3t, 7.1i3c, 7.1l2f | packet/Tier-1 cost proofs and traversal instrumentation if needed | wt | split (into 7.4c1p and 7.4c1t) |
 | 7.4c1p | Connect the actual public tile traversal to total packet and pass work. Prove the start/end cumulative pass count, whole-image bound, packet iteration and termination on rejection for present and omitted tiles, with a counting or trace model whose erasure gives the public traversal. | 7.1k3t, 7.1l2f | `Spec/Resources/PacketTraversal.lean` and packet traversal proof helpers | wt | todo |
@@ -428,6 +428,8 @@ Exit criterion checked: [ ]
 
 * Native `image-dump` uses eight-byte two’s-complement PGX cells for depths 33–38. The Python differential reader and both Lean test readers must agree on this width. A 38-bit unsigned midpoint is 137438953472, and a signed negative must be extended from the eight-byte cell.
 
+* Colour resource proofs must count the retained raw backing and coordinate vectors even when one image axis is empty. The retained palette comes from the public decoder's parsed header for every component depth.
+
 ## Decisions and deviations from the design document
 
 * Wave 20, 6.6: the user selected OpenJPEG compatibility for odd-origin sYCC edges and malformed unsigned 4-bit palette values in the PDF corpus. Both should pass the normal image differential.
@@ -513,7 +515,7 @@ Exit criterion checked: [ ]
 
 * Resolved for the benchmark set (Plan §8.4): the extracted issue19517-8 stream is already pinned. At reduce 1 it yields roughly 53 Mpx within the default limits. Task 8.1b adds this defined workload to both benchmark drivers.
 * M5 reading: is "T.803 profile 0 and 1 pass" satisfied by class 1 (52/52, as OpenJPEG's own suite gates), or must class 0 pass too? Class 0 is 12/26 and every failure is shared with OpenJPEG (reference artefacts). Proceeding with class 1; `conformance --gate-class0` is ready if class 0 is required.
-* C9's final form (see `docs/c9.md`): accept `Spec.C9.c9` with its stated conditions (`unsupported` allowance for > 31 coded bit-planes / ≥ 32-bit components; equalities only when no block saturated and within C8's no-overflow range), or require one of: (a) a named, checkable header condition (guard bits/depth) that removes the saturation condition; (b) fast-decoder changes (exact fallbacks through the MCT and for saturated blocks) so the conditions disappear? The unchanged Plan §§1, 4 and 5.4 require the checked fallback, 38-bit output and the full sample claim. Tasks 7.1i–l track that work. A weaker milestone would need an explicit change to the Plan.
+* Resolved in wave 30. Public C9 now uses checked native reconstruction with exact reversible samples through 38 bits and the C8 error bound plus final rounding for irreversible samples. See `docs/c9.md`.
 
 ## Log (append-only; one line per integrated wave)
 * 2026-11-25 — wave 0 (phase 0, PR #1): ledger bootstrapped from Plan.md §7; draft PR #1 opened; commit "wave 0: ledger"
@@ -555,3 +557,5 @@ Exit criterion checked: [ ]
 * 2026-11-26 — wave 27 (phase 7, PR #6): 7.1i2b, 7.1i3a, 7.1j2b1, 7.1j3a and 7.1k1 complete. Both builds, all 36 test suites and 1262 theorem audits passed. Exact wide block decoding, dequantisation, inverse 5/3 and RCT recovered all 432 samples of the 32-plane reference using encoder block geometry. The public tile loop, irreversible transforms and C9/C10 integration remain open. Commit "wave 27: verify wide reversible reconstruction and native output".
 * 2026-11-26 — wave 28 (phase 7, PR #6): 7.1i3b, 7.1j2b2, 7.1k2a–b, 7.1k3n and 7.1l1 complete. Public native decoding now handles mixed 1–38-bit output. Real packet stores fed through wide component assembly, transforms and native placement matched the spec on the 32-plane encoder, both cancellation fixtures and the irreversible reference at three reductions. Both builds, all 36 suites and 1290 theorem audits passed. Public numerical dispatch and JP2 colour remain open. Commit "wave 28: connect native codestream output and verify wide reconstruction".
 * 2026-11-26 — wave 29 (phase 7, PR #6): 7.1i3c, 7.1j3b, 7.1k3r, 7.1k3i, 7.4b1 and 7.3e1 complete. The component dispatchers recover all 432 reversible samples on the 32-plane fixture, and the irreversible stage gives red 0 on the ICT cancellation case. The normal JP2 image API exposes native channels through 38 bits. Parsed headers establish the 292-plane bound. The native resource theorem covers physical raw backing and the round-trip proof consumes C9 through checked sample reads. Both builds, all 36 test suites, 1331 axiom audits and three scoped OpenJPEG comparisons passed (zero pixel differences). Wave 30 will connect these stages at the ordinary codestream entry point. Commit "wave 29: integrate checked reconstruction and native JP2 colour".
+
+* 2026-11-26 — wave 30 (phase 7, PR #6). Completed 7.1k3t, 7.1l2p/f/c, 7.3e2 and 7.4b2a. Public C9 applies to every byte string and reduction. Every successful reversible reference encoding round-trips through the public decoder at sufficient limits. The colour proof bounds retained and fresh sample backing by 20 times maxWorkSamples. Both builds passed, all 36 test suites passed and hygiene audited 1,365 theorems plus the four runtime dependency closures. T.803 class 1 passed 52/52 and JP2 passed 9/9. The three scoped OpenJPEG comparisons had zero pixel differences. The 212 Mpx input also produced four raw and four image channels of 3152 × 4202 samples at reduction 2. M7 remains open for intermediate allocation and total decoder work.

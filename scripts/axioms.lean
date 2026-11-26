@@ -1528,3 +1528,17 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.RoundTrip.native_roundtrip
 #print axioms JPEG2000.Spec.RoundTrip.native_roundtrip_default
 #print axioms JPEG2000.Spec.RoundTrip.encode_native_roundtrip
+
+#print axioms JPEG2000.Spec.ColorResources.interleave_resources
+#print axioms JPEG2000.Spec.ColorResources.interleave_loop
+#print axioms JPEG2000.Spec.ColorResources.channel_map_size
+#print axioms JPEG2000.Spec.ColorResources.resolved_layout_size
+#print axioms JPEG2000.Spec.ColorResources.applyMapping_resources
+#print axioms JPEG2000.Spec.ColorResources.mapping_backing
+#print axioms JPEG2000.Spec.ColorResources.retained_palette
+#print axioms JPEG2000.Spec.ColorResources.plane_domain
+#print axioms JPEG2000.Spec.ColorResources.upsample_resources
+#print axioms JPEG2000.Spec.ColorResources.sycc_indices_size
+#print axioms JPEG2000.Spec.ColorResources.sycc_resources
+#print axioms JPEG2000.Spec.ColorResources.replication_resources
+#print axioms JPEG2000.Spec.ColorResources.decode_resources

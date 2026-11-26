@@ -52,7 +52,7 @@ actual data structures. The principal quantities are listed below.
 | per tile: packet iteration work (`iterationWork`, ≥ packets visited) | `maxPackets` | `decodeTilePacketsWith_ok`, `decodeWithStream_ok` |
 | coding passes of all tiles | `maxCodingPasses` | `decodeAllTileCodeBlocks_passes` |
 
-`JPEG2000.Spec.NativeResources.decodeCodestream_resources` proves S3 for the public
+`JPEG2000.Spec.NativeResources.decodeCodestream_resources` bounds native output storage for the public
 `decodeCodestream` on both compact and mixed-depth images. A successful decode retains
 the requested reduction, the component order and metadata from SIZ, and each component's
 reduced grid. Exact reads succeed precisely at indices below its area. Across all output
@@ -113,8 +113,8 @@ instruction count requires a cost model.
 **Declared versus allocated (task 6.5).** The header bounds what the stream *declares*
 (side, area, tiles, tile-components, at full resolution: absurd headers are refused before
 the tile-parts are read); `maxWorkSamples`/`maxDecodedBytes` bound what is *allocated*, at
-the requested reduction: the output grids (`Decode.allocOutput`, B-14), one tile's reduced
-planes (`Assemble.decodeTile`; tiles are decoded one at a time), `decode`'s channels and
+the requested reduction: the native output grids (`NativeOutput.allocOutput`, B-14), reduced
+planes for one tile at a time, `decode`'s channels and
 buffers. The compact raw path uses four-byte cells and the wide path uses eight-byte cells.
 The colour bounds above apply after the raw result is returned. Tile reconstruction has
 its own resource audit.
@@ -126,7 +126,7 @@ and the declared geometry violates `GeometryWithin` — e.g. area > `maxImageAre
 `decode L data opts = .error (.limitExceeded loc k v b)` with `b < v`, for every `opts`. The
 precondition is needed: a stream malformed before the end of its main header fails with
 `malformed`/`truncated` first. (A too-large `reduce` is also `limitExceeded`, checked first.)
-`decodeCodestream_limitExceeded_of_output`, `decode_limitExceeded_of_output` and
+`public_limitExceeded_of_output`, `decode_limitExceeded_of_output` and
 `decode_limitExceeded_of_bytes`: if `Header.parse L data = .ok h` and the output at the
 requested reduction exceeds `maxWorkSamples` cells (`outputCells h.siz reduce`) or
 `maxDecodedBytes` bytes (`outputBytes h.siz reduce`), the decoder fails with `limitExceeded`
@@ -146,34 +146,24 @@ there must re-check `lake env lean Spec/Resources.lean` (as with the C9 skeleton
 dropped the full-resolution `workSamples`/`decodedBytes` checks from `checkGeometry` (and
 from `GeometryWithin`); `decode_limitExceeded_of_bytes` now rests on `allocOutput`'s check.
 
-### Not proved (gaps, stated precisely)
+### Remaining public resource bounds
 
-1. **Work as a step count.** Lean has no cost semantics, so "work ≤ f(Limits, input length)"
-   needs instrumentation. Proposed formulation: make the hot loops monad-generic (as
-   `Progression.forPackets` already is) and run them in `CountM := StateT Nat (Except Error)`
-   with a `tick` per unit of work (packet, coding pass × code-block cell, DWT lifting step per
-   cell, MCT/up-sampling per cell, output byte); prove the instrumented decoder equals the
-   plain one after erasing ticks, and
-   `ticks ≤ c₁·maxPackets + c₂·4096·maxCodingPasses + c₃·(maxDecompLevels+1)·maxWorkSamples·maxTiles' + c₄·maxDecodedBytes + c₅·data.size`
-   (packets, Tier-1 with ≤ 4096 cells per code-block, DWT per tile, colour/interleave, byte
-   readers). Needed: the per-stage bounds (Tier-1 work per pass ≤ code-block cells; DWT levels
-   ≤ `maxDecompLevels`; packet header bytes ≤ input length) and the loop-bound lemmas already
-   used here (`forPackets_inv`, `forIn_inv`).
-2. **Whole-image passes in `decodeCodestream`**: its running pass count is not returned
-   (`DecodedImage` has no `passes` field), so only the per-tile statement
-   (`decodeWithStream_ok` with `passesBefore` = earlier tiles) and the Tier-2 driver
-   (`decodeAllTileCodeBlocks_passes`) are proved. Adding the count to `DecodedImage` (6.5
-   touches `Decode.lean`) would make the image-wide bound a short loop-invariant proof.
-3. **`maxPassesPerCodeBlock`** (closed by task 4.8): it *was* checked since task 4.4, through
-   its `LimitKind` (`Tier2.Packet.headerBlock`: `L.check … .passesPerCodeBlock (cb.numPasses
-   + n)`; the spec `Spec.Tier2` does the same and the Tier-2 equivalence covers it), which a
-   search for the field name misses. S3 for it is proved in `Spec/Resources/BlockPasses.lean`:
-   every code-block of every tile Tier-2 returns holds at most `maxPassesPerCodeBlock` passes
-   (`decodeTilePacketsWith_blockPasses`, `decodeWithStream_blockPasses`,
-   `decodeAllTileCodeBlocks_blockPasses`).
-4. Separate from the colour results above are the `Box` nesting and box-count limits, Tier-1 concatenated segment buffers (`Assemble.tier1Input`, bounded by
-   the input length), `TagTree`/`Geometry` per-band checks, `ppmChunkIndex`. Each is checked in
-   code; the theorems would follow the same pattern (`bind_ok` + `check_ok`).
-5. Excess ⇒ `limitExceeded` is proved for the geometry checks and the output allocation
-   (`allocOutput`); for later checks (work totals, per-tile planes, passes) another error may
-   legitimately come first.
+The public codestream and image output sizes, palette backing, per-channel domains
+and interleaver lengths above are proved. To finish S3, the following bounds must
+also account for the work performed before an error.
+
+* **Packets and Tier-1 (7.4c1p, 7.4c1t).** The public tile traversal threads a
+  cumulative pass count. Its correspondence theorem preserves that count, and
+  `decodeWithStream_ok` bounds each successful tile. An aggregate bound must
+  connect the actual tile visits, packet iterations and pass-by-cell work to
+  the budgets. The per-block pass bound is already proved by
+  `Spec.Resources.BlockPasses.decodeWithStream_blockPasses`.
+* **Reconstruction (7.4c2w, 7.4c2s).** The checked decoder can retry using wide
+  coefficients. Bound intermediate integer widths, both attempts, lifting and
+  colour-transform visits, temporary line arrays and live planes across levels.
+* **Parsing and gathering (7.4c3).** Bound the box, marker and tile-part scans,
+  geometry initialization, packed-header storage and segment assembly. A bound
+  on the length of each borrowed slice alone does not bound a concatenation.
+* **Composition (7.4c4).** Give explicit functions of `Limits` and input length
+  for public work and intermediate allocation. Connect each counted operation
+  to its decoder loop, including the prefix traversed before rejection.
