@@ -180,6 +180,7 @@ import Spec.ColorResources.DisplayPrecision
 import Spec.ColorResources.DisplayReads
 import Spec.ColorResources.DisplayPrefix
 import Spec.ColorResources.DiagnosticImage
+import Spec.Resources.PublicAPI
 
 /-!
 # Executable specifications

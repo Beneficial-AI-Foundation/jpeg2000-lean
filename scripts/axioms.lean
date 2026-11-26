@@ -1949,3 +1949,11 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.Resources.DiagnosticOutput.public_writes
 #print axioms JPEG2000.Spec.Resources.DiagnosticNative.native_events
 #print axioms JPEG2000.Spec.Resources.DiagnosticNative.native_bounds
+
+-- Phase 7, task 7.4c4f. Complete public work, storage and allocation limits.
+#print axioms JPEG2000.Spec.Resources.PublicAPI.trace_stages
+#print axioms JPEG2000.Spec.Resources.PublicAPI.reduction_refusal
+#print axioms JPEG2000.Spec.Resources.PublicAPI.decode_resources
+#print axioms JPEG2000.Spec.Resources.PublicAPI.allocation_limits
+#print axioms JPEG2000.Spec.Resources.PublicAPI.codestream_resources
+#print axioms JPEG2000.Spec.Resources.PublicAPI.interleaved_resources

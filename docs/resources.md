@@ -1,8 +1,8 @@
 # S2 (totality) and S3 (bounded resources): what is proved
 
-Task 7.4 (Plan.md §4 S2, S3; §3 rules 2–3). Theorems are in `Spec/Resources.lean`
-(namespace `JPEG2000.Spec.Resources`). Every theorem depends only on `propext`,
-`Classical.choice`, `Quot.sound`.
+The public S2/S3 results for Plan.md §§3–4 are in `Spec/Resources/PublicAPI.lean`
+and `Spec/Resources.lean`. The axiom registry and runtime dependency audit cover
+the proofs and the four production entry points, respectively.
 
 ## S2 — totality
 
@@ -160,8 +160,8 @@ at most twice this quantity. The bound covers all code-block styles, including
 an early return. Validated work buffers have at most 4,096 wide coefficient cells
 or 8,196 words in each compact work array. `Tier1Work.parsed_cells` gives a
 magnitude below `2^292` and a last plane at most 291 for every returned wide cell.
-To obtain whole-image work, the per-attempt charges must still be summed over
-the blocks and retries actually selected by reconstruction.
+`ReconstructionCost.public_work` accumulates the selected block and retry
+charges over the reached tiles on this input.
 
 ### Coefficient assembly
 
@@ -178,8 +178,8 @@ gathering, dequantisation and placement for the supplied block records.
 `AssemblyCost.native_budget` connects `A` to the checked aggregate tile area.
 `AssemblyCost.component_budget` replaces the topology sum with a numeric
 bound given the precincts per resolution, bands per precinct, blocks per band,
-segments per block and translated ranges per block. The remaining packet-history
-proof must establish these counts for the actual packet store.
+segments per block and translated ranges per block. `ReconstructionCost.storeCaps`
+provides the public caps using the packet-store evidence in `SegmentHistory.store_bounds`.
 
 ### Wide integer arithmetic
 
@@ -197,8 +197,8 @@ theorems at the ordinary tile traversal. For every parsed header and every
 successful centred tile, each source read needs at most
 `395 + 540 × L.maxDecompLevels` signed bits, or 17,675 at the default limit.
 The bound applies before placement and G.1 clamping, including omitted tiles.
-Converting it to live storage requires the number of simultaneous
-values and a size model for their representation.
+The following sections use cell counts and rounded signed-magnitude byte widths
+to bound wavelet scratch and retained component storage.
 
 ### Inverse wavelet visits and storage
 
@@ -448,7 +448,7 @@ there must re-check `lake env lean Spec/Resources.lean` (as with the C9 skeleton
 dropped the full-resolution `workSamples`/`decodedBytes` checks from `checkGeometry` (and
 from `GeometryWithin`); `decode_limitExceeded_of_bytes` now rests on `allocOutput`'s check.
 
-### Remaining public resource bounds
+### Diagnostic construction on the public paths
 
 `DiagnosticCost` counts decimal and hexadecimal digits, copied prefixes and temporary
 storage at the construction site. A passed marker check can still evaluate its message.
@@ -594,6 +594,53 @@ construction work and cumulative temporary storage by
 in the `DiagnosticNative` namespace. The final retained record and the caller’s
 oversized reduction have their own bounds.
 
-The remaining public S3 statement must combine those costs with native,
-metadata and display work, output and intermediate storage, and the exact
-errors returned by checked budgets.
+### Public bounds on every input
+
+`PublicAPI.codestream_resources`, `decode_resources` and `interleaved_resources`
+identify the measured result with the production call for every byte array, limit
+record and decode option. They bound both work and cumulative logical storage,
+including paths that return an error after allocating earlier intermediates.
+The native and image results on success carry the `NativeResources.Within` and
+`ColorResources.Within` certificates. These give separate bounds on physical
+raster bytes, declared output bytes, samples, palette entries and channel views.
+The interleaved result carries the exact output byte count for the requested
+channel and alpha selection, scaling mode and sample width.
+
+For input length `N` and decode limits `L`, the following formulas use
+`PublicAPI` names unless otherwise qualified.
+
+| Entry point | Closed ceiling for either charge |
+|---|---|
+| `decodeCodestream` | `nativeBudget L N`. Native source budget plus the native event allowance times the work per expression, plus the maximum retained record. |
+| `decode` | `budget L N = sourceBudget L N + expressionBudget L N + recordBudget L N`. Source work adds the native, mapping and post-mapping display meters. |
+| `decode` followed by `interleaved8` or `interleaved16` with independent limits `B` | `interleavedBudget L B N = budget L N + DisplayPrefix.interleavingBudget L B + 8 + 2 * L.maxImageArea * (L.maxComponents + 2)`. |
+
+The combined image trace allows one display message after all native events.
+Its scalar cap is the maximum of the native and display caps. With cap `c`
+and combined event count `E`, `expressionBudget` is
+`E * Text.workBound c 128 24`, and `recordBudget` is
+`max 7 (6 + Text.byteBound c 128 24 + 2 * bits c)`.
+`trace_stages` preserves the original sequence of expression trees, including
+discarded errors before a successful retry. An excessive caller reduction
+builds zero messages and retains seven units, borrowing the caller's natural
+number. The measurements end when the API returns, before a caller formats its error.
+
+The common numerical ceiling sums stage-specific logical units. Source charges
+cover visits, array headers and references, backing bytes, and operand widths
+at the documented stage prices. Diagnostic work prices constructors and copies.
+Its storage column sums temporary allocations and the owned error fields. Using
+the inclusive source charge in each column conservatively charges an allocation
+even if its backing could be reused. Cumulative logical storage includes every
+charged allocation that could still be live. Host allocator overhead, wall-clock
+time and RSS have separate empirical measurements in the performance phase.
+
+`PublicAPI.allocation_limits` preserves the checked operands and exact first
+refusal at public entry, native output allocation and the display grid. Reduction
+precedes input length. Once either allocation stage is reached, excess work
+samples precede excess declared bytes. The native result precedes metadata and
+display validation. `DiagnosticGeometry.geometry_refusal` and `work_refusal`
+cover the intermediate header checks. The tag-tree node guard uses the derived
+ceiling `4 * maxCodeBlocks` after checking the leaf grid against `maxCodeBlocks`.
+The independent interleaver propagates a decoding error with zero additional
+charge. After image success it checks the proposed byte count against the
+interleaver caller's own `maxDecodedBytes`, including on a zero-sized output.
