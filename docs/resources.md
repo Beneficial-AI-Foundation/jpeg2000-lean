@@ -74,8 +74,8 @@ elab "#check_closure " id:ident : command => do
 > Output size, intermediate allocation and work are bounded by explicit functions of `Limits`
 > and the input length; excess is `Error.limitExceeded`.
 
-All S3 theorems are about a successful run and bound **the quantities the code checks**; the
-headline ones:
+The successful-run S3 theorems give the checked budgets and bounds derived from the
+actual data structures. The principal quantities are listed below.
 
 | Quantity | Bound | Theorem |
 |---|---|---|
@@ -100,14 +100,63 @@ components, the cell count is at most `maxWorkSamples`, the declared output size
 bytes. Compact backing uses four bytes per cell and wide backing uses eight. The
 `Spec.Resources` Int32 plane theorems also remain available for `decodeCodestreamNarrow`.
 
+### Colour, replication and display
+
+`JPEG2000.Spec.ColorResources.decode_resources` applies to every successful public
+`JPEG2000.decode L data opts`. Its `raw` field gives the complete native codestream
+certificate above. Its `image` and `colour` fields cover the reduced reference grid,
+the actual selected mapping, conversion, upsampled planes and channel selection. Write
+`W = L.maxWorkSamples`, `S = L.maxImageSide`, `C = L.maxComponents` and
+`P = L.maxPaletteEntries`.
+
+| Quantity | Bound | Evidence |
+|---|---:|---|
+| Retained raw component byte arrays | `8 W` bytes | `Within.raw.physical` |
+| Fresh compact palette, sRGB and replication rasters | Each stage ≤ `4 W` bytes. Raw plus all three stages ≤ `20 W` bytes | `BackingWithin`, `mapping_backing`, `SyccWithin`, `FullWithin` |
+| Original JP2 palette, even if disabled | Exactly `NE × NPC` UInt64 entries and `NPC` depth tags, with `NE ≤ P`, `NPC ≤ 255` | `Within.palette`, `retained_palette` |
+| Expanded palette columns | ≤ `C P` exact integer entries. Compact conversion can also build an Int32 column of the same length | `MappedFrom`, `MappingWithin.trace` |
+| sYCC coordinate and edge tables | Two vectors of luma width, two of luma height, and zero or one entry per luma row. Total ≤ `5 S` | `sycc_indices_size`, `Converted` |
+| Replication indices | Width plus height per replicated channel, ≤ `2 C S` entries in total | `upsample_resources`, `ColourWithin` |
+| Ordered output records and display scaler records | Colours ≤ `C + 1`, other channels ≤ `C`, optional whole-image alpha adds at most one. These bounds also hold at zero area | `resolved_layout_size`, `Within.display` |
+| Full-grid sample visits and declared bytes | `width × height × full.size ≤ channelBytes ≤ L.maxDecodedBytes` | `replication_resources`, `ColourWithin` |
+| Restricted ICC profile copy | ≤ input length | `ColourWithin` |
+| Interleaved output | For `n = width × height × (img.outChannels alpha).size`, exactly `n` bytes at 8 bits and `2 n` at 16 bits, or the exact decoded-byte limit error | `Within.display`, `interleave_resources` |
+
+Each palette lookup view captures the source plane and its exact column. Each lazy RGB
+channel reads from the three mapped sources using the same five index arrays. Replication
+can retain that RGB view or a palette view together with its own pair of coordinate
+vectors. Direct selection, including alpha and other channels, shares the selected
+plane. The sample-byte bound charges each construction once, including compact rasters
+that may have been released before return. The separate table bound counts up to
+`2 C P + 5 S + 2 C S` entries for colour kernels. Lean exposes plane byte lengths and
+array lengths. Runtime object headers, allocator capacity, transient list/map scaffolding
+and the heap representation of boxed integers have no byte price in these statements.
+
+The palette fold charges the sum of index-plane areas even for lazy outputs. The compact
+RGB loop has luma-area fuel, its three output rasters together have at most `W` cells,
+and the total charged replication area is at most `W`. Axis bounds also apply at zero
+area. For example, replication on a 7 × 0 grid builds seven column entries, and a
+0 × 5 grid can retain five row entries. An empty palette index raster can still capture
+a full lookup column. The standalone mapping entry point checks source count before
+building output formats and column length before constructing each lookup table.
+
+For every colour, alpha and other channel, `Channel.get? i` succeeds exactly when
+`i < width × height`. Outside the raster it returns `none` and a zero-default read yields
+zero. The interleavers visit one sample per selected channel per pixel under either
+scaling mode. `Within.loops` identifies the selected compact or native kernel, its
+image-area fuel and the exact length of its per-pixel scaler list. The public
+certificate allows a separate display budget and also covers
+out-of-range indexed byte reads. These are loop lengths and storage bounds. A machine
+instruction count requires a cost model.
+
 **Declared versus allocated (task 6.5).** The header bounds what the stream *declares*
 (side, area, tiles, tile-components, at full resolution: absurd headers are refused before
 the tile-parts are read); `maxWorkSamples`/`maxDecodedBytes` bound what is *allocated*, at
 the requested reduction: the output grids (`Decode.allocOutput`, B-14), one tile's reduced
 planes (`Assemble.decodeTile`; tiles are decoded one at a time), `decode`'s channels and
-buffers. Every allocation is still bounded by a `Limits`-derived function; peak memory is
-about `4 bytes × (output cells + one tile's cells) ≤ 8 · maxWorkSamples` bytes plus `decode`'s
-channels and buffers.
+buffers. The compact raw path uses four-byte cells and the wide path uses eight-byte cells.
+The colour bounds above apply after the raw result is returned. Tile reconstruction has
+its own resource audit.
 
 **Excess ⇒ `limitExceeded`.** `checkGeometry_limitOnly`: the geometry check fails only with
 `limitExceeded` (value > bound). `decode_limitExceeded_of_geometry` (and the `_of_area`
@@ -161,8 +210,7 @@ from `GeometryWithin`); `decode_limitExceeded_of_bytes` now rests on `allocOutpu
    every code-block of every tile Tier-2 returns holds at most `maxPassesPerCodeBlock` passes
    (`decodeTilePacketsWith_blockPasses`, `decodeWithStream_blockPasses`,
    `decodeAllTileCodeBlocks_blockPasses`).
-4. Not stated here: `Box` limits (`maxBoxes`, `maxBoxDepth`, `maxPaletteEntries`), `Color`
-   palette/sYCC planes, Tier-1 concatenated segment buffers (`Assemble.tier1Input`, bounded by
+4. Separate from the colour results above are the `Box` nesting and box-count limits, Tier-1 concatenated segment buffers (`Assemble.tier1Input`, bounded by
    the input length), `TagTree`/`Geometry` per-band checks, `ppmChunkIndex`. Each is checked in
    code; the theorems would follow the same pattern (`bind_ok` + `check_ok`).
 5. Excess ⇒ `limitExceeded` is proved for the geometry checks and the output allocation
