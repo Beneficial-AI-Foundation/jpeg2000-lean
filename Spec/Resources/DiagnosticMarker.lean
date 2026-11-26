@@ -1,5 +1,6 @@
 import Spec.Resources.DiagnosticCost
 import Spec.Resources.DiagnosticMarkerOrigin
+import Spec.Resources.DiagnosticBox
 
 /-!
 # Main-header diagnostic construction (Plan.md §§3–5, 7, S3; T.800 Annex A)
@@ -867,5 +868,110 @@ theorem public_cost (L : Limits) (data : ByteArray) (opts : DecodeOptions) :
     · exact ⟨Nat.zero_le _, Nat.zero_le _⟩
     · rename_i box
       exact ⟨(trace_cost (inRangeTrace box)).1, trace_storage (inRangeTrace box)⟩
+
+/-- Container and main-header state at the entry to geometry validation, including the
+original JP2 metadata and the reader at the first SOT. -/
+def throughMain (L : Limits) (data : ByteArray) :
+    Except Error (Box.Container × MainHeader × Reader) := do
+  let c ← Box.parseFile L data
+  let main ← inRange L data c
+  return (c, main)
+
+/-- Ordered container and main-header constructions under any common scalar bound.
+A failed container contributes its prefix alone. A successful one contributes its
+earlier checks even when the following main header fails. -/
+def throughMainTrace (L : Limits) (data : ByteArray) {cap : Nat}
+    (boxCap : DiagnosticBox.scalarCap L data.size ≤ cap) (mainCap : scalarCap L data.size ≤ cap) :
+    Trace cap (throughMain L data) (mainBudget L data.size + 2 + DiagnosticBox.eventBound L) := by
+  unfold throughMain
+  apply bindTrace ((DiagnosticBox.fileTrace L data).raiseCap boxCap)
+  intro c hc
+  exact collected ((inRangeTrace hc).raiseCap mainCap) (c, ·)
+
+private theorem bind_error_events {α β : Type} {cap i j : Nat} {r : Except Error α}
+    {f : α → Except Error β} (x : Trace cap r i) (y : ∀ a, r = .ok a → Trace cap (f a) j)
+    {e : Error} (h : r = .error e) : (bindTrace x y).messages = x.messages := by
+  cases h
+  rfl
+
+private theorem bind_ok_events {α β : Type} {cap i j : Nat} {r : Except Error α}
+    {f : α → Except Error β} (x : Trace cap r i) (y : ∀ a, r = .ok a → Trace cap (f a) j)
+    {a : α} (h : r = .ok a) : (bindTrace x y).messages = x.messages ++ (y a h).messages := by
+  cases h
+  rfl
+
+private theorem mapped_events {α β : Type} {cap k : Nat} {x : Except Error α}
+    (t : Trace cap x k) (f : α → β) : (collected t f).messages = t.messages := by
+  cases x <;> simp [collected, widen, bindTrace, doneTrace]
+
+/-- The combined trace preserves the original order and expression trees from both
+stages, even on rejection and when the common bound is increased. -/
+theorem throughMain_events (L : Limits) (data : ByteArray) (opts : DecodeOptions)
+    (admitted : opts.reduce ≤ L.maxDecompLevels) {cap : Nat}
+    (boxCap : DiagnosticBox.scalarCap L data.size ≤ cap) (mainCap : scalarCap L data.size ≤ cap) :
+    ((throughMainTrace L data boxCap mainCap).messages.map fun m => (m.1, m.2.tree)) =
+      ((DiagnosticBox.fileTrace L data).messages.map fun m => (m.1, m.2.tree)) ++
+      ((publicEvents L data opts).map fun m => (m.1, m.2.tree)) := by
+  let b := (DiagnosticBox.fileTrace L data).raiseCap boxCap
+  let k := fun c (hc : Box.parseFile L data = .ok c) => collected ((inRangeTrace hc).raiseCap mainCap) (c, ·)
+  change ((bindTrace b k).messages.map _) = _
+  have red := (Limits.check_eq_ok_iff L Decode.loc .decompLevels opts.reduce).2 admitted
+  have paths : (∃ e, Box.parseFile L data = .error e) ∨ (∃ c, Box.parseFile L data = .ok c) := by
+    cases h : Box.parseFile L data with
+    | error e => exact .inl ⟨e, rfl⟩
+    | ok c => exact .inr ⟨c, rfl⟩
+  rcases paths with ⟨e,hc⟩ | ⟨c,hc⟩
+  ·
+    rw [bind_error_events b k hc, Trace.raiseCap_events]
+    simp [publicEvents, red]
+    split
+    · rfl
+    · rename_i _ hh
+      cases hc.symm.trans hh
+  ·
+    rw [bind_ok_events b k hc, List.map_append, Trace.raiseCap_events]
+    congr 1
+    dsimp only [k]
+    rw [mapped_events,Trace.raiseCap_events]
+    simp [publicEvents, red]
+    split
+    · rename_i _ hh
+      cases hc.symm.trans hh
+    · rename_i c' hh
+      have eq : c = c' := Except.ok.inj (hc.symm.trans hh)
+      cases eq
+      rfl
+
+/-- After the reduction check, the two public decoders share the combined diagnostic
+cost up to geometry validation. Each propagates the exact first error of this prefix. -/
+theorem public_throughMain (L : Limits) (data : ByteArray) (opts : DecodeOptions)
+    (admitted : opts.reduce ≤ L.maxDecompLevels) :
+    let cap := max (DiagnosticBox.scalarCap L data.size) (scalarCap L data.size)
+    let t := throughMainTrace L data (Nat.le_max_left ..) (Nat.le_max_right ..)
+    let bound := (mainBudget L data.size + 2 + DiagnosticBox.eventBound L) * Text.workBound cap 128 24
+    (t.messages.map (fun m => m.2.tree.work)).sum ≤ bound ∧
+    (t.messages.map (fun m => m.2.tree.storage)).sum ≤ bound ∧
+    ∀ e, throughMain L data = .error e →
+      decodeCodestream L data opts.reduce = .error e ∧ JPEG2000.decode L data opts = .error e ∧
+      storedPayload false e ≤ 6 + Text.byteBound cap 128 24 + 2 * bits cap := by
+  let t := throughMainTrace L data (Nat.le_max_left ..) (Nat.le_max_right ..)
+  refine ⟨(trace_cost t).1, trace_storage t, ?_⟩
+  intro e bad
+  have retained := trace_retained t bad
+  cases box : Box.parseFile L data with
+  | error be =>
+    have eq : be = e := Except.error.inj (by simpa only [throughMain,box,bind,Except.bind] using bad)
+    subst be
+    have prop := (DiagnosticBox.public_box L data opts).2.2 e admitted box
+    exact ⟨prop.1, prop.2.1, retained⟩
+  | ok c =>
+    cases mh : inRange L data c with
+    | error me =>
+      have eq : me = e := Except.error.inj (by simpa only [throughMain,box,mh,bind,Except.bind] using bad)
+      subst me
+      have red := (Limits.check_eq_ok_iff L Decode.loc .decompLevels opts.reduce).2 admitted
+      have prop := rangeFailure red box mh
+      exact ⟨prop.1, prop.2, retained⟩
+    | ok m => simp [throughMain,box,mh,bind,Except.bind,pure,Except.pure] at bad
 
 end JPEG2000.Spec.Resources.DiagnosticMarker

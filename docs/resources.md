@@ -483,6 +483,12 @@ main-header error, both public decoders return its original marker-stage offset
 within the codestream range. A rejected cumulative POC count can reach twice
 `maxPocEntries` when both contributing counts individually fit the limit.
 
+`DiagnosticMarker.public_throughMain` composes the container and main-header
+traces up to geometry validation. A successful JP2 container can have discarded
+an earlier colour-box diagnostic before the main-header parser encounters its
+first error. The combined bound charges both events and gives the exact error
+returned by the native and display decoders.
+
 The whole-path diagnostic bound still needs tile-part headers, header merges and
 geometry, packet callbacks, native reconstruction and image stages. The final S3
 statement must combine those costs with the native, mapping and display bounds and
