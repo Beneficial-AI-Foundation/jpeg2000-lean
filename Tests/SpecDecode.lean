@@ -1,6 +1,8 @@
 import Spec.Decode
 import Encode.Encode
 import JPEG2000.WideReversible
+import JPEG2000.IrreversibleDispatch
+import Spec.Equiv
 
 /-!
 # Tests: `Spec.decode` against `decodeCodestream` (tasks 7.1a, 7.1f)
@@ -92,22 +94,29 @@ def encCase (name : String) (p : Encode.Params) (img : Encode.Image) (reduce : N
     if !p.reversible then IO.println s!"  spec-decode {name}: max irreversible difference {m}"
     return n
 
-/-- Serialize a one-row, three-component image from its LL quantisation indices.
-At higher resolutions each detail coefficient is the opposite of its LL value. -/
+/-- Serialize a one-row image from its LL quantisation indices.
+At higher resolutions each detail coefficient is the opposite of its LL value.
+Optional COC and SIZ overrides set each component's level count and depth. -/
 private def cancellationStream (w : Nat) (depth : UInt8) (params : Encode.Params)
-    (qcd : Marker.QCD) (ll : Array Int) : Except Error ByteArray := do
+    (qcd : Marker.QCD) (ll : Array Int) (levels depths : Array UInt8 := #[]) : Except Error ByteArray := do
   let comp : Encode.Component := { depth := 8, signed := true, samples := Array.replicate w 0 }
-  let base ← Encode.encode params { width := w, height := 1, comps := #[comp, comp, comp] }
+  let base ← Encode.encode params { width := w, height := 1, comps := Array.replicate ll.size comp }
   let header ← Header.parse Limits.default base
-  let siz := { header.siz with components := header.siz.components.map fun c => { c with depth } }
+  let siz := { header.siz with components := header.siz.components.mapIdx fun i c =>
+    { c with depth := depths.getD i depth } }
   let cod := header.main.cod
-  let coding ← Header.mkComp 0 cod.style qcd 0
+  let mut overrides := ByteArray.empty
   let rect : Header.Rect := ⟨0, 0, w, 1⟩
   let mut precs := #[]
   for index in [0:ll.size] do
     let low := ll.getD index 0
+    let style := {cod.style with levels := levels.getD index cod.style.levels}
+    if style.levels != cod.style.levels then
+      overrides := overrides ++ Encode.Marker.segment Marker.Code.COC
+        (Encode.Marker.serializeCOC ll.size ⟨index.toUInt16, style⟩)
+    let coding ← Header.mkComp 0 style qcd 0
     let tc := Tier2.Geometry.tileComp rect (siz.components.getD index default) coding
-    let bands := Encode.compBands w 1 params.levels fun _ b _ _ => if b == .LL then low else -low
+    let bands := Encode.compBands w 1 style.levels.toNat fun _ b _ _ => if b == .LL then low else -low
     let (prec, _) ← Encode.encodeComp Limits.default tc index bands
     precs := precs.push prec
   let data := Encode.Tier2.encodeTileLRCP precs
@@ -115,7 +124,7 @@ private def cancellationStream (w : Nat) (depth : UInt8) (params : Encode.Params
   let marker := fun k => Encode.Marker.pack (Encode.Marker.be16 k)
   let seg := Encode.Marker.segment
   return marker Marker.Code.SOC ++ seg Marker.Code.SIZ (Encode.Marker.serializeSIZ siz) ++
-    seg Marker.Code.COD (Encode.Marker.serializeCOD cod) ++ seg Marker.Code.QCD (Encode.Marker.serializeQCD qcd) ++
+    seg Marker.Code.COD (Encode.Marker.serializeCOD cod) ++ overrides ++ seg Marker.Code.QCD (Encode.Marker.serializeQCD qcd) ++
     seg Marker.Code.SOT (Encode.TilePart.serializeSOT sot) ++ marker Marker.Code.SOD ++ data ++ marker Marker.Code.EOC
 
 /-- Two 31-bit signed pixels with 31 coded planes, reversible 5/3 and RCT.
@@ -237,11 +246,80 @@ private def checkWideFixtures : Except Error Bool := do
     | _ => return false
   return true
 
+-- These fixtures each contain one tile. Compare the actual post-MCT values before G.1,
+-- then pass the very same sources to the native writer and inspect its output.
+private def dispatchCase (data : ByteArray) (reduce : Nat) (allowCompact expectCompact : Bool)
+    (expectedRed : Option Int := none) : Except Error Bool := do
+  let L := Limits.default
+  let h ← Header.parse L data
+  let spec ← Spec.Decode.decode L data reduce
+  let blocks ← JPEG2000.Tier2.Headers.decodeAllTileCodeBlocks L h data
+  let (g,coding) ← Progression.Layout.ofHeader h 0
+  let src ← IrreversibleDispatch.tile L data h.siz g coding blocks[0]? reduce allowCompact
+  let dst ← NativeOutput.writeTile L h.siz reduce g coding (← NativeOutput.allocOutput L h.siz reduce) src
+  if let some red := expectedRed then
+    if (dst[0]? >>= (·.get? 0)) != some red then return false
+  if src.size != spec.comps.size || dst.size != spec.comps.size then return false
+  return (Array.range src.size).all fun c => Id.run do
+    let some p := src[c]? | return false
+    let some d := dst[c]? | return false
+    let some ref := spec.comps[c]? | return false
+    let compact := match p with | .plane _ => true | .exact .. => false
+    if compact != expectCompact || p.width != ref.info.width || p.height != ref.info.height ||
+        ref.samples.size != p.width * p.height then return false
+    return (Array.range ref.samples.size).all fun j => Id.run do
+      let some z := p.get? j | return false
+      let some v := d.get? j | return false
+      let some s := ref.samples[j]? | return false
+      let F := Assemble.fracBitsOf h.siz s.mct c
+      let e := Spec.Equiv.cellErr F s.mct s.levels
+      return decide (((z : Rat) / Spec.Equiv.pw F - s.exact).abs ≤ e) &&
+        decide (((v : Rat) - s.value).abs ≤ e + 1)
+
+private def dispatchCases : Except Error Bool := do
+  let cs ← ictCancellationStream
+  let narrow ← decodeCodestreamNarrow Limits.default cs
+  if cs.size != 103 || narrow.saturatedBlocks != 2 ||
+      (narrow.comps[0]? >>= fun c => (c.plane.get? 0).map Int32.toInt) != some (-128) then return false
+  for allow in [true, false] do
+    if !(← dispatchCase cs 0 allow false (some 0)) then return false
+  let params : Encode.Params := {levels := 2, reversible := false, mct := true, stepLog2 := -2}
+  -- The compact LL and spatial triples fit. Only the rounded red ICT row overflows.
+  let qcd : Marker.QCD := {guardBits := 7, quant := .expounded (Array.replicate 7 ⟨8,0⟩)}
+  let colourSpill ← cancellationStream 1 8 {params with levels := 0} qcd #[6000, 0, 6000]
+  if (← decodeCodestreamNarrow Limits.default colourSpill).saturatedBlocks != 0 ||
+      !(← dispatchCase colourSpill 0 true false (some 127)) then return false
+  -- The code-blocks fit. With no MCT, the wide source identifies the lifting fallback.
+  let liftingSpill ← cancellationStream 2 8 {params with levels := 1, mct := false}
+    {guardBits := 7, quant := .expounded #[⟨8,0⟩,⟨9,0⟩,⟨9,0⟩,⟨10,0⟩]} #[6000]
+  if (← decodeCodestreamNarrow Limits.default liftingSpill).saturatedBlocks != 0 ||
+      !(← dispatchCase liftingSpill 0 true false) then return false
+  -- A signed 38-bit component with a 32-plane LL block uses F=0.
+  let tier1Spill ← cancellationStream 1 38 {params with levels := 0, mct := false}
+    {guardBits := 7, quant := .expounded #[⟨31,0⟩]} #[2^31]
+  match decodeCodestreamNarrow Limits.default tier1Spill with
+  | .error (.unsupported ..) => pure ()
+  | _ => return false
+  if !(← dispatchCase tier1Spill 0 true false) then return false
+  -- The three peers have NL 2/1/0. Component 3 has depth 12 and its own binary scale.
+  let mixed ← cancellationStream 7 8 params qcd #[5, -3, 7, 9] #[2,1,0,1] #[8,9,8,12]
+  for allow in [true,false] do
+    if !(← dispatchCase mixed 0 allow allow) then return false
+  let rgb ← Encode.encode params (image 7 7 3 8)
+  for red in [0,1,2] do
+    for allow in [true,false] do
+      if !(← dispatchCase rgb red allow allow) then return false
+  let gray ← Encode.encode {params with mct := false} (image 7 7 1 8)
+  dispatchCase gray 1 true true
+
 /-- Runs the suite; returns the number of failures. -/
 def run : IO Nat := do
   let mut n ← match checkWideFixtures with
     | .ok true => pure 0
     | other => fail "native codestream fixtures" (reprStr other)
+  match dispatchCases with
+  | .ok true => pure ()
+  | other => n := n + (← fail "checked irreversible dispatch" (reprStr other))
   n := n + (← encCase "5/3 1 comp 7x5 NL2" { levels := 2, cbWidthExp := 2, cbHeightExp := 2 }
     (image 7 5 1 8))
   n := n + (← encCase "5/3+RCT 3 comp 9x6 NL2" { levels := 2, cbWidthExp := 2, cbHeightExp := 2 }
