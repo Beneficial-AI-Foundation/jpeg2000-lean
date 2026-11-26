@@ -155,6 +155,7 @@ import Spec.ColorResources.Mapping
 import Spec.ColorResources.Palette
 import Spec.ColorResources.Views
 import Spec.ColorResources
+import Spec.ColorResources.EncoderImage
 import Spec.ColorResources.MappingTables
 import Spec.ColorResources.MappingResolve
 import Spec.ColorResources.MappingPrefix

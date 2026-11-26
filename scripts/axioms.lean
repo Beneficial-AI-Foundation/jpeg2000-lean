@@ -1528,6 +1528,8 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.RoundTrip.native_roundtrip
 #print axioms JPEG2000.Spec.RoundTrip.native_roundtrip_default
 #print axioms JPEG2000.Spec.RoundTrip.encode_native_roundtrip
+#print axioms JPEG2000.Spec.RoundTrip.image_roundtrip
+#print axioms JPEG2000.Spec.RoundTrip.encode_image_roundtrip
 
 #print axioms JPEG2000.Spec.ColorResources.interleave_resources
 #print axioms JPEG2000.Spec.ColorResources.interleave_loop
