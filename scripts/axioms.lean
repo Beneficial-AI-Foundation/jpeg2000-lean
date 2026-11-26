@@ -1912,6 +1912,11 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.Resources.DiagnosticCoding.main_refusal
 #print axioms JPEG2000.Spec.Resources.DiagnosticCoding.short_quantization_refusal
 #print axioms JPEG2000.Spec.Resources.DiagnosticCoding.inherited_quantization_refusal
+#print axioms JPEG2000.Spec.Resources.DiagnosticGeometry.component_counts
+#print axioms JPEG2000.Spec.Resources.DiagnosticGeometry.reached_totals
+#print axioms JPEG2000.Spec.Resources.DiagnosticGeometry.geometry_refusal
+#print axioms JPEG2000.Spec.Resources.DiagnosticGeometry.work_refusal
+#print axioms JPEG2000.Spec.Resources.DiagnosticGeometry.work_cost
 #print axioms JPEG2000.Spec.Resources.DiagnosticPacketRanges.parsed_ranges
 #print axioms JPEG2000.Spec.Resources.DiagnosticPacket.public_callback
 #print axioms JPEG2000.Spec.Resources.DiagnosticPacket.admission_free
