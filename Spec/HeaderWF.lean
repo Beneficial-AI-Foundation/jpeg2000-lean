@@ -54,7 +54,7 @@ private theorem readStepSize_wf {r : Reader} {s : StepSize} {r' : Reader}
   exact Nat.lt_of_le_of_lt Nat.and_le_right (by decide)
 
 /-- `readArray f` keeps an invariant that every item `f` reads satisfies. -/
-private theorem readArray_inv {α : Type} (P : α → Prop) (f : Reader → Except Error (α × Reader))
+theorem readArray_inv {α : Type} (P : α → Prop) (f : Reader → Except Error (α × Reader))
     (hf : ∀ r a r', f r = .ok (a, r') → P a) :
     ∀ (n : Nat) (acc : Array α) (r : Reader) (out : Array α) (r' : Reader),
     (∀ x ∈ acc, P x) → readArray f acc n r = .ok (out, r') → ∀ x ∈ out, P x
@@ -110,9 +110,37 @@ private theorem ite_t {α : Type} (a b : α) : (if true = true then a else b) = 
 /-- `if false = true` reduces to its second branch. -/
 private theorem ite_f {α : Type} (a b : α) : (if false = true then a else b) = b := rfl
 
-/-- Adding a main-header segment keeps `AccWF`. -/
+/-- Provenance of the markers that supply coding styles and quantisation. -/
+def SegmentRead (L : Limits) : TileSegment → Prop
+  | .cod d => ∃ r, parseCOD L r = .ok d
+  | .coc d => ∃ n r, parseCOC L n r = .ok d
+  | .qcd q => ∃ r, parseQCD r = .ok q
+  | .qcc q => ∃ n r, parseQCC n r = .ok q
+  | _ => True
+
+/-- Provenance of the default and per-component marker fields collected in a header. -/
+structure FieldsRead (L : Limits) (d : Option COD) (ds : Array COC)
+    (q : Option QCD) (qs : Array QCC) : Prop where
+  /-- The default coding style came from a COD marker. -/
+  cod : ∀ x, d = some x → SegmentRead L (.cod x)
+  /-- Each component style came from a COC marker. -/
+  coc : ∀ x ∈ ds, SegmentRead L (.coc x)
+  /-- The default quantisation came from a QCD marker. -/
+  qcd : ∀ x, q = some x → SegmentRead L (.qcd x)
+  /-- Each component quantisation came from a QCC marker. -/
+  qcc : ∀ x ∈ qs, SegmentRead L (.qcc x)
+
+private theorem all_push {α : Type} {P : α → Prop} {xs : Array α} {x : α}
+    (hs : ∀ y ∈ xs, P y) (hx : P x) : ∀ y ∈ xs.push x, P y := by
+  intro y hy
+  rcases Array.mem_push.1 hy with hy | rfl
+  · exact hs _ hy
+  · exact hx
+
+/-- Adding a main-header segment preserves the marker sources. -/
 private theorem addSegment_wf {L : Limits} {csiz : Nat} {acc acc' : Acc} {m : UInt16} {body : Reader}
-    (ha : AccWF acc) (h : addSegment L csiz acc m body = .ok acc') : AccWF acc' := by
+    (ha : FieldsRead L acc.cod acc.coc acc.qcd acc.qcc) (h : addSegment L csiz acc m body = .ok acc') :
+    FieldsRead L acc'.cod acc'.coc acc'.qcd acc'.qcc := by
   unfold addSegment at h
   generalize (m == Code.COD) = b1 at h
   generalize (m == Code.COC) = b2 at h
@@ -128,14 +156,16 @@ private theorem addSegment_wf {L : Limits} {csiz : Nat} {acc acc' : Acc} {m : UI
   case true =>
     rw [ite_t] at h
     obtain ⟨_, -, h⟩ := bind_ok h
-    obtain ⟨_, -, h⟩ := bind_ok h
-    cases h; exact ha
+    obtain ⟨d, hd, h⟩ := bind_ok h
+    cases h
+    exact { ha with cod := fun _ e => by cases e; exact ⟨_, hd⟩ }
   rw [ite_f] at h
   cases b2
   case true =>
     rw [ite_t] at h
-    obtain ⟨_, -, h⟩ := bind_ok h
-    cases h; exact ha
+    obtain ⟨d, hd, h⟩ := bind_ok h
+    cases h
+    exact { ha with coc := all_push ha.coc ⟨_, _, hd⟩ }
   rw [ite_f] at h
   cases b3
   case true =>
@@ -143,19 +173,14 @@ private theorem addSegment_wf {L : Limits} {csiz : Nat} {acc acc' : Acc} {m : UI
     obtain ⟨_, -, h⟩ := bind_ok h
     obtain ⟨q, hq, h⟩ := bind_ok h
     cases h
-    refine ⟨?_, ha.2⟩
-    intro q' e; cases e; exact readQuant_wf hq
+    exact { ha with qcd := fun _ e => by cases e; exact ⟨_, hq⟩ }
   rw [ite_f] at h
   cases b4
   case true =>
     rw [ite_t] at h
     obtain ⟨q, hq, h⟩ := bind_ok h
     cases h
-    refine ⟨ha.1, ?_⟩
-    intro x hx
-    rcases Array.mem_push.1 hx with hx | rfl
-    · exact ha.2 x hx
-    · exact parseQCC_wf hq
+    exact { ha with qcc := all_push ha.qcc ⟨_, _, hq⟩ }
   rw [ite_f] at h
   cases b5
   case true =>
@@ -195,10 +220,11 @@ private theorem addSegment_wf {L : Limits} {csiz : Nat} {acc acc' : Acc} {m : UI
   rw [ite_f] at h
   · cases h; exact ha
 
-/-- The main-header segment loop keeps `AccWF`. -/
+/-- The main-header loop preserves the marker sources. -/
 private theorem segmentLoop_wf {L : Limits} {csiz : Nat} :
     ∀ (fuel : Nat) (acc : Acc) (r : Reader) (out : Acc) (r' : Reader),
-    AccWF acc → segmentLoop L csiz fuel acc r = .ok (out, r') → AccWF out
+    FieldsRead L acc.cod acc.coc acc.qcd acc.qcc → segmentLoop L csiz fuel acc r = .ok (out, r') →
+    FieldsRead L out.cod out.coc out.qcd out.qcc
   | 0, acc, r, out, r', _, h => by simp only [segmentLoop] at h; cases h
   | fuel + 1, acc, r, out, r', ha, h => by
     simp only [segmentLoop] at h
@@ -222,16 +248,17 @@ private theorem segmentLoop_wf {L : Limits} {csiz : Nat} :
 /-- Main-header invariant: QCD and every QCC have 11-bit mantissas. -/
 def MainWF (mh : MainHeader) : Prop := QcdWF mh.qcd ∧ ∀ q ∈ mh.qcc, QcdWF q.params
 
-/-- A parsed main header is `MainWF`. -/
-private theorem parseMainHeader_wf {L : Limits} {r : Reader} {mh : MainHeader} {r' : Reader}
-    (h : parseMainHeader L r = .ok (mh, r')) : MainWF mh := by
+/-- A parsed main header retains the SIZ reader and all four marker sources. -/
+theorem parseMainHeader_fields {L : Limits} {r : Reader} {mh : MainHeader} {r' : Reader}
+    (h : parseMainHeader L r = .ok (mh, r')) : (∃ body, parseSIZ L body = .ok mh.siz) ∧
+      FieldsRead L (some mh.cod) mh.coc (some mh.qcd) mh.qcc := by
   unfold parseMainHeader at h
   obtain ⟨⟨soc, r1⟩, -, h⟩ := bind_ok h
   obtain ⟨_, -, h⟩ := bind_ok h
   obtain ⟨⟨m, r2⟩, -, h⟩ := bind_ok h
   obtain ⟨_, -, h⟩ := bind_ok h
   obtain ⟨⟨body, len, r3⟩, -, h⟩ := bind_ok h
-  obtain ⟨siz, -, h⟩ := bind_ok h
+  obtain ⟨siz, hsiz, h⟩ := bind_ok h
   obtain ⟨⟨acc, r4⟩, hl, h⟩ := bind_ok h
   cases hc : acc.cod <;> simp only [hc] at h
   · cases h
@@ -239,7 +266,16 @@ private theorem parseMainHeader_wf {L : Limits} {r : Reader} {mh : MainHeader} {
   · cases h
   · cases h
     have hw := segmentLoop_wf _ _ _ _ _ (by constructor <;> simp) hl
-    exact ⟨hw.1 _ hq, hw.2⟩
+    exact ⟨⟨_, hsiz⟩, hc ▸ hq ▸ hw⟩
+
+private theorem parseMainHeader_wf {L : Limits} {r : Reader} {mh : MainHeader} {r' : Reader}
+    (h : parseMainHeader L r = .ok (mh, r')) : MainWF mh := by
+  have hw := (parseMainHeader_fields h).2
+  obtain ⟨_, hq⟩ := hw.qcd _ rfl
+  refine ⟨readQuant_wf hq, ?_⟩
+  intro q hmem
+  obtain ⟨_, _, hq⟩ := hw.qcc q hmem
+  exact parseQCC_wf hq
 
 
 /-- A tile-part header segment: QCD/QCC parameters are `QcdWF`. -/
@@ -254,10 +290,10 @@ def PartWF (p : TilePartHeader) : Prop := ∀ s ∈ p.segments, SegWF s
 /-- Every tile-part of a tile is `PartWF`. -/
 def TileWF (t : Tile) : Prop := ∀ p ∈ t.parts, PartWF p
 
-/-- Adding a tile-part header segment keeps every segment `SegWF`. -/
+/-- Every newly recorded coding or quantisation segment comes from its marker reader. -/
 private theorem addTileSegment_wf {L : Limits} {csiz : Nat} {first ppm : Bool} {acc acc' : TPAcc}
-    {m : UInt16} {body : Reader} (ha : ∀ s ∈ acc.segments, SegWF s)
-    (h : addTileSegment L csiz first ppm acc m body = .ok acc') : ∀ s ∈ acc'.segments, SegWF s := by
+    {m : UInt16} {body : Reader} (ha : ∀ s ∈ acc.segments, SegmentRead L s)
+    (h : addTileSegment L csiz first ppm acc m body = .ok acc') : ∀ s ∈ acc'.segments, SegmentRead L s := by
   unfold addTileSegment at h
   dsimp only at h
   generalize (firstPartOnly m && !first) = b0 at h
@@ -266,11 +302,8 @@ private theorem addTileSegment_wf {L : Limits} {csiz : Nat} {first ppm : Bool} {
     rw [ite_t] at h
     obtain ⟨_, h1, -⟩ := bind_ok h; cases h1
   rw [ite_f] at h
-  have hp : ∀ x, SegWF x → ∀ s ∈ (acc.segments.push x), SegWF s := by
-    intro x hx s hs
-    rcases Array.mem_push.1 hs with hs | rfl
-    · exact ha s hs
-    · exact hx
+  have hp : ∀ x, SegmentRead L x → ∀ s ∈ (acc.segments.push x), SegmentRead L s :=
+    fun _ => all_push ha
   generalize (m == Code.COD) = b1 at h
   generalize (m == Code.COC) = b2 at h
   generalize (m == Code.QCD) = b3 at h
@@ -284,27 +317,27 @@ private theorem addTileSegment_wf {L : Limits} {csiz : Nat} {first ppm : Bool} {
   case true =>
     rw [ite_t] at h
     obtain ⟨_, -, h⟩ := bind_ok h
-    obtain ⟨_, -, h⟩ := bind_ok h
-    cases h; exact hp _ trivial
+    obtain ⟨_, hd, h⟩ := bind_ok h
+    cases h; exact hp _ ⟨_, hd⟩
   rw [ite_f] at h
   cases b2
   case true =>
     rw [ite_t] at h
-    obtain ⟨_, -, h⟩ := bind_ok h
-    cases h; exact hp _ trivial
+    obtain ⟨_, hd, h⟩ := bind_ok h
+    cases h; exact hp _ ⟨_, _, hd⟩
   rw [ite_f] at h
   cases b3
   case true =>
     rw [ite_t] at h
     obtain ⟨_, -, h⟩ := bind_ok h
     obtain ⟨q, hq, h⟩ := bind_ok h
-    cases h; exact hp _ (readQuant_wf hq)
+    cases h; exact hp _ ⟨_, hq⟩
   rw [ite_f] at h
   cases b4
   case true =>
     rw [ite_t] at h
     obtain ⟨q, hq, h⟩ := bind_ok h
-    cases h; exact hp _ (parseQCC_wf hq)
+    cases h; exact hp _ ⟨_, _, hq⟩
   rw [ite_f] at h
   cases b5
   case true =>
@@ -339,11 +372,11 @@ private theorem addTileSegment_wf {L : Limits} {csiz : Nat} {first ppm : Bool} {
   rw [ite_f] at h
   cases h; exact hp _ trivial
 
-/-- The tile-part header loop keeps every segment `SegWF`. -/
+/-- The tile-part header loop preserves segment provenance. -/
 private theorem headerLoop_wf {L : Limits} {csiz : Nat} {first ppm : Bool} :
     ∀ (fuel : Nat) (acc : TPAcc) (r : Reader) (out : TPAcc) (r' : Reader),
-    (∀ s ∈ acc.segments, SegWF s) → headerLoop L csiz first ppm fuel acc r = .ok (out, r') →
-    ∀ s ∈ out.segments, SegWF s
+    (∀ s ∈ acc.segments, SegmentRead L s) → headerLoop L csiz first ppm fuel acc r = .ok (out, r') →
+    ∀ s ∈ out.segments, SegmentRead L s
   | 0, acc, r, out, r', _, h => by simp only [headerLoop] at h; cases h
   | fuel + 1, acc, r, out, r', ha, h => by
     simp only [headerLoop] at h
@@ -368,6 +401,12 @@ private theorem headerLoop_wf {L : Limits} {csiz : Nat} {first ppm : Bool} :
 /-- Tile-part loop invariant: every tile-part recorded so far is `PartWF`. -/
 def StWF (st : State) : Prop := ∀ ps ∈ st.parts, ∀ p ∈ ps, PartWF p
 
+private abbrev PartRead (L : Limits) (p : TilePartHeader) :=
+  ∀ s ∈ p.segments, SegmentRead L s
+
+private abbrev StateRead (L : Limits) (st : State) :=
+  ∀ ps ∈ st.parts, ∀ p ∈ ps, PartRead L p
+
 /-- An element of `xs.modify i f` is an element of `xs` or `f` of one. -/
 private theorem mem_modify {α : Type} {xs : Array α} {i : Nat} {f : α → α} {y : α}
     (hy : y ∈ xs.modify i f) : y ∈ xs ∨ ∃ x ∈ xs, y = f x := by
@@ -378,9 +417,9 @@ private theorem mem_modify {α : Type} {xs : Array α} {i : Nat} {f : α → α}
   · exact Or.inr ⟨xs[j], Array.getElem_mem hj', rfl⟩
   · exact Or.inl (Array.getElem_mem hj')
 
-/-- Reading one tile-part keeps `StWF`. -/
-private theorem readTilePart_wf {c : Ctx} {st st' : State} {r r' : Reader} (hs : StWF st)
-    (h : readTilePart c st r = .ok (st', r')) : StWF st' := by
+/-- Reading one tile-part preserves the sources of all recorded segments. -/
+private theorem readTilePart_wf {c : Ctx} {st st' : State} {r r' : Reader} (hs : StateRead c.limits st)
+    (h : readTilePart c st r = .ok (st', r')) : StateRead c.limits st' := by
   unfold readTilePart at h
   dsimp only at h
   obtain ⟨⟨_, r1⟩, -, h⟩ := bind_ok h
@@ -407,10 +446,10 @@ private theorem readTilePart_wf {c : Ctx} {st st' : State} {r r' : Reader} (hs :
       · exact hs x hx p hp
       · exact ha
 
-/-- The tile-part loop keeps `StWF`. -/
+/-- The tile-part loop preserves segment provenance. -/
 private theorem tilePartLoop_wf {c : Ctx} :
     ∀ (fuel : Nat) (st : State) (r : Reader) (out : State),
-    StWF st → tilePartLoop c fuel st r = .ok out → StWF out
+    StateRead c.limits st → tilePartLoop c fuel st r = .ok out → StateRead c.limits out
   | 0, st, r, out, _, h => by simp only [tilePartLoop] at h; cases h
   | fuel + 1, st, r, out, hs, h => by
     simp only [tilePartLoop] at h
@@ -435,11 +474,11 @@ private theorem assembleTile_parts {corr : Bool} {i : Nat} {parts : Array TilePa
     | (obtain ⟨_, h1, -⟩ := bind_ok h; cases h1)
     | (obtain ⟨_, -, h⟩ := bind_ok h; obtain ⟨_, -, h⟩ := bind_ok h; cases h; rfl)
 
-/-- Assembled tiles are `TileWF` when every recorded tile-part is `PartWF`. -/
+/-- Assembling tile-parts into tiles preserves segment provenance. -/
 private theorem assembleTiles_wf {L : Limits} {corr : Bool} {parts : Array (Array TilePartHeader)}
-    (hp : ∀ ps ∈ parts, ∀ p ∈ ps, PartWF p) :
-    ∀ (n i packets : Nat) (acc out : Array Tile), (∀ t ∈ acc, TileWF t) →
-    assembleTiles L corr parts n i packets acc = .ok out → ∀ t ∈ out, TileWF t
+    (hp : ∀ ps ∈ parts, ∀ p ∈ ps, PartRead L p) :
+    ∀ (n i packets : Nat) (acc out : Array Tile), (∀ t ∈ acc, ∀ p ∈ t.parts, PartRead L p) →
+    assembleTiles L corr parts n i packets acc = .ok out → ∀ t ∈ out, ∀ p ∈ t.parts, PartRead L p
   | 0, i, packets, acc, out, ha, h => by
     simp only [assembleTiles, Except.ok.injEq] at h; subst h; exact ha
   | n + 1, i, packets, acc, out, ha, h => by
@@ -461,9 +500,10 @@ private theorem assembleTiles_wf {L : Limits} {corr : Bool} {parts : Array (Arra
       | none => rw [hg] at hpm; simp at hpm
       | some ps => rw [hg] at hpm; exact hp ps (Array.mem_of_getElem? hg) p hpm
 
-/-- Every tile of `parseTileParts` is `TileWF`. -/
-private theorem parseTileParts_wf {L : Limits} {mh : MainHeader} {r : Reader} {tiles : Array Tile}
-    (h : parseTileParts L mh r = .ok tiles) : ∀ t ∈ tiles, TileWF t := by
+/-- The style and quantisation fields of every tile-part originate in marker reads. -/
+theorem parseTileParts_fields {L : Limits} {mh : MainHeader} {r : Reader} {tiles : Array Tile}
+    (h : parseTileParts L mh r = .ok tiles) :
+    ∀ t ∈ tiles, ∀ p ∈ t.parts, ∀ s ∈ p.segments, SegmentRead L s := by
   unfold parseTileParts at h
   dsimp only at h
   obtain ⟨_, -, h⟩ := bind_ok h
@@ -475,6 +515,15 @@ private theorem parseTileParts_wf {L : Limits} {mh : MainHeader} {r : Reader} {t
   exact assembleTiles_wf hw _ _ _ _ _ (by simp) h
 
 
+private theorem parseTileParts_wf {L : Limits} {mh : MainHeader} {r : Reader} {tiles : Array Tile}
+    (h : parseTileParts L mh r = .ok tiles) : ∀ t ∈ tiles, TileWF t := by
+  intro t ht p hp s hs
+  have hread := parseTileParts_fields h t ht p hp s hs
+  cases s with
+  | qcd q => obtain ⟨_, hq⟩ := hread; exact readQuant_wf hq
+  | qcc q => obtain ⟨_, _, hq⟩ := hread; exact parseQCC_wf hq
+  | _ => trivial
+
 /-- Every step size of a tile-component's parameters has an 11-bit mantissa. -/
 def CompWF (p : CompParams) : Prop := ∀ st ∈ p.steps, StepWF st
 
@@ -482,7 +531,7 @@ def CompWF (p : CompParams) : Prop := ∀ st ∈ p.steps, StepWF st
 def CodingWF (c : Coding) : Prop := ∀ p ∈ c.comps, CompWF p
 
 /-- An element of `xs.extract a b` is an element of `xs`. -/
-private theorem mem_extract {α : Type} {xs : Array α} {a b : Nat} {y : α} (hy : y ∈ xs.extract a b) :
+theorem mem_extract {α : Type} {xs : Array α} {a b : Nat} {y : α} (hy : y ∈ xs.extract a b) :
     y ∈ xs := by
   obtain ⟨j, hj, rfl⟩ := Array.mem_iff_getElem.1 hy
   rw [Array.getElem_extract]
@@ -535,7 +584,7 @@ private theorem foldlM_mem_inv {α β : Type} (P : β → Prop) (f : β → α �
       b' r (hf a (List.mem_cons_self) b b' hb h1) h2
 
 /-- Every value of `overrides` comes from an item, so it satisfies what all items do. -/
-private theorem overrides_inv {α : Type} (P : α → Prop) {pos csiz : Nat} {what : String}
+theorem overrides_inv {α : Type} (P : α → Prop) {pos csiz : Nat} {what : String}
     {items : Array (UInt16 × α)} {out : Array (Option α)} (hi : ∀ x ∈ items, P x.2)
     (h : overrides pos what csiz items = .ok out) : ∀ o ∈ out, ∀ v, o = some v → P v := by
   unfold overrides at h
@@ -561,7 +610,7 @@ private theorem overrides_inv {α : Type} (P : α → Prop) {pos csiz : Nat} {wh
     rw [ho.2] at hv; cases hv
 
 /-- `xs.getD i none` is `none` or an element of `xs`. -/
-private theorem getD_none {α : Type} (P : α → Prop) {xs : Array (Option α)} {i : Nat} {v : α}
+theorem getD_none {α : Type} (P : α → Prop) {xs : Array (Option α)} {i : Nat} {v : α}
     (hx : ∀ o ∈ xs, ∀ v, o = some v → P v) (h : xs.getD i none = some v) : P v := by
   rw [Array.getD_eq_getD_getElem?] at h
   cases hg : xs[i]? with
@@ -569,7 +618,7 @@ private theorem getD_none {α : Type} (P : α → Prop) {xs : Array (Option α)}
   | some o => rw [hg] at h; exact hx o (Array.mem_of_getElem? hg) v h
 
 /-- `(xs.getD i none).getD d` satisfies `P` when `d` and every entry do. -/
-private theorem getD_getD {α : Type} (P : α → Prop) {xs : Array (Option α)} {i : Nat} {d : α}
+theorem getD_getD {α : Type} (P : α → Prop) {xs : Array (Option α)} {i : Nat} {d : α}
     (hx : ∀ o ∈ xs, ∀ v, o = some v → P v) (hd : P d) : P ((xs.getD i none).getD d) := by
   cases hg : xs.getD i none with
   | none => exact hd
@@ -629,7 +678,7 @@ private theorem listMapM_mem {α β : Type} (P : β → Prop) (f : α → Except
     · exact listMapM_mem P f l (fun a' ha' => hf a' (List.mem_cons_of_mem a ha')) bs hbs y hy
 
 /-- Array version of `listMapM_mem`. -/
-private theorem arrayMapM_mem {α β : Type} (P : β → Prop) (f : α → Except Error β) (xs : Array α)
+theorem arrayMapM_mem {α β : Type} (P : β → Prop) (f : α → Except Error β) (xs : Array α)
     (hf : ∀ a ∈ xs, ∀ b, f a = .ok b → P b) (out : Array β) (h : xs.mapM f = .ok out) :
     ∀ y ∈ out, P y := by
   rw [Array.mapM_eq_mapM_toList] at h
@@ -670,7 +719,7 @@ def TSegsWF (ts : TileSegs) : Prop :=
   (∀ q, ts.qcd = some q → QcdWF q) ∧ ∀ q ∈ ts.qcc, QcdWF q.params
 
 /-- `List.foldl` keeps an invariant that each step on a list element keeps. -/
-private theorem list_foldl_inv {α β : Type} (P : β → Prop) (f : β → α → β) :
+theorem list_foldl_inv {α β : Type} (P : β → Prop) (f : β → α → β) :
     ∀ (l : List α), (∀ a ∈ l, ∀ b, P b → P (f b a)) → ∀ b, P b → P (l.foldl f b)
   | [], _, _, hb => hb
   | a :: l, hf, b, hb => list_foldl_inv P f l (fun a' ha' => hf a' (List.mem_cons_of_mem a ha'))
@@ -799,7 +848,7 @@ private theorem codingOf_wf {h : Header} (hw : HdrWF h) (t : Nat) :
   · exact hw.1
 
 /-- `Geometry.ofHeader` takes component `c`'s parameters from `codingOf h t`. -/
-private theorem geom_params {h : Header} {t c : Nat} {tc : Tier2.Geometry.TileCompGeom}
+theorem geom_params {h : Header} {t c : Nat} {tc : Tier2.Geometry.TileCompGeom}
     (hg : Tier2.Geometry.ofHeader h t c = .ok tc) : (codingOf h t).comps[c]? = some tc.params := by
   unfold Tier2.Geometry.ofHeader at hg
   dsimp only at hg
