@@ -468,7 +468,14 @@ An oversized reduction yields a typed error that refers to the caller's natural.
 `caller_render_unbounded` proves that formatting this error after the call can
 produce arbitrarily many bytes, even for a fixed input and fixed limits.
 
-The whole-path diagnostic bound still needs the remaining container and codestream
-headers, packet callbacks, native reconstruction and image stages. The final S3
+`DiagnosticMarker.public_cost` bounds the main-header diagnostic work and temporary
+storage on every input. It counts the checks reached between SOC and the first SOT,
+including eager messages on successful COD, QCD and other marker payloads. On a
+main-header error, both public decoders return its original marker-stage offset
+within the codestream range. A rejected cumulative POC count can reach twice
+`maxPocEntries` when both contributing counts individually fit the limit.
+
+The whole-path diagnostic bound still needs the container parser, tile-part headers,
+header merges and geometry, packet callbacks, native reconstruction and image stages. The final S3
 statement must combine those costs with the native, mapping and display bounds and
 identify the limit errors returned when a checked budget is exceeded.

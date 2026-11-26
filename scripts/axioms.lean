@@ -1870,3 +1870,10 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.Resources.DiagnosticCost.public_interleavers
 #print axioms JPEG2000.Spec.Resources.DiagnosticCost.external_interleavers_unbounded
 #print axioms JPEG2000.Spec.Resources.DiagnosticCost.public_pick
+#print axioms JPEG2000.Spec.Resources.DiagnosticMarkerOrigin.main_location
+#print axioms JPEG2000.Spec.Resources.DiagnosticMarker.marker_digits
+#print axioms JPEG2000.Spec.Resources.DiagnosticMarker.main_source
+#print axioms JPEG2000.Spec.Resources.DiagnosticMarker.range_source
+#print axioms JPEG2000.Spec.Resources.DiagnosticMarker.inRange_location
+#print axioms JPEG2000.Spec.Resources.DiagnosticMarker.public_main
+#print axioms JPEG2000.Spec.Resources.DiagnosticMarker.public_cost
