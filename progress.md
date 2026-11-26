@@ -18,7 +18,7 @@ Design document: Plan.md
 
 ## Current wave
 
-Wave 42 integrated the JPX adapter and source-page gate in safe-pdf. M8 and M9 are deferred.
+Wave 44 addresses the 12 remaining painted comparison rows from safe-pdf `8e6983b`. It covers PDF DeviceN tint transforms, nonstandard component counts and opacity, and five sampling or mask comparisons. M8 and M9 are deferred.
 
 ## Branches and PRs
 | Phase | Branch | Base | PR | State |
@@ -319,11 +319,25 @@ Plan.md §7 row 10, §9. Exit: **M10**: safe-pdf renders every JPX image of its 
 | 10.1 | Document the public consumer API, isolate development targets, and verify the M7-based pin from safe-pdf. | 6.2, 7.5 | README.md, docs/api.md, lakefile.lean, safe-pdf Lake files and dependency decision | solo | done (2026-11-26) |
 | 10.1c | Verify the pinned private dependency can be fetched in a clean safe-pdf Actions job. The consumer repository token cannot fetch jpeg2000-lean; an owner decision on a scoped read credential is pending. | 10.1 | safe-pdf CI | solo | blocked (cross-repository read access) |
 | 10.2a | Implement the pure Quarantine.JPX adapter. Check original dimensions, propagate budgets and typed errors, preserve native indices and embedded opacity. | 10.1 | safe-pdf Quarantine and adapter tests | wt | done (2026-11-26) |
-| 10.2b | Wire XObjects, inline images and mask streams into the confined render path. Test PDF colour precedence, Decode and mask rules, premultiplication and reduced rendering. | 10.2a | safe-pdf raster and integration tests | wt | todo |
+| 10.2b | Wire XObjects, inline images and mask streams into the confined render path. Test PDF colour precedence, Decode and mask rules, premultiplication and reduced rendering. | 10.2a | safe-pdf raster and integration tests | wt | done (safe-pdf `8e6983b`) |
 | 10.2c | Build a source-PDF corpus gate from the pinned JPX-bearing documents. Verify placements, filter chains, reference versions and image tolerances. | 6.3b | safe-pdf corpus and worker render comparisons | wt | done (2026-11-26) |
-| 10.2r | Complete missing references for the six colour-channel placements in jpx_numcomps and the reduced map placement in issue19517. Verify source identity and paint coverage independently of safe-pdf. | 10.2c | safe-pdf differential page gate and reference tooling | wt | todo |
-| 10.2s | Supply a verified JPX-free page reference using the recorded plane for bug_jpx. Check the painted placement in the safe-pdf worker. | 10.2c, 6.7 | safe-pdf recorded-plane reference helper and tests | wt | todo |
-| 10.3 | Run consumer tests and worker rendering comparisons, check every JPX occurrence, and record the M10 result. Review the consumer version tag against the tested pin at release. | 10.1c, 10.2b, 10.2r, 10.2s | both repos | solo | todo |
+| 10.2r | Complete missing references for the six colour-channel placements in jpx_numcomps and the reduced map placement in issue19517. Verify source identity and paint coverage independently of safe-pdf. | 10.2c | safe-pdf differential page gate and reference tooling | wt | done (safe-pdf `f277fb2`) |
+| 10.2s | Supply a verified JPX-free page reference using the recorded plane for bug_jpx. Check the painted placement in the safe-pdf worker. | 10.2c, 6.7 | safe-pdf recorded-plane reference helper and tests | wt | done (safe-pdf `f277fb2`) |
+| 10.2t | Evaluate PDF DeviceN tint functions for the six-placement grid and two-component subsampling page. | 10.2b, 10.2r | safe-pdf raster image colour conversion and tests | wt | doing (2026-11-26) |
+| 10.2u | Match documented PDF channel recovery for the grid and preserve valid embedded gray plus alpha. | 10.2b, 10.2r | safe-pdf JPX adapter and tests | wt | doing (2026-11-26) |
+| 10.2v | Resolve sampling and mask differences on PDFBox CMYK/gray/RGB, S2 mask 35 and odd-origin subsampling 11 using independently checked controls. | 10.2b | safe-pdf raster sampling, mask composition and placement evidence | wt | doing (2026-11-26) |
+| 10.3 | Run consumer tests and worker rendering comparisons, check every JPX occurrence, and record the M10 result. Review the consumer version tag against the tested pin at release. | 10.1c, 10.2s, 10.2t, 10.2u, 10.2v | both repos | solo | todo |
+Wave 43 integrated the renderer and the one-bit production worker controls at
+safe-pdf `8e6983b`. References cover all 39 painted locations. Counting each
+painted image and mask separately, **33 of 45** object/page comparisons passed
+across 20 PDFs and 22 pages. Ten exceeded tolerance, two contained placeholders,
+and two further objects were verified unpainted thumbnails. Both pikepdf filter
+chains passed at 0.404%. The reduced map and recorded-plane checks passed; the
+recorded page matched exactly. Four embedded-opacity crops matched every RGB
+byte of the independently calculated matte composites and PDF.js. The consumer
+passed 46 suites, 1,223 axiom checks, and the native FFI archive build. Hosted
+consumer verification still needs read access to the private dependency.
+
 Wave 42 integrated the adapter and dedicated stencil validation at safe-pdf `5084cd8`, then the source-page gate at `a17967c`. The standard consumer build, 46 test suites and 1,223 axiom checks passed. At packaging and plan commit `27b4f36`, the decoder passed both Linux, both macOS and both corpus CI jobs. Before the renderer wiring, the two pikepdf placements both failed at 2,764 of 2,970 pixels. The complete gate enumerates 20 PDFs, 22 pages, 46 object occurrences and 42 distinct codestreams. Its baseline has 24 placeholder rows, 13 other placement mismatches, eight mandatory reference gaps and two unpainted thumbnails.
 
 Consumer pin check (2026-11-26): from a fresh safe-pdf worktree at `430203d`,
@@ -701,3 +715,4 @@ Exit criterion checked: [ ]
 * 2026-11-26 — phase 7 milestone. PR #6 marked ready for review. Both GitHub CI runs (45822320707 and 45822329487) passed all six jobs on milestone commit `83f96ba`.
 
 * 2026-11-26 — Wave 42 (M10, decoder #8 / safe-pdf #20): integrated 10.2a and 10.2c at safe-pdf `a17967c`. Added 10.2r and 10.2s for the eight measured reference gaps.
+* 2026-11-26 — Wave 43 (M10): merged the renderer and all placement references into safe-pdf `8e6983b`; split the 12 remaining painted comparisons into 10.2t, 10.2u and 10.2v for wave 44.
