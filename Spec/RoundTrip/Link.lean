@@ -17,6 +17,25 @@ namespace JPEG2000.Spec.RoundTrip
 
 open JPEG2000 JPEG2000.Encode JPEG2000.Encode.Tier2
 
+/-- Packet recovery under caller-supplied limits. The three premises account for
+the header geometry, the longest plain code-block segment and all coding passes. -/
+theorem reversible_tile_roundtrip_with_limits {L : Limits} {p : Params} {img : Image} {e : Encoded}
+    (he : encodeDetailed p img = .ok e) (hrev : p.reversible = true)
+    (fits : HeaderFits L p img e.guardBits e.exponents e.codestream.size)
+    (perBlock : 109 ≤ L.maxPassesPerCodeBlock) {passesBefore : Nat}
+    (passes : passesBefore + (e.blocks.toList.map BlockInfo.numPasses).sum ≤ L.maxCodingPasses) :
+    ∃ prec infos, ReversibleTilePackets p img e prec infos ∧
+      let hdr := encHeader p img e.guardBits e.exponents (encodeTileLRCP prec)
+      Header.parse L e.codestream = .ok hdr ∧ ∃ out,
+        Spec.Tier2.decodeTile L hdr e.codestream
+          (hdr.tiles[0]'(by simp [hdr, encHeader])) none passesBefore = .ok out ∧
+        DecodedEncoderTile L (encLayout p img e.guardBits e.exponents) prec out := by
+  obtain ⟨_, _, _, hinit⟩ := initPrecincts_of_headerFits fits
+  exact decodeTile_encodeDetailed L he hrev fits hinit
+    (initPrecincts_precIdx_injective hinit rfl)
+    (fun hp q hq => encodeDetailed_packetBlockOK he hrev perBlock hp q hq) passesBefore
+    (fun hp => by rwa [hp.packetPasses])
+
 /-- Decoding the packets of a successful reversible encoding recovers its
 block geometry, pass counts, inclusion, zero bit-planes and codeword bytes.
 The bounds are on the stream size, aggregate code-block count and coding-pass
@@ -30,11 +49,6 @@ theorem reversible_tile_roundtrip {p : Params} {img : Image} {e : Encoded}
         Spec.Tier2.decodeTile Limits.default hdr e.codestream
           (hdr.tiles[0]'(by simp [hdr, encHeader])) none passesBefore = .ok out ∧
         DecodedEncoderTile Limits.default (encLayout p img e.guardBits e.exponents) prec out := by
-  have fits := budget.headerFits he
-  obtain ⟨_, _, _, hinit⟩ := initPrecincts_of_headerFits fits
-  exact decodeTile_encodeDetailed Limits.default he hrev fits hinit
-    (initPrecincts_precIdx_injective hinit rfl)
-    (fun hp q hq => encodeDetailed_packetBlockOK he hrev (by decide) hp q hq) passesBefore
-    (fun hp => budget.packetPasses hp)
+  exact reversible_tile_roundtrip_with_limits he hrev (budget.headerFits he) (by decide) budget.passes
 
 end JPEG2000.Spec.RoundTrip

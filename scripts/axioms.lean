@@ -1358,3 +1358,44 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.Tier1Wide.decodeCodeBlockSegs_equiv
 #print axioms JPEG2000.Spec.Tier1Wide.decodeCodeBlock_equiv
 #print axioms JPEG2000.Spec.Tier1Wide.codedPlanes_le_of_header
+
+-- Phase 7, task 7.3d6b: resource limits for reference encodings
+#print axioms JPEG2000.Spec.RoundTrip.reversible_tile_roundtrip_with_limits
+#print axioms JPEG2000.Spec.RoundTrip.encoderLimits_eq_default_iff
+#print axioms JPEG2000.Spec.RoundTrip.headerFits_encoderLimits
+#print axioms JPEG2000.Spec.RoundTrip.reversible_tile_roundtrip_encoderLimits
+#print axioms JPEG2000.Spec.RoundTrip.output_admitted_encoderLimits
+#print axioms JPEG2000.Spec.RoundTrip.spec_roundtrip_with_limits_of_tile
+
+-- Phase 7, task 7.3d4b1: component loops and tile display
+#print axioms JPEG2000.Spec.RoundTrip.decodeTile_reconstructedEncoderTile
+
+-- Phase 7, task 7.3d6a: full spec block and row recovery
+#print axioms JPEG2000.Spec.RoundTrip.DecodedEncoderTile.reconstructsComponentBlocks
+#print axioms JPEG2000.Spec.RoundTrip.ComponentPlanes31.reconstructsComponentBlocks
+#print axioms JPEG2000.Spec.RoundTrip.ReconstructsComponentBlocks.tileComp_collected
+#print axioms JPEG2000.Spec.RoundTrip.ReconstructsComponentBlocks.bandGrid53_collected
+#print axioms JPEG2000.Spec.RoundTrip.DecodedEncoderTile.tileComp_reversibleRow_of_encodeDetailed
+#print axioms JPEG2000.Spec.RoundTrip.encodeDetailed_waveletReconstruction_full
+
+-- Phase 7, task 7.1i2a: wide style-aware passes
+#print axioms JPEG2000.Spec.Tier1Wide.Modes.mqDecision_equiv
+#print axioms JPEG2000.Spec.Tier1Wide.Modes.rawDecision_equiv
+#print axioms JPEG2000.Spec.Tier1Wide.Modes.passBody_equiv
+#print axioms JPEG2000.Spec.Tier1Wide.Modes.segSymbol_equiv
+#print axioms JPEG2000.Spec.Tier1Wide.Modes.runPass_equiv
+
+-- Phase 7, tasks 7.3d4b3 and 7.3d6c: spec-level image round trip
+#print axioms JPEG2000.Spec.RoundTrip.spec_roundtrip_with_limits
+#print axioms JPEG2000.Spec.RoundTrip.spec_roundtrip
+#print axioms JPEG2000.Spec.RoundTrip.spec_roundtrip_default
+#print axioms JPEG2000.Spec.RoundTrip.encode_spec_roundtrip
+
+-- Phase 7, task 7.1j2a: wide sample reconstruction and placement
+#print axioms JPEG2000.WideOutput.destIndex_lt
+#print axioms JPEG2000.Spec.WideOutput.sample_rev
+#print axioms JPEG2000.Spec.WideOutput.sample_irrev
+#print axioms JPEG2000.Spec.WideOutput.roundFix_eq_roundHalf
+#print axioms JPEG2000.Spec.WideOutput.sample_recovers
+#print axioms JPEG2000.Spec.WideOutput.blit_succeeds
+#print axioms JPEG2000.Spec.WideOutput.blit_spec

@@ -70,10 +70,14 @@ import Spec.RoundTrip.SubbandInverse
 import Spec.RoundTrip.BandCoverage
 import Spec.RoundTrip.CollectedBlocks
 import Spec.RoundTrip.WaveletReconstruction
+import Spec.RoundTrip.EncoderDomain
 import Spec.RoundTrip.SingleTile
+import Spec.RoundTrip.ReconstructedTile
+import Spec.RoundTrip.Spec
 import Spec.RoundTrip
 import Spec.Resources
 import Spec.WidePlane
+import Spec.WideOutput
 import Spec.Resources.BlockPasses
 import Spec.Tier1Equiv.Basic
 import Spec.Tier1Equiv.Rel
@@ -84,6 +88,7 @@ import Spec.Tier1Equiv.Scan
 import Spec.Tier1Equiv.Inv
 import Spec.Tier1Equiv
 import Spec.Tier1Wide.Plain
+import Spec.Tier1Wide.Modes
 import Spec.TilePartRoundTrip
 
 /-!

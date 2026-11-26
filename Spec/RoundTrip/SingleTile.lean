@@ -59,10 +59,22 @@ structure ReconstructedEncoderTile (img : Encode.Image) (t : Spec.Decode.TileOut
   values : ∀ i (hi : i < t.comps.size), t.comps[i].2.samples.map SpecSample.value =
     (img.comps[i]'(count ▸ hi)).samples
 
-private theorem alloc_count {L : Limits} {img : Encode.Image}
-    {info : Array DecodedComponent} {ps : Array Plane}
+/-- Read the reference-grid dimensions, signedness, depths and row-major component
+values of a spec decode in the reference encoder's image type. -/
+def encoderImageOfSpec (si : SpecImage) : Encode.Image :=
+  { width := si.header.siz.xsiz.toNat - si.header.siz.xosiz.toNat
+    height := si.header.siz.ysiz.toNat - si.header.siz.yosiz.toNat
+    comps := si.comps.map fun c =>
+      { depth := c.info.depth, signed := c.info.signed, samples := c.samples.map SpecSample.value } }
+
+private theorem assembled_image {p : Params} {img : Encode.Image} {guard : Nat} {exps : Array Nat}
+    {packets : ByteArray} {L : Limits} {info : Array DecodedComponent} {ps : Array Plane}
+    {t : Spec.Decode.TileOut} (hc : EncCheckFacts p img) (rt : ReconstructedEncoderTile img t)
     (ha : JPEG2000.Decode.allocOutput L (encSIZ img) 0 = .ok (info, ps)) :
-    info.size = img.comps.size := by
+    encoderImageOfSpec ⟨encHeader p img guard exps packets,
+      info.zipWith (fun m pl => { info := m, samples := pl.samples }) (t.comps.map Prod.snd)⟩ = img := by
+  have hw : img.width < 2 ^ 32 := Nat.lt_of_le_of_lt hc.width_le (by decide)
+  have hh : img.height < 2 ^ 32 := Nat.lt_of_le_of_lt hc.height_le (by decide)
   unfold JPEG2000.Decode.allocOutput at ha
   simp only [bind, Except.bind, pure, Except.pure] at ha
   split at ha
@@ -70,11 +82,45 @@ private theorem alloc_count {L : Limits} {img : Encode.Image}
   split at ha
   · contradiction
   simp only [Except.ok.injEq, Prod.mk.injEq] at ha
-  simp [← ha.1, encSIZ]
+  obtain ⟨rfl, rfl⟩ := ha
+  simp only [encoderImageOfSpec, encHeader, encSIZ, UInt32.toNat_ofNat',
+    Nat.mod_eq_of_lt hw, Nat.mod_eq_of_lt hh]
+  congr 1
+  apply Array.ext (by simp [rt.count])
+  intro i hi hj
+  have hit : i < t.comps.size := rt.count ▸ hj
+  have hd : img.comps[i].depth < 256 :=
+    Nat.lt_trans (Nat.lt_succ_of_le (hc.depth _ (by simp)).2) (by decide)
+  simp [Array.getElem_zipWith, rt.values i hit, Nat.mod_eq_of_lt hd]
 
-/-- Once a single encoder tile is reconstructed, the public specification returns the
-original values in every component. Input and output admission follow their numeric
-budgets; the only remaining stage is the reconstruction of that tile. -/
+/-- The single-tile image composition at caller-supplied packet and output limits. -/
+theorem spec_roundtrip_with_limits_of_tile {L : Limits} {p : Params} {img : Encode.Image} {e : Encoded}
+    (he : encodeDetailed p img = .ok e) (hrev : p.reversible = true)
+    (fits : HeaderFits L p img e.guardBits e.exponents e.codestream.size)
+    (perBlock : 109 ≤ L.maxPassesPerCodeBlock)
+    (passes : (e.blocks.toList.map BlockInfo.numPasses).sum ≤ L.maxCodingPasses)
+    (hcells : img.comps.size * (img.width * img.height) ≤ L.maxWorkSamples)
+    (hbytes : (img.comps.toList.map fun c => img.width * img.height *
+      Header.bytesPerSample c.depth).sum ≤ L.maxDecodedBytes)
+    (recon : ∀ prec infos out, ReversibleTilePackets p img e prec infos →
+      DecodedEncoderTile L (encLayout p img e.guardBits e.exponents) prec out →
+      let h := encHeader p img e.guardBits e.exponents (Encode.Tier2.encodeTileLRCP prec)
+      ∃ t, Spec.Decode.decodeTile L h 0 0 (some out) = .ok t ∧
+        ReconstructedEncoderTile img t) :
+    ∃ si, Spec.Decode.decode L e.codestream 0 = .ok si ∧
+      encoderImageOfSpec si = img := by
+  obtain ⟨prec, infos, packets, hparse, out, ht, hd⟩ :=
+    reversible_tile_roundtrip_with_limits he hrev fits perBlock
+      (passesBefore := 0) (by simpa only [Nat.zero_add] using passes)
+  obtain ⟨t, hr, hshape⟩ := recon prec infos out packets hd
+  have checked := (encodeDetailed_shape he).check
+  have hc := checkFacts_of_ok checked
+  obtain ⟨info, ps, ha, hp⟩ := place_encTile_of_limits t checked
+    (Nat.lt_of_le_of_lt hc.width_le (by decide)) (Nat.lt_of_le_of_lt hc.height_le (by decide))
+    hcells hbytes hshape.count hshape.shape
+  exact ⟨_, decode_encTile hc hparse ha ht hd.hdrLeft hr hp, assembled_image hc hshape ha⟩
+
+/-- Specialisation of the single-tile image composition to the default decoder limits. -/
 theorem spec_roundtrip_of_tile {p : Params} {img : Encode.Image} {e : Encoded}
     (he : encodeDetailed p img = .ok e) (hrev : p.reversible = true)
     (budget : ImageBudget p img e 0)
@@ -88,19 +134,10 @@ theorem spec_roundtrip_of_tile {p : Params} {img : Encode.Image} {e : Encoded}
         ReconstructedEncoderTile img t) :
     ∃ si, Spec.Decode.decode Limits.default e.codestream 0 = .ok si ∧
       si.comps.map (fun c => c.samples.map SpecSample.value) = img.comps.map (·.samples) := by
-  obtain ⟨prec, infos, packets, hparse, out, ht, hd⟩ := reversible_tile_roundtrip he hrev budget
-  obtain ⟨t, hr, hshape⟩ := recon prec infos out packets hd
-  have checked := (encodeDetailed_shape he).check
-  have hc := checkFacts_of_ok checked
-  obtain ⟨info, ps, ha, hp⟩ := place_encTile_of_limits t checked
-    (Nat.lt_of_le_of_lt hc.width_le (by decide)) (Nat.lt_of_le_of_lt hc.height_le (by decide))
-    hcells hbytes hshape.count hshape.shape
-  refine ⟨_, decode_encTile hc hparse ha ht hd.hdrLeft hr hp, ?_⟩
-  have hi := alloc_count ha
-  have hcount := hshape.count
-  apply Array.ext (by simp [hcount, hi])
-  intro i hl _
-  have hit : i < t.comps.size := by simpa [hcount, hi] using hl
-  simpa using hshape.values i hit
+  obtain ⟨si, hsi, eq⟩ := spec_roundtrip_with_limits_of_tile he hrev (budget.headerFits he)
+    (by decide) (by simpa only [Nat.zero_add] using budget.passes) hcells hbytes recon
+  refine ⟨si, hsi, ?_⟩
+  simpa [encoderImageOfSpec, Function.comp_def] using
+    congrArg (fun x : Encode.Image => x.comps.map (·.samples)) eq
 
 end JPEG2000.Spec.RoundTrip
