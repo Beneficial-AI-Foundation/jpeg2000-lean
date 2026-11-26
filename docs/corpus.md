@@ -216,7 +216,8 @@ non-regression files: **fetch-only**, pinned by commit and SHA-256, never commit
   `Height`, `ColorSpace` with indirect objects resolved, `BitsPerComponent`,
   `SMaskInData`, `Decode`, `Matte`, `Intent`, `SMask: present`), `codestream` (main-header
   SIZ/COD summary), and where applicable `also_in` (the same bytes in another object/PDF),
-  `known_deviations` (see below) and `note`.
+  `jp2_boxes.colr` (the JP2 colour specification for the CMYK comparison), `recorded_plane`
+  (one constant reference plane for the entry's SHA-256), `reduce`, and `note`.
 
 ### Contents: 42 streams (8,464,640 bytes) from 19 PDFs
 
@@ -250,28 +251,51 @@ written; a second run extracts nothing. Cross-check when the list was built: 39 
 equal `pdfimages -jp2` output byte for byte; poppler crashes on `bug_jpx.pdf` and does not
 emit the two 1x1 images that no page draws (`issue19326-11`, `issue19517-13`).
 
-To rebuild the list: `--scan` (it prints the entries; hand-written `known_deviations` and
-`note` fields must be carried over).
+When rebuilding the list with `--scan`, carry over the hand-written `recorded_plane`,
+`jp2_boxes`, `reduce` and `note` fields for matching SHA-256 values.
 
 ### Image differential (`scripts/diff-images.py`)
 
-`lake build image-dump && python3 -I scripts/diff-images.py [--jp2] [--verbose]` decodes
-every `pdf_jpx` file (with `--jp2` also `file1…9.jp2`) with `opj_decompress` and with
-`image-dump` (`Tests/ImageDump.lean`: raw `decodeCodestream` components and the
-`JPEG2000.decode` channels as PGX) and compares per component at two levels:
-**codestream** (the bare codestream; for a space-less stream OpenJPEG's sYCC heuristic
-applies, and is compared with our `decode`, which applies the same one) and **jp2** (the JP2
-file: palette, cmap/cdef, sYCC; skipped for ICC and non-sRGB/grey/sYCC enumerated spaces,
-which Debian's `opj_decompress` converts itself through lcms2 or its own CMYK/CIELab code).
-Tolerance (peak error per component): reversible 0, irreversible 1 (fixed-point vs
-OpenJPEG's float 9/7, the ±1 measured on every T.803 stream in task 5.5), +1 for an sYCC
-conversion (task 6.1). An entry's `"reduce": k` makes both decoders discard k resolution
-levels (`issue19517-8`: 2). Images whose reduced area is above `--max-mpx` (40) are skipped.
+Run `lake build image-dump` and `python3 -I scripts/diff-images.py --jp2 --verbose`.
+The differential verifies each file's SHA-256 and checks component count, dimensions,
+depth, sign and every sample. The **codestream** comparison uses raw components or the RGB
+channels when OpenJPEG infers sYCC. The **jp2** comparison uses the consumer channels from
+`JPEG2000.decode`, including palette, component mapping, channel definitions and colour
+conversion. The peak error limit per component is 0 for reversible coding and 1 for
+irreversible coding, with an additional 1 for sYCC conversion. Both decoders use the
+manifest's resolution reduction (`issue19517-8` uses 2). The default size limit is 40
+megapixels at the reduced resolution.
 
-The full task 6.5 run with OpenJPEG 2.5.3 had 39/42 PDF streams within tolerance, three
-known deviations and no skips. All nine JP2 conformance files passed. Task 6.6 rechecked
-the two corrected streams and the even-origin control. Together these runs account for
-**41/42 PDF streams within tolerance**.
+With OpenJPEG 2.5.3, **42/42 PDF streams passed**, including every JP2 comparison.
+With `--jp2`, 51/51 files passed, with zero known deviations, failures, size skips or
+absent files. The differential delegates the ICC rendering of conformance files 5, 7 and
+8 to the TIFF suite. With lcms2 2.16 installed, `lake exe tests` passed all nine TIFF
+references, including those three.
+
+* `bug_jpx-15` is a bare codestream. Its manifest entry records the OpenJPEG reference
+  obtained with two empty tile-parts omitted. Only `image-dump` decodes the original.
+  Its raw output and consumer image each matched the single unsigned 8-bit 128×64
+  reference plane exactly, including all 8,192 zero samples. A wrong hash, decode error,
+  different plane format or nonzero sample fails the comparison.
+* `JPXTestCMYK-12` declares JP2 enumerated colour space 12. OpenJPEG writes four CMYK
+  channels to TIFF and renders three RGB channels for PGX. The harness compares all four
+  JP2 consumer colour channels to the TIFF. OpenJPEG's multiplicative CMYK formula uses
+  binary32 normalization and truncates to 8-bit RGB. A C compiler can fuse the multiply
+  and subtract during normalization. The harness selects a rounding mode using only the
+  OpenJPEG TIFF and PGX, requiring an exact match across all three RGB planes. On this
+  machine fused rounding matched. The harness applies that conversion to the consumer
+  channels and compares them directly to native OpenJPEG PGX at the irreversible limit of 1.
+
+  | Comparison | Peak by channel | MSE by channel |
+  |---|---|---|
+  | Bare codestream | 1, 1, 1, 1 | 0.0001, 0.0002, 0.0002, 0.0001 |
+  | JP2 consumer CMYK vs OpenJPEG TIFF | 1, 1, 1, 1 | 0.0001, 0.0002, 0.0002, 0.0001 |
+  | OpenJPEG TIFF rendered to RGB vs OpenJPEG PGX | 0, 0, 0 | 0, 0, 0 |
+  | JP2 consumer rendered to RGB vs native OpenJPEG PGX | 1, 1, 1 | 0.0003, 0.0003, 0.0003 |
+
+  A separate test simulated non-fused PGX from the same TIFF samples. Calibration selected
+  non-fused rounding exactly, and the direct consumer comparison failed at peaks 2, 2, 2.
+  Native results above were measured on AArch64.
 
 * `issue12213-16` has two comparisons. The bare codestream yields the 4-bit index plane.
   The JP2 comparison applies the palette and compares the three channel planes before
@@ -285,9 +309,6 @@ the two corrected streams and the even-origin control. Together these runs accou
   takes the first stored chroma sample. The final unpaired row also starts with raw zero.
   All three RGB planes are bit-exact for both origins. Ordinary component upsampling
   still replicates the nearest edge sample.
-* The remaining manifest exception is `bug_jpx-15`. OpenJPEG 2.5.3 aborts
-  (`munmap_chunk(): invalid pointer`) on two zero-length tile-parts. Removing those
-  tile-parts lets it decode bit-identically to our decode of the original.
 
 CI (Linux) runs the fetch, `extract-pdf-jpx.py` and `diff-images.py`; it fails on any
 deviation not recorded in the manifest.

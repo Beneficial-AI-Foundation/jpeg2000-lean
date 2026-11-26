@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Decoded-image differential: `JPEG2000.decode` vs `opj_decompress` (Plan.md 8.2, 8.3).
+"""Decoded-image differential for M6 (Plan.md sections 1, 7–9; T.800 Annex I).
 
 Run from the repository root (or anywhere) as:   python3 -I scripts/diff-images.py [options]
 
@@ -13,10 +13,14 @@ two comparisons are made, each per component, sample by sample:
               component 1 is horizontally sub-sampled from sYCC to RGB even here; then our
               `JPEG2000.decode` channels (which apply the same heuristic) are compared.
   jp2         JP2 files only: `opj_decompress -i x.jp2` (palette, cmap/cdef, sYCC) against
-              our `JPEG2000.decode` channels.  Skipped when the file renders through an ICC
-              profile (Debian's opj_decompress applies it with lcms2: colour management is
-              the ICC task's, scripts/icc-apply.py) or through an enumerated space other than
-              sRGB/greyscale/sYCC (OpenJPEG converts CMYK, e-sYCC, CIELab to RGB itself).
+              our `JPEG2000.decode` channels. For enumerated CMYK, convert our four consumer
+              channels to RGB and compare directly to OpenJPEG's RGB PGX. The reference
+              CMYK TIFF and PGX select the native converter's rounding. The conformance
+              suite separately checks the nine JP2 TIFF references, applying ICC via lcms2.
+
+The SHA-256 in each manifest entry is verified before decoding. A `recorded_plane` entry
+checks both our raw and consumer output against a single constant plane at tolerance zero.
+Only our decoder reads that fixture.
 
 Tolerances (peak = max |ours - OpenJPEG| per component; MSE reported):
   reversible 5/3, no colour conversion ......... 0 (bit-exact)
@@ -35,16 +39,18 @@ resolution levels (`opj_decompress -r k`, `image-dump <file> <prefix> k`), and t
 check below uses the reduced area (area / 4^k).  `issue19517-8` (212 Mpx) is compared at
 reduce 2 this way.
 
-Files whose (reduced) image area exceeds --max-mpx (default 40) are skipped (reported), as are
-all files when opj_decompress, the image-dump executable (`lake build image-dump`) or the
-corpus files are missing.  Exit status 1 if any compared file is outside tolerance (or only
-one decoder decodes it) at a level not recorded as a known deviation.  "both-fail" (both
-decoders reject the stream) counts as agreement.
+Files above --max-mpx (default 40, at the reduced resolution) and missing corpus files
+are skipped. Comparisons require image-dump (`lake build image-dump`), and live references
+also require opj_decompress. Exit status 1 on hash mismatch, decoding error or comparison
+outside tolerance at a level not recorded as a known deviation.
 """
 import argparse
+import hashlib
 import json
 import os
+from runpy import run_path
 import shutil
+import struct
 import subprocess
 import sys
 import tempfile
@@ -100,6 +106,8 @@ def compare(a, b):
     """(peak, mse) of two PGX tuples, or a mismatch string."""
     if a[:2] != b[:2]:
         return "size %dx%d vs %dx%d" % (a[0], a[1], b[0], b[1])
+    if a[2:4] != b[2:4]:
+        return "depth/sign %s vs %s" % (a[2:4], b[2:4])
     sa, sb = a[4], b[4]
     peak, sq = 0, 0
     for x, y in zip(sa, sb):
@@ -174,7 +182,7 @@ def ours(src, tmp, tag, reduce=0):
             info["img"].append({"role": t[2]})
         elif t[0] == "error":
             info["error"] = line
-    if rc != 0:
+    if info["error"] or rc != 0:
         return info["error"] or "image-dump failed (%s): %s" % (rc, log.strip()[-200:])
     raw = [read_pgx("%s_raw_%d.pgx" % (pre, k)) for k in range(len(info["raw"]))]
     img = [read_pgx("%s_img_%d.pgx" % (pre, k)) for k in range(len(info["img"]))]
@@ -187,7 +195,7 @@ def judge(name, level, theirs, mine, tols, lines):
         lines.append("FAIL %s [%s]: %s" % (name, level, theirs if isinstance(theirs, str) else mine))
         return False
     if len(theirs) != len(mine):
-        lines.append("FAIL %s [%s]: %d components from OpenJPEG, %d ours"
+        lines.append("FAIL %s [%s]: %d reference components, %d ours"
                      % (name, level, len(theirs), len(mine)))
         return False
     ok = True
@@ -206,8 +214,78 @@ def judge(name, level, theirs, mine, tols, lines):
     return ok
 
 
+def recorded_comparison(name, reference, raw, img, lines):
+    """Check the single recorded plane against both outputs of the original bare codestream."""
+    w, h = reference["width"], reference["height"]
+    plane = (w, h, reference["depth"], reference["signed"], [reference["constant"]] * (w * h))
+    failed = set()
+    for level, planes in (("codestream", raw), ("image", img)):
+        if not judge(name, level + " recorded", [plane], planes, [0], lines):
+            failed.add(level)
+    return failed
+
+
+def cmyk_to_rgb(planes, fused):
+    """OpenJPEG color_cmyk_to_rgb for unsigned 8-bit CMYK, with or without contraction."""
+    def f32(x):
+        return struct.unpack("=f", struct.pack("=f", x))[0]
+
+    scale = f32(1 / 255)
+    # v * scale is exact in binary64 for these 8-bit samples. A fused 1 - v * scale
+    # rounds once, while the non-fused C expression first rounds the product to binary32.
+    inv = [f32(1 - (v * scale if fused else f32(v * scale))) for v in range(256)]
+    ink = [f32(255 * v) for v in inv]
+    w, h = planes[0][:2]
+    black = planes[3][4]
+    return [(w, h, 8, False, bytes(int(f32(ink[v] * inv[k])) for v, k in zip(p[4], black)))
+            for p in planes[:3]]
+
+
+def check_cmyk(name, src, tmp, red, info, img, tol, lines):
+    """Compare the JP2 consumer and OpenJPEG TIFF channels before and after RGB rendering."""
+    out = os.path.join(tmp, "opj_cmyk.tif")
+    rc, log = run(["opj_decompress", "-i", src, "-o", out] + (["-r", str(red)] if red else []))
+    if rc != 0:
+        lines.append("FAIL %s [jp2 CMYK]: opj_decompress failed (%s) %s" % (name, rc, log[-200:]))
+        return False
+    read_tiff = run_path(os.path.join(REPO, "scripts", "icc-apply.py"))["read_tiff"]
+    try:
+        w, h, nc, bits, data = read_tiff(out)
+    except (OSError, ValueError, KeyError, struct.error) as exc:
+        lines.append("FAIL %s [jp2 CMYK]: invalid OpenJPEG TIFF: %s" % (name, exc))
+        return False
+    if (nc, bits) != (4, 8):
+        lines.append("FAIL %s [jp2 CMYK]: expected four 8-bit TIFF samples per pixel" % name)
+        return False
+    if (info.get("space") != "enumerated-12" or info.get("declared") != "enumerated-12"
+            or [c["role"] for c in info["img"]] != ["colour"] * 4):
+        lines.append("FAIL %s [jp2 CMYK]: expected four enumerated CMYK colour channels" % name)
+        return False
+    theirs = [(w, h, bits, False, data[k::nc]) for k in range(nc)]
+    if not judge(name, "jp2 CMYK", theirs, img, [tol] * nc, lines):
+        return False
+    native_rgb = opj_planes(src, tmp, "opj_rgb", red)
+    if isinstance(native_rgb, str):
+        lines.append("FAIL %s [jp2 RGB PGX]: %s" % (name, native_rgb))
+        return False
+    # Select the compiler's rounding using only the two OpenJPEG decodes. The TIFF
+    # rendering must match PGX exactly before that renderer is applied to our image.
+    mismatches = []
+    for fused in (True, False):
+        mode = "fused" if fused else "non-fused"
+        level = "jp2 OpenJPEG TIFF->RGB vs PGX " + mode
+        result = []
+        if judge(name, level, native_rgb, cmyk_to_rgb(theirs, fused), [0] * 3, result):
+            lines.extend(result)
+            return judge(name, "jp2 CMYK->RGB vs PGX", native_rgb, cmyk_to_rgb(img, fused),
+                         [tol] * 3, lines)
+        mismatches.extend(result)
+    lines.extend(mismatches)
+    return False
+
+
 def check_file(e, root, tmp, lines):
-    """Returns the set of levels ('codestream', 'jp2') outside tolerance."""
+    """Return the failed comparisons for this manifest entry."""
     path = safe_join(root, e["path"])
     name = e["path"]
     red = int(e.get("reduce", 0))
@@ -215,6 +293,9 @@ def check_file(e, root, tmp, lines):
     failed = set()
     with open(path, "rb") as f:
         data = f.read()
+    if hashlib.sha256(data).hexdigest() != e["sha256"]:
+        lines.append("FAIL %s: SHA-256 differs from manifest" % name)
+        return {"sha256"}
     cs = codestream_of(data)
     if cs is None:
         lines.append("FAIL %s: no codestream box" % name)
@@ -223,16 +304,14 @@ def check_file(e, root, tmp, lines):
     with open(csf, "wb") as f:
         f.write(cs)
     # codestream level
-    theirs = opj_planes(csf, tmp, "opj_cs", red)
     r = ours(csf, tmp, "ours_cs", red)
     if isinstance(r, str):
-        if isinstance(theirs, str):
-            lines.append("both-fail %s [codestream%s]: ours %s; OpenJPEG %s" % (name, rtag, r, theirs))
-        else:
-            lines.append("FAIL %s [codestream%s]: %s (OpenJPEG decodes it)" % (name, rtag, r))
-            failed.add("codestream")
-        return failed
+        lines.append("FAIL %s [codestream%s]: %s" % (name, rtag, r))
+        return {"codestream"}
     info, raw, img = r
+    if "recorded_plane" in e:
+        return recorded_comparison(name, e["recorded_plane"], raw, img, lines)
+    theirs = opj_planes(csf, tmp, "opj_cs", red)
     rev = [c["rev"] for c in info["raw"]]
     sycc = info.get("sycc_converted") == "true"
     if sycc:
@@ -251,22 +330,23 @@ def check_file(e, root, tmp, lines):
         f.write(data)
     r = ours(jf, tmp, "ours_jp2", red)
     if isinstance(r, str):
-        theirs = opj_planes(jf, tmp, "opj_jp2", red)
-        if isinstance(theirs, str):
-            lines.append("both-fail %s [jp2]: ours %s; OpenJPEG %s" % (name, r, theirs))
-        else:
-            lines.append("FAIL %s [jp2]: %s (OpenJPEG decodes it)" % (name, r))
-            failed.add("jp2")
+        lines.append("FAIL %s [jp2%s]: %s" % (name, rtag, r))
+        failed.add("jp2")
         return failed
     info, raw, img = r
+    rev = [c["rev"] for c in info["raw"]]
+    tol = 0 if all(rev) else 1
+    if e.get("jp2_boxes", {}).get("colr") == "enumerated:12":
+        if not check_cmyk(name, jf, tmp, red, info, img, tol, lines):
+            failed.add("jp2")
+        return failed
     space = info.get("declared", "?")
-    if space == "icc" or space.startswith("enumerated"):
-        lines.append("skip %s [jp2]: colour space %s (OpenJPEG converts it itself)" % (name, space))
+    if space == "icc" and "jp2" in e["roles"]:
+        lines.append("skip %s [jp2 ICC]: covered by the colour-managed TIFF reference in lake exe tests" % name)
         return failed
     theirs = opj_planes(jf, tmp, "opj_jp2", red)
-    rev = [c["rev"] for c in info["raw"]]
     sycc = info.get("sycc_converted") == "true"
-    tols = [(0 if all(rev) else 1) + (1 if sycc else 0) for _ in img]
+    tols = [tol + (1 if sycc else 0) for _ in img]
     if not judge(name, "jp2 %s%s" % (space, rtag), theirs, img, tols, lines):
         failed.add("jp2")
     return failed
@@ -282,9 +362,6 @@ def main(argv):
     args = ap.parse_args(argv)
     root = os.path.abspath(args.root) if args.root else DEFAULT_ROOT
 
-    if shutil.which("opj_decompress") is None:
-        print("skip: opj_decompress not found")
-        return 0
     if not os.path.isfile(IMAGE_DUMP):
         print("skip: %s missing (run `lake build image-dump`)" % os.path.relpath(IMAGE_DUMP, REPO))
         return 0
@@ -295,6 +372,13 @@ def main(argv):
         entries += [e for e in manifest["files"] if "jp2" in e.get("roles", ())]
     if args.only:
         entries = [e for e in entries if any(t in e["path"] for t in args.only)]
+    if shutil.which("opj_decompress") is None:
+        recorded = [e for e in entries if "recorded_plane" in e]
+        if len(recorded) < len(entries):
+            print("skip: opj_decompress not found (%d live references)" % (len(entries) - len(recorded)))
+        if not recorded:
+            return 0
+        entries = recorded
     present = [e for e in entries if os.path.isfile(safe_join(root, e["path"]))]
     if not present:
         print("skip: no corpus files present (run scripts/fetch-corpus.py and "
