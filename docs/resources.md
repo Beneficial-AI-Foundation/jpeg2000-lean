@@ -67,6 +67,31 @@ reduced component areas. If the sum exceeds `maxWorkSamples`, it returns the exa
 present and omitted tiles, including mixed wavelets. Intermediate wavelet buffers
 and repeated work during a wide retry are separate obligations below.
 
+### Parsing, geometry and byte gathering
+
+For an input of `N` bytes, `HeaderWork.parse_input_excess` gives the exact
+input-size error from `Header.parse` when `N > maxInputBytes`. On success,
+`parse_storage` bounds the codestream range by `N` and its main marker and
+segment-reference entries by the codestream length. The box, marker and
+tile-part loop fuel theorems preserve the error on a rejecting prefix. A
+completed box advances by at least eight bytes, a marker visit by at least two,
+and a completed tile-part edge by at least four.
+
+After geometry admission, `checkWork_visits` bounds component evaluations by
+`maxCodeBlocks`, including the final evaluation on rejection. Completed precinct
+initialization retains at most `maxPrecincts` states and at most
+`51 × maxCodeBlocks × maxPrecincts` nested block and tag-tree entries.
+`ppmChunks_account` charges four length bytes and the consumed payload for each
+completed packed-header chunk. `ppmChunks_fuel` also covers a failed split.
+
+Direct Tier-1 input borrows the original buffer. With `K` source ranges and
+`S` segments, the fragmented path returns at most `K × N` bytes. Its
+conservative copy charge is at most `(2K + S) × K × N` byte writes when every
+append copies its whole result. `tier1Input_copy_charge` accounts for both copy
+folds, and `tileData_copy_charge` tracks tile-part copies already completed on
+rejection. The multiplicity of ranges in actual packet output remains an input
+to these bounds.
+
 ### Packet traversal
 
 `Spec.Resources.PublicPacketWork.decode_packet_work` applies to every input, limit
@@ -203,9 +228,11 @@ also account for the work performed before an error.
 * **Reconstruction (7.4c2w, 7.4c2s).** The checked decoder can retry using wide
   coefficients. Apply the wide integer bounds to both attempts and bound lifting and
   colour-transform visits, temporary line arrays and live planes across levels.
-* **Parsing and gathering (7.4c3).** Bound the box, marker and tile-part scans,
-  geometry initialization, packed-header storage and segment assembly. A bound
-  on the length of each borrowed slice alone does not bound a concatenation.
+* **Parsing and gathering (7.4c3a–c).** Bound the inner payload, sorting
+  and descriptor operations on early rejection. Derive range and segment
+  multiplicity from actual Tier-2 output and aggregate the copy charges.
+  Include temporary geometry, index and tag-tree storage on failing prefixes
+  and the original input buffer in the storage bound.
 * **Composition (7.4c4).** Give explicit functions of `Limits` and input length
   for public work and intermediate allocation. Connect each counted operation
   to its decoder loop, including the prefix traversed before rejection.
