@@ -31,11 +31,13 @@ private theorem span (a b d : Nat) : cdiv b d - cdiv a d ≤ b-a := by
     rw [Nat.add_mul_div_right _ _ (Nat.succ_pos d)] at h
     exact Nat.sub_le_of_le_add (by simpa [cdiv, Nat.add_comm] using h)
 
-private theorem reduce_sides (r : Rect) (k : Nat) :
+/-- Reduction bounds both axis lengths independently, including degenerate rectangles. -/
+theorem reduce_sides (r : Rect) (k : Nat) :
     (Assemble.reduceRect r k).width ≤ r.width ∧ (Assemble.reduceRect r k).height ≤ r.height :=
   ⟨span _ _ _, span _ _ _⟩
 
-private theorem raw_sides {L : Limits} {data : ByteArray} {reduce : Nat} {d : CodestreamImage}
+/-- Every constructed component grid fits the two checked reference-grid side bounds. -/
+theorem raw_sides {L : Limits} {data : ByteArray} {reduce : Nat} {d : CodestreamImage}
     (ok : decodeCodestream L data reduce = .ok d) :
     ∀ c ∈ rawChannels d, c.plane.width ≤ L.maxImageSide ∧ c.plane.height ≤ L.maxImageSide := by
   have raw := NativeResources.decodeCodestream_resources ok
@@ -58,7 +60,8 @@ private theorem raw_sides {L : Limits} {data : ByteArray} {reduce : Nat} {d : Co
   simp only [JPEG2000.NativeOutput.layout, Fin.getElem_fin, Array.getElem_map]
   exact ⟨Nat.le_trans red.1 (Nat.le_trans (span _ _ _) side.1), Nat.le_trans red.2 (Nat.le_trans (span _ _ _) side.2.1)⟩
 
-private theorem mapped_sides {L : Limits} {m : Mapping} {cs mapped : Array Color.Channel}
+/-- Direct and palette channels preserve their source grid on both axes. -/
+theorem mapped_sides {L : Limits} {m : Mapping} {cs mapped : Array Color.Channel}
     (map : MappingWithin L m cs mapped)
     (sides : ∀ c ∈ cs, c.plane.width ≤ L.maxImageSide ∧ c.plane.height ≤ L.maxImageSide) :
     ∀ c ∈ mapped, c.plane.width ≤ L.maxImageSide ∧ c.plane.height ≤ L.maxImageSide := by
