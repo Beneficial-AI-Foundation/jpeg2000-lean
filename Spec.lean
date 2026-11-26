@@ -103,6 +103,15 @@ import Spec.WideReversible
 import Spec.WideICT
 import Spec.WideDWT97
 import Spec.Resources.BlockPasses
+import Spec.Resources.Tier1Calls
+import Spec.Resources.Tier1Checks
+import Spec.Resources.Tier1CompactWork
+import Spec.Resources.Tier1Meter
+import Spec.Resources.Tier1Reader
+import Spec.Resources.Tier1Schedule
+import Spec.Resources.Tier1Storage
+import Spec.Resources.Tier1Work
+import Spec.Resources.TileArithmetic
 import Spec.Resources.WideArithmetic
 import Spec.Resources.HeaderSort
 import Spec.Resources.HeaderWork
