@@ -1016,6 +1016,22 @@ end AxiomsSelfCheck
 -- Phase 7, task 7.4: S2/S3 (Spec/Resources.lean); the decoder definitions themselves
 #print axioms JPEG2000.decode
 #print axioms JPEG2000.decodeCodestream
+#print axioms JPEG2000.decodeCodestreamNarrow
+#print axioms JPEG2000.Spec.CodestreamDispatch.compact_dispatch
+#print axioms JPEG2000.Spec.CodestreamDispatch.compact_read
+#print axioms JPEG2000.Spec.CodestreamDispatch.compact_c9
+#print axioms JPEG2000.Spec.CodestreamDispatch.native_dispatch
+#print axioms JPEG2000.Spec.CodestreamDispatch.native_geometry
+#print axioms JPEG2000.Spec.CodestreamDispatch.native_read
+#print axioms JPEG2000.Spec.WideAssembly.blockSt_raster
+#print axioms JPEG2000.Spec.WideAssembly.decodeBlock_eq
+#print axioms JPEG2000.Spec.WideAssembly.tileComp_eq_finish
+#print axioms JPEG2000.Spec.WideAssembly.tileComp_equiv
+#print axioms JPEG2000.Spec.WideAssembly.tileComp_sound
+#print axioms JPEG2000.Spec.WideAssembly.bandGrid53_eq
+#print axioms JPEG2000.Spec.WideAssembly.bandGrid97_close
+#print axioms JPEG2000.Spec.WideAssembly.parsed_component
+#print axioms JPEG2000.Spec.WideAssembly.parsed_component_ok
 #print axioms JPEG2000.Spec.Resources.checkGeometry_limitOnly
 #print axioms JPEG2000.Spec.Resources.checkGeometry_ok_iff
 #print axioms JPEG2000.Spec.Resources.addTile_within
