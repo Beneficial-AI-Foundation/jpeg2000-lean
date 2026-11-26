@@ -300,6 +300,23 @@ certificate allows a separate display budget and also covers
 out-of-range indexed byte reads. These are loop lengths and storage bounds. A machine
 instruction count requires a cost model.
 
+For arbitrary input bytes, `MappingPrefix.image_mapping_work` follows the native decode
+through JP2 metadata resolution and channel mapping. It returns the same first error and
+bounds this stage by `metadataBudget L data.size`. The single-component CMAP repair can
+restart a scan for each palette column. The bound counts those scans and the lookup that
+rejects a source. Palette raster visits accumulate across channels. For `c` raw channels,
+`mappingBudget L c = 1 + 2c + 5C + C(2 + 9P) + 17W`.
+
+`DisplayPrefix.display_work` covers the subsequent conversion, replication, channel
+selection and ICC copy, bounded by `displayBudget L data.size`. An earlier mapping
+failure incurs zero work in this stage. A later rejection includes the work already done.
+`selected_reads` follows each selected channel through its actual palette, RGB and
+replication views and bounds one sample read by 44 logical operations. The separate
+`public_interleaving_work` theorem applies to either output precision, either scaling
+mode and either alpha choice. Its bound is `interleavingBudget L budget`, where
+`budget.maxDecodedBytes` is the caller's limit for that interleaving request. Even an
+empty selection can traverse the pixel grid.
+
 **Declared versus allocated (task 6.5).** The header bounds what the stream *declares*
 (side, area, tiles, tile-components, at full resolution: absurd headers are refused before
 the tile-parts are read); `maxWorkSamples`/`maxDecodedBytes` bound what is *allocated*, at

@@ -153,6 +153,12 @@ import Spec.ColorResources.Mapping
 import Spec.ColorResources.Palette
 import Spec.ColorResources.Views
 import Spec.ColorResources
+import Spec.ColorResources.MappingTables
+import Spec.ColorResources.MappingResolve
+import Spec.ColorResources.MappingPrefix
+import Spec.ColorResources.DisplayPrecision
+import Spec.ColorResources.DisplayReads
+import Spec.ColorResources.DisplayPrefix
 
 /-!
 # Executable specifications
