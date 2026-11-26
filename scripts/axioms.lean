@@ -1931,3 +1931,6 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.Resources.DiagnosticCodeBlock.reader_messages
 #print axioms JPEG2000.Spec.Resources.DiagnosticCodeBlock.reader_calls
 #print axioms JPEG2000.Spec.Resources.DiagnosticCodeBlock.public_readers
+#print axioms JPEG2000.Spec.Resources.DiagnosticComponent.tile_eq
+#print axioms JPEG2000.Spec.Resources.DiagnosticComponent.messages
+#print axioms JPEG2000.Spec.Resources.DiagnosticComponent.public_components

@@ -545,6 +545,14 @@ invalid range is in a later segment. For a block in the visited packet store,
 and each admitted Tier-1 schedule by 91 compact or 874 wide coding passes.
 Component reconstruction can charge the two attempts separately when it retries.
 
+`DiagnosticComponent.public_components` follows the tile’s combined workspace
+check and the actual sequence of components before tile colour conversion.
+Each component constructs at most two text messages. A compact precision
+failure can be discarded when a wide retry succeeds. When a later component
+fails, the trace includes its compact and final errors after any earlier
+component messages. The tile bound is twice `maxComponents` events. Typed
+workspace refusals can stop the tile before its first block reader.
+
 `DiagnosticImage.image_diagnostics` covers the public image path after native
 decoding succeeds. Mapping, sYCC conversion, upsampling and channel selection
 construct at most one diagnostic string in total. A typed refusal retains its
@@ -561,6 +569,7 @@ and every earlier message. A native success appends the display trace in order,
 so earlier messages from recovered compact errors are still counted.
 
 The whole-path diagnostic bound still needs the header stages composed in parser
-order and the native reconstruction stages. The final S3
+order, the tile colour and placement stages, and their composition across native
+decoding. The final S3
 statement must combine those costs with the native, mapping and display bounds and
 identify the limit errors returned when a checked budget is exceeded.
