@@ -119,6 +119,10 @@ import Spec.Resources.TileColorLoops
 import Spec.Resources.TileColorPlacement
 import Spec.Resources.TileArithmetic
 import Spec.Resources.WideArithmetic
+import Spec.Resources.WaveletCost.Compact
+import Spec.Resources.WaveletCost.Operands
+import Spec.Resources.WaveletCost.Wide
+import Spec.Resources.WaveletCost
 import Spec.Resources.HeaderSort
 import Spec.Resources.HeaderWork
 import Spec.Tier1Equiv.Basic

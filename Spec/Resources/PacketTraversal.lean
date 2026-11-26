@@ -1,4 +1,5 @@
 import Spec.Resources.PacketPrefix
+import Spec.Resources.TileColorPlacement
 import Spec.Resources
 
 /-!
@@ -8,7 +9,8 @@ Plan.md §§3–5, 7 (S2/S3), T.800 A.7.4–5 and B.9–12. Each attempted grid
 tile keeps its tile-part cursor, incoming pass count and physical packet log.
 This includes omitted tiles, a rejecting tile, and tiles whose packet reads
 succeed but whose reconstruction or placement fails. Trace storage belongs
-only to the proof model. The public API streams the tiles.
+only to the proof model. The public API streams the tiles. The native continuation
+uses the same packet selection to sum colour and placement work on every visited tile.
 -/
 
 namespace JPEG2000.Spec.Resources.PacketTraversal
@@ -353,5 +355,142 @@ theorem measureTiles_bounds {P T α : Type} {L : Limits} {h : Header} {data : By
   have total := Nat.le_trans len tiles
   exact ⟨by simpa [List.range_eq_range'] using ids, len, total, Nat.le_min.mpr ⟨present, by simpa using cursor⟩,
     calls, physical_cost _, cost, Nat.le_trans cost (Nat.mul_le_mul_right _ (Nat.le_trans present total)), by simpa using passes⟩
+
+
+private abbrev Dest := Array JPEG2000.NativeOutput.OutputComponent
+
+private theorem selected_origin {L : Limits} {h : Header} {data : ByteArray}
+    (parsed : Header.parse L data = .ok h) (idx : Array (Array Nat)) (t j pb : Nat)
+    {a : Option TileCodeBlocks} (ok : (storeAt L h data idx j pb (presentAt h t j)).2 = .ok a) :
+    ∃ b, TileDispatch.Packets L h data t a b := by
+  unfold presentAt at ok
+  cases sel : h.tiles[j]? with
+  | none =>
+    simp only [sel,storeAt,Except.ok.injEq] at ok
+    exact ok ▸ ⟨none,.absent⟩
+  | some tp =>
+    simp only [sel] at ok
+    by_cases atTile : tp.index = t
+    · simp only [atTile, ↓reduceIte, storeAt] at ok
+      cases hs : headerStreamAt h data tp (idx.getD j #[]) with
+      | error => simp only [hs,before] at ok; cases ok
+      | ok stream =>
+        simp only [hs,before,afterRun,measureStream_erase parsed] at ok
+        obtain ⟨x,decoded,last⟩ := Tier2Equiv.bind_ok ok
+        cases last
+        have agrees := Tier2Equiv.decodeWithStream_sim L h data tp stream pb
+          (fun _ _ layout => Tier2Equiv.ofHeader_wf (Equiv.parse_dxdy parsed) layout)
+        rw [decoded] at agrees
+        cases ref : Spec.Tier2.decodeWithStream L h data tp stream pb with
+        | error => rw [ref] at agrees; contradiction
+        | ok s => exact ⟨some s,.present atTile decoded ref⟩
+    · simp only [atTile, ↓reduceIte, storeAt, Except.ok.injEq] at ok
+      exact ok ▸ ⟨none,.absent⟩
+
+/-- Uniform charge for one native colour and placement continuation after
+packet selection, including a return from either stage on error. -/
+def placementBudget (B : Nat) (L : Limits) :=
+  6 + (13+L.maxImageSide)*L.maxComponents + (42+3*B)*L.maxWorkSamples
+
+private def placementVisit (B : Nat) (L : Limits) (h : Header) (data : ByteArray)
+    (red : Nat) (idx : Array (Array Nat)) (t : Nat) (s : State Dest) :
+    Except Error (State Dest) × Nat :=
+  let (dst,pb,sat,j) := s
+  let selected := presentAt h t j
+  match (storeAt L h data idx j pb selected).2 with
+  | .error e => (.error e,0)
+  | .ok a =>
+    match Progression.Layout.ofHeader h t with
+    | .error e => (.error e,0)
+    | .ok (g,c) =>
+      let m := TileColorPlacement.nativeTileMeter B L h data red g c a dst
+      (m.1.map (fun next => (next,pb+(a.map (·.passes)).getD 0,sat,j+selected.isSome.toNat)),m.2)
+
+private theorem placementVisit_spec {L : Limits} {h : Header} {data : ByteArray}
+    (parsed : Header.parse L data = .ok h) (B red : Nat) (idx : Array (Array Nat)) (t : Nat) (s : State Dest) :
+    let m := placementVisit B L h data red idx t s
+    m.1 = (visit L h data (JPEG2000.Decode.centeredTile L h data red) (·.saturated)
+      (fun dst o => JPEG2000.NativeOutput.writeTile L h.siz red o.layout o.coding dst o.sources) idx t s).2 ∧
+    m.2 ≤ placementBudget B L := by
+  obtain ⟨dst,pb,sat,j⟩ := s
+  unfold placementVisit visit
+  dsimp only
+  cases store : (storeAt L h data idx j pb (presentAt h t j)).2 with
+  | error => exact ⟨rfl,Nat.zero_le _⟩
+  | ok a =>
+    obtain ⟨b,origin⟩ := selected_origin parsed idx t j pb store
+    cases layout : Progression.Layout.ofHeader h t with
+    | error e => simp [JPEG2000.Decode.centeredTile,layout,bind,Except.bind]
+    | ok pair =>
+      obtain ⟨g,c⟩ := pair
+      obtain ⟨erase,cap⟩ := TileColorPlacement.native_tile_work B parsed layout origin dst (red := red)
+      refine ⟨?_,cap⟩
+      dsimp only
+      rw [erase]
+      simp only [JPEG2000.Decode.centeredTile, layout, bind, Except.bind, pure, Except.pure]
+      cases JPEG2000.TileDispatch.tile L h data g c a red <;> simp [Except.map]
+
+private def placementLoop (B : Nat) (L : Limits) (h : Header) (data : ByteArray) (red : Nat)
+    (idx : Array (Array Nat)) : Nat → Nat → State Dest → Except Error (State Dest) × Nat
+  | 0, _, s => (.ok s,0)
+  | n+1, t, s =>
+    let m := placementVisit B L h data red idx t s
+    match m.1 with
+    | .error e => (.error e,m.2)
+    | .ok z =>
+      let tail := placementLoop B L h data red idx n (t+1) z
+      (tail.1,m.2+tail.2)
+
+private theorem placementLoop_spec {L : Limits} {h : Header} {data : ByteArray}
+    (parsed : Header.parse L data = .ok h) (B red : Nat) (idx : Array (Array Nat))
+    (n t : Nat) (s : State Dest) :
+    let m := placementLoop B L h data red idx n t s
+    let v := grid (visit L h data (JPEG2000.Decode.centeredTile L h data red) (·.saturated)
+      (fun dst o => JPEG2000.NativeOutput.writeTile L h.siz red o.layout o.coding dst o.sources) idx) n t s
+    m.1 = v.2 ∧ m.2 ≤ v.1.length * placementBudget B L := by
+  induction n generalizing t s with
+  | zero => exact ⟨rfl,Nat.zero_le _⟩
+  | succ n ih =>
+    obtain ⟨same,bound⟩ := placementVisit_spec parsed B red idx t s
+    dsimp only at same bound ⊢
+    rw [placementLoop, grid]
+    generalize hv : visit L h data _ _ _ idx t s = visitPair at *
+    obtain ⟨v,r⟩ := visitPair
+    cases r with
+    | error e => simp only [same,List.length_singleton,Nat.one_mul]; exact ⟨trivial,bound⟩
+    | ok z =>
+      obtain ⟨equal,cap⟩ := ih (t+1) z
+      simp only [same,List.length_cons,Nat.succ_mul]
+      exact ⟨equal,by omega⟩
+
+/-- Whole native traversal with an accumulated charge for colour and placement.
+No charge is added after a failed packet stage or after the first failing tile. -/
+def placementFromHeader (B : Nat) (L : Limits) (h : Header) (data : ByteArray) (red : Nat)
+    (initial : Array JPEG2000.NativeOutput.OutputComponent) :
+    Except Error CodestreamImage × Nat :=
+  match chunks L h with
+  | .error e => (.error e,0)
+  | .ok idx =>
+    let m := placementLoop B L h data red idx (numTiles h.siz) 0 (initial,0,0,0)
+    (m.1.map (fun s => ⟨h,red,s.1.map .native,s.2.2.1⟩),m.2)
+
+/-- Erasing the colour and placement charge yields the native decoder's exact
+tile traversal. Its executed packet prefix bounds the number of charged visits. -/
+theorem placementFromHeader_work {L : Limits} {h : Header} {data : ByteArray} (parsed : Header.parse L data = .ok h)
+    (B red : Nat) (initial : Array JPEG2000.NativeOutput.OutputComponent) :
+    let m := placementFromHeader B L h data red initial
+    let v := measureTiles L h data initial (JPEG2000.Decode.centeredTile L h data red) (·.saturated)
+      (fun dst o => JPEG2000.NativeOutput.writeTile L h.siz red o.layout o.coding dst o.sources)
+      (fun ds sat => (⟨h,red,ds.map .native,sat⟩ : CodestreamImage))
+    m.1 = v.2 ∧ m.2 ≤ v.1.length * placementBudget B L := by
+  unfold placementFromHeader measureTiles
+  cases chunk : chunks L h with
+  | error e => exact ⟨rfl,Nat.zero_le _⟩
+  | ok idx =>
+    obtain ⟨val,cost⟩ := placementLoop_spec parsed B red idx (numTiles h.siz) 0 (initial,0,0,0)
+    refine ⟨?_,cost⟩
+    dsimp only [before,afterRun]
+    rw [val]
+    cases (grid _ _ _ _).2 <;> rfl
 
 end JPEG2000.Spec.Resources.PacketTraversal

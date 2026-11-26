@@ -200,6 +200,24 @@ The bound applies before placement and G.1 clamping, including omitted tiles.
 Converting it to live storage requires the number of simultaneous
 values and a size model for their representation.
 
+### Inverse wavelet visits and storage
+
+For reduced component area `A` and retained depth `D`, a checked packed 5/3
+or 9/7 attempt visits at most `4 + 32*A + D*(5*D + 4500*A + 5)` operations.
+Repeated halving of the four rectangle coordinates is included at every level.
+The row and batched-column scratch buffer contains at most `8*A` packed cells.
+`WaveletCost.compact_allocation` separately bounds copies when the backing is
+shared across updates.
+
+For either checked wide transform, `wide53_work` and `wide97_work` bound visits
+by `5 + 2*A + D*(10 + 100*A)`, array headers by `1 + D*(3 + 12*A)`, outer
+references by `2*A*D` and freshly materialised integer slots by `A + 13*A*D`.
+The area and depth are capped by their admission limits on rejection. With
+input magnitudes at most `2^b`, the signed-width bounds for intermediate
+operands are `b + 12*D + 2` bits for 5/3 and `b + 540*D + 2` for 9/7.
+`retry53_work` and `retry97_work` charge the packed allowance if that path is
+attempted and the wide allowance if the dispatcher retries.
+
 ### Native tile colour and placement
 
 `TileColorPlacement.native_tile_work` follows a parsed tile through the native
@@ -215,6 +233,13 @@ The placement continuation alone costs at most `(2+S)*C + 18*W`.
 `placement_read_domain` bounds the three predecessor reads per lazy RCT sample
 by `3*W` over the tile. Component reconstruction before colour, the output
 backing and the later JP2 display stage have separate bounds.
+
+`PublicPacketWork.decode_placement_work` sums this charge over the ordinary
+codestream decoder's grid loop. A tile that fails during colour or placement
+contributes its prefix. A failure at admission or packet selection adds zero
+colour and placement work. The result or error agrees with `decodeCodestream`,
+and the total charge is at most the number of visited tiles times the per-tile
+bound above, hence at most `maxTiles` times that bound.
 
 For component rasters retained before MCT, `component_signed_width` proves
 a bound of `374 + 540*maxDecompLevels` signed bits per wide sample. This also
@@ -317,9 +342,9 @@ The public codestream and image output sizes, palette backing, per-channel domai
 and interleaver lengths above are proved. To finish S3, the following bounds must
 also account for the work performed before an error.
 
-* **Reconstruction (7.4c2s2 and 7.4c2s4).** The checked decoder can retry using wide
-  coefficients. Apply the wide integer bounds to both attempts and bound lifting and
-  colour-transform visits, temporary line arrays and live planes across levels.
+* **Reconstruction (7.4c2s4).** Sum the checked assembly, wavelet, colour
+  and placement costs under the aggregate tile-area guard. Apply the operand
+  widths to the temporary and retained cells of both precision attempts.
 * **Parsing and gathering (7.4c3a–c).** Bound the inner payload, sorting
   and descriptor operations on early rejection. Derive range and segment
   multiplicity from actual Tier-2 output and aggregate the copy charges.

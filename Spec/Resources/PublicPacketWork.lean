@@ -82,4 +82,34 @@ theorem admission_excess {L : Limits} {data : ByteArray} {red : Nat}
     simp [prepareTiles, Limits.check, Limits.checkLe, Limits.bound, levels,
       Nat.le_of_not_lt levels, input, bind, Except.bind]
 
+/-- Run the public prefix and count native colour and placement across its
+actual tile continuation. Admission failures perform no work in these stages. -/
+def measurePlacement (B : Nat) (L : Limits) (data : ByteArray) (red : Nat) :
+    Except Error CodestreamImage × Nat :=
+  match prepareTiles L data red with
+  | .error e => (.error e,0)
+  | .ok (h,initial) => placementFromHeader B L h data red initial
+
+/-- The ordinary byte API returns the same image or exact first error. Only
+visited tiles contribute to the total native colour and placement charge. -/
+theorem decode_placement_work (B : Nat) (L : Limits) (data : ByteArray) (red : Nat) :
+    let m := measurePlacement B L data red
+    let vs := (measure L data red).1
+    m.1 = decodeCodestream L data red ∧ m.2 ≤ vs.length * placementBudget B L ∧
+      m.2 ≤ L.maxTiles * placementBudget B L := by
+  obtain ⟨result,tiles,_⟩ := decode_packet_work L data red
+  have both : (measurePlacement B L data red).1 = (measure L data red).2 ∧
+      (measurePlacement B L data red).2 ≤ (measure L data red).1.length * placementBudget B L := by
+    unfold measurePlacement measure
+    cases admission : prepareTiles L data red with
+    | error e => exact ⟨rfl,Nat.zero_le _⟩
+    | ok pair =>
+      unfold prepareTiles at admission
+      obtain ⟨_,_,tail⟩ := Tier2Equiv.bind_ok admission
+      obtain ⟨h,parsed,tail⟩ := Tier2Equiv.bind_ok tail
+      obtain ⟨initial,_,ret⟩ := Tier2Equiv.bind_ok tail
+      cases ret
+      exact placementFromHeader_work parsed B red initial
+  exact ⟨both.1.trans result,both.2,Nat.le_trans both.2 (Nat.mul_le_mul_right _ tiles)⟩
+
 end JPEG2000.Spec.Resources.PublicPacketWork

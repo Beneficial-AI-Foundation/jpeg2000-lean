@@ -1736,3 +1736,18 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.Resources.PacketLocalWork.parsed_setup
 #print axioms JPEG2000.Spec.Resources.PacketLocalWork.preflight_work
 #print axioms JPEG2000.Spec.Resources.PacketLocalWork.completed_store
+
+-- Native colour and placement charges across the public packet traversal.
+#print axioms JPEG2000.Spec.Resources.PacketTraversal.placementFromHeader_work
+#print axioms JPEG2000.Spec.Resources.PublicPacketWork.decode_placement_work
+
+-- Task 7.4c2s2, checked inverse-wavelet visits, allocations and operand widths.
+#print axioms JPEG2000.Spec.Resources.WaveletCost.compact_work
+#print axioms JPEG2000.Spec.Resources.WaveletCost.operands53
+#print axioms JPEG2000.Spec.Resources.WaveletCost.operands97
+#print axioms JPEG2000.Spec.Resources.WaveletCost.lines_shape
+#print axioms JPEG2000.Spec.Resources.WaveletCost.wide53_work
+#print axioms JPEG2000.Spec.Resources.WaveletCost.wide97_work
+#print axioms JPEG2000.Spec.Resources.WaveletCost.compact_allocation
+#print axioms JPEG2000.Spec.Resources.WaveletCost.retry53_work
+#print axioms JPEG2000.Spec.Resources.WaveletCost.retry97_work
