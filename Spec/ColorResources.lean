@@ -3,6 +3,7 @@ import Spec.ColorResources.Views
 import Spec.ColorResources.Interleave
 import Spec.ColorResources.Palette
 import Spec.ColorResources.Layout
+import Spec.C9
 
 /-!
 # Public colour pipeline resource bounds (Plan.md §§3–5, 7, S3; T.800 B.2 and Annex I)
@@ -393,5 +394,30 @@ theorem decode_resources {L : Limits} {data : ByteArray} {opts : DecodeOptions} 
     refine ⟨display_count colour al, ?_, interleave_resources hd budget true mode⟩
     simpa only [Image.interleaved8, Bool.false_eq_true, ↓reduceIte, Nat.mul_one] using
       interleave_resources hd budget false mode
+
+/-- The public image decoder retains the native samples related by C9 under
+every display option. A codestream specification rejection reaches the image
+caller with the native decoder's exact diagnostic. On specification success,
+colour processing can reject, and every image it returns has the same native
+reconstruction and the resource certificate for its actual colour pipeline. -/
+theorem image_native_spec (L : Limits) (data : ByteArray) (opts : DecodeOptions) :
+    match Spec.Decode.decode L data opts.reduce with
+    | .error _ => ∃ e, decodeCodestream L data opts.reduce = .error e ∧
+        JPEG2000.decode L data opts = .error e
+    | .ok s => ∃ d, decodeCodestream L data opts.reduce = .ok d ∧
+        NativeEquiv.ImageRel opts.reduce d s ∧
+        ∀ img, JPEG2000.decode L data opts = .ok img →
+          img.decoded = d ∧ Within L data opts img := by
+  have agreement := C9.c9 L data opts.reduce
+  unfold NativeEquiv.Agrees at agreement
+  cases spec : Spec.Decode.decode L data opts.reduce <;>
+    cases raw : decodeCodestream L data opts.reduce <;>
+    simp only [spec,raw,Tier2Equiv.Res] at agreement
+  · exact ⟨_,rfl,by simp only [JPEG2000.decode,raw,bind,Except.bind]⟩
+  · refine ⟨_,rfl,agreement,?_⟩
+    intro img ok
+    have retained := (Resources.decode_within ok).1
+    rw [raw] at retained
+    exact ⟨(Except.ok.inj retained).symm,decode_resources ok⟩
 
 end JPEG2000.Spec.ColorResources
