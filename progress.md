@@ -18,7 +18,7 @@ Design document: Plan.md
 
 ## Current wave
 
-(empty)
+M10 is active from the published M7 decoder. Resume M8 and M9 after integration.
 
 ## Branches and PRs
 | Phase | Branch | Base | PR | State |
@@ -31,9 +31,9 @@ Design document: Plan.md
 | 5 | `phase-5-reconstruction` | `phase-3-tier1` | [#4](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/4) | ready (2026-11-25) |
 | 6 | `phase-6-jp2-output` | `phase-5-reconstruction` | [#5](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/5) | ready (2026-11-26) |
 | 7 | `phase-7-equivalence` | `phase-6-jp2-output` | [#6](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/6) | ready (2026-11-26) |
-| 8 | `phase-8-speed` | `phase-7-equivalence` | — | none |
+| 8 | `phase-8-speed` | `phase-7-equivalence` | [#7](https://github.com/Beneficial-AI-Foundation/jpeg2000-lean/pull/7) | draft, deferred |
 | 9 | `phase-9-hardening` | `phase-8-speed` | — | none |
-| 10 | `phase-10-safe-pdf` | `phase-9-hardening` | — | none |
+| 10 | `phase-10-safe-pdf` | `phase-7-equivalence` | — | local |
 States: none · draft · awaiting-ci · ready (<date>) · changes-requested · merged · closed.
 
 ## Phase 0 — Infrastructure
@@ -316,9 +316,27 @@ Exit criterion checked: [ ]
 Plan.md §7 row 10, §9. Exit: **M10**: safe-pdf renders every JPX image of its corpus, matches MuPDF/pdf.js within the image tolerance, no placeholder boxes for JPX.
 | ID | Task | Needs | Owns | Par | Status |
 |---|---|---|---|---|---|
-| 10.1 | Library packaging for consumers (stable API doc, version tag) | 9.5 | `README.md`, `docs/api.md` | new | todo |
-| 10.2 | safe-pdf side (separate repo, its own PR): Lake dependency (Decisions entry there), `Quarantine.JPX` adapter, corpus | 10.1 | (safe-pdf) | solo | todo |
-| 10.3 | M10 check | 10.2 | — | solo | todo |
+| 10.1 | Document the public consumer API, isolate development targets, and verify the M7-based pin from safe-pdf. | 6.2, 7.5 | README.md, docs/api.md, lakefile.lean, safe-pdf Lake files and dependency decision | solo | done (2026-11-26) |
+| 10.2a | Implement the pure Quarantine.JPX adapter. Check original dimensions, propagate budgets and typed errors, preserve native indices and embedded opacity. | 10.1 | safe-pdf Quarantine and adapter tests | wt | todo |
+| 10.2b | Wire XObjects, inline images and mask streams into the confined render path. Test PDF colour precedence, Decode and mask rules, premultiplication and reduced rendering. | 10.2a | safe-pdf raster and integration tests | wt | todo |
+| 10.2c | Build a source-PDF corpus gate from the pinned JPX-bearing documents. Verify placements, filter chains, reference versions and image tolerances. | 6.3b | safe-pdf corpus and worker render comparisons | wt | todo |
+| 10.3 | Run consumer tests and worker rendering comparisons, check every JPX occurrence, and record the M10 result. Review the consumer version tag against the tested pin at release. | 10.2b, 10.2c | both repos | solo | todo |
+Consumer pin check (2026-11-26): from a fresh safe-pdf worktree at `430203d`,
+Lake initially fetched the M7 SHA and built `JPEG2000.Image` (95 jobs). The example
+in `docs/api.md` decoded the pinned pikepdf object 6 stream to 120 × 44 RGB
+(15,840 bytes); reducing the image-area limit from 5,280 to 5,279 refused it.
+The initial production-worker check opened both pikepdf originals without repair.
+At page 1, zoom 1, each 90 × 33 raster had 2,970 pixels of RGB (128, 128, 128).
+MuPDF 1.25.1 at 72 dpi produced identical reference rasters with 1,220 distinct
+RGB colours. Use this pair to verify both the direct and Flate-prefixed JPX paths
+when wiring the adapter in 10.2b.
+
+The integration pin is the packaging-only commit `9a8880a`. safe-pdf
+`87bae91` fetched the published revision, compiled the public API, repeated the
+pikepdf sample and limit check, and passed its default build, test/fuzz build,
+45 test suites and hygiene (1,223 axiom checks). The decoder’s standalone
+build, 36 suites and hygiene (1,756 axiom checks) also passed.
+
 Exit criterion checked: [ ]
 
 ## Gotchas (append-only; read before every wave, pasted into every brief)
@@ -513,6 +531,13 @@ Exit criterion checked: [ ]
 * On a propagated decode error, the independent interleaver contributes zero work and zero new record storage. A reached byte-budget refusal owns the proposed byte count and borrows the external ceiling. Count the record at the stage that creates it.
 
 ## Decisions and deviations from the design document
+
+* 2026-11-26 — Prioritize M10 immediately after M7 at the user’s request.
+  M8 and M9 remain open on their own schedule. The M7 decoder base is `ab81f995ce528e78f6635f8a3ff855f50725fe3a`.
+  Its standalone Lake test glob also claimed safe-pdf’s `Tests.*` modules and broke
+  the consumer test build. Pin its packaging-only child `9a8880a8604dbebf93b99253e7965d54673dc534`
+  with `libraryOnly=true`. Standalone decoder builds retain their development targets.
+  Use the immutable pin for development and keep the release tag in the M10 closeout.
 
 * Wave 20, 6.6: the user selected OpenJPEG compatibility for odd-origin sYCC edges and malformed unsigned 4-bit palette values in the PDF corpus. Both should pass the normal image differential.
 * 7.1g: `Spec.Tier2WF.tier2WF` proves `Tier2WF` as stated (PrecsWF + BlocksIn; `tileData` already rejects tile-parts past the input); `c9_of_hdr (hHd : HeaderWF)` = C9 from HeaderWF alone. Only HeaderWF (7.1e) remains open for C9.
