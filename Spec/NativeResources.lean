@@ -5,6 +5,7 @@ import Spec.CodestreamDispatch
 # Allocation bounds for the public codestream result
 
 Plan.md §§3, 4 (S3), 7. Declared output bytes follow the SIZ sample precision.
+The tile check sums the reduced component grids from T.800 Annex B before reconstruction.
 Physical storage uses four bytes for compact cells and eight for wider cells.
 The bounds below cover the completed tile writes and the exact component accessor.
 -/
@@ -96,6 +97,38 @@ private theorem native_within {L : Limits} {data : ByteArray} {reduce : Nat} {h 
     rw [hd] at hc
     obtain ⟨d, _, rfl⟩ := Array.mem_map.mp hc
     exact native_readable d i
+
+private theorem guarded_cells (g : Progression.Layout) (r : Nat) :
+    (g.comps.foldl (fun n tc => n + Tier2.Geometry.rectArea (Assemble.reduceRect tc.rect r)) 0) =
+      Resources.tileCells g r :=
+  Resources.array_foldl_sum _ _ (fun _ _ => rfl) _
+
+/-- After tile layout selection, excess aggregate work is rejected before reconstructing
+any component. The error reports the combined reduced area, including omitted tiles. -/
+theorem centeredTile_limitExceeded {L : Limits} {h : Header} {data : ByteArray}
+    {g : Progression.Layout} {coding : Coding} {r t : Nat}
+    {tcb : Option JPEG2000.Tier2.Packet.TileCodeBlocks}
+    (layoutOk : Progression.Layout.ofHeader h t = .ok (g, coding))
+    (over : L.maxWorkSamples < Resources.tileCells g r) :
+    JPEG2000.Decode.centeredTile L h data r t tcb = .error
+      (.limitExceeded Assemble.loc .workSamples (Resources.tileCells g r) L.maxWorkSamples) := by
+  simp [JPEG2000.Decode.centeredTile, layoutOk, JPEG2000.TileDispatch.tile, guarded_cells,
+    Limits.check, Limits.checkLe, Limits.bound, Nat.not_le_of_lt over, bind, Except.bind]
+
+/-- The public tile traversal admits the sum of all reduced component areas before
+reconstruction, for every coding style, mixed-depth layout and packet-store choice. -/
+theorem centeredTile_work {L : Limits} {h : Header} {data : ByteArray} {r t : Nat}
+    {tcb : Option JPEG2000.Tier2.Packet.TileCodeBlocks} {out : JPEG2000.Decode.CenteredTile}
+    (ok : JPEG2000.Decode.centeredTile L h data r t tcb = .ok out) :
+    Progression.Layout.ofHeader h t = .ok (out.layout, out.coding) ∧
+      Resources.tileCells out.layout r ≤ L.maxWorkSamples := by
+  obtain ⟨⟨g, coding⟩, hg, tail⟩ := Tier2Equiv.bind_ok ok
+  obtain ⟨src, hs, last⟩ := Tier2Equiv.bind_ok tail
+  cases last
+  refine ⟨hg, ?_⟩
+  obtain ⟨u, hu, _⟩ := Tier2Equiv.bind_ok hs
+  rw [guarded_cells] at hu
+  exact (Limits.check_eq_ok_iff ..).1 hu
 
 /-- S3 for the public codestream decoder across all 1–38-bit component depths. -/
 theorem decodeCodestream_resources {L : Limits} {data : ByteArray} {reduce : Nat}

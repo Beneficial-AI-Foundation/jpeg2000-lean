@@ -1542,3 +1542,6 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.ColorResources.sycc_resources
 #print axioms JPEG2000.Spec.ColorResources.replication_resources
 #print axioms JPEG2000.Spec.ColorResources.decode_resources
+
+#print axioms JPEG2000.Spec.NativeResources.centeredTile_limitExceeded
+#print axioms JPEG2000.Spec.NativeResources.centeredTile_work

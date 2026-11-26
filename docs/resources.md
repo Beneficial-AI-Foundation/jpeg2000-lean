@@ -48,7 +48,7 @@ actual data structures. The principal quantities are listed below.
 | `decode`: image area | `maxImageArea` | `decode_resources`, `decode_size` |
 | `decode`: up-sampled channels (fresh cells / bytes; every channel, alpha and other channel is one of them, `w × h`) | `maxWorkSamples` / `maxDecodedBytes` | `decode_resources` (`ImageWithin`) |
 | interleaved 8/16-bit buffer (exact size `w·h·n·(1|2)`) | `maxDecodedBytes` | `interleave_size`, `interleaved8_size`, `interleaved16_size` |
-| per tile (reduced): all tile-component planes held until the MCT; each tile-component plane | `maxWorkSamples` | `decodeTile_work`, `reconstructTileComp_work` |
+| Aggregate reduced component areas of one tile before reconstruction | `maxWorkSamples` | `NativeResources.centeredTile_work`, `NativeResources.centeredTile_limitExceeded` |
 | per tile: packet iteration work (`iterationWork`, ≥ packets visited) | `maxPackets` | `decodeTilePacketsWith_ok`, `decodeWithStream_ok` |
 | coding passes of all tiles | `maxCodingPasses` | `decodeAllTileCodeBlocks_passes` |
 
@@ -60,6 +60,12 @@ components, the cell count is at most `maxWorkSamples`, the declared output size
 `maxDecodedBytes`, and the physical backing arrays occupy at most `8 × maxWorkSamples`
 bytes. Compact backing uses four bytes per cell and wide backing uses eight. The
 `Spec.Resources` Int32 plane theorems also remain available for `decodeCodestreamNarrow`.
+
+The public tile loop first obtains the effective layout and checks the sum of the
+reduced component areas. If the sum exceeds `maxWorkSamples`, it returns the exact
+`limitExceeded` value before reconstructing any component. The check covers both
+present and omitted tiles, including mixed wavelets. Intermediate wavelet buffers
+and repeated work during a wide retry are separate obligations below.
 
 ### Colour, replication and display
 
