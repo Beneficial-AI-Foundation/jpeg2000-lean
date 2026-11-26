@@ -525,6 +525,11 @@ channel that caused a refusal. On a successful image, `interleaver_diagnostics`
 also covers independent 8- or 16-bit output limits. A byte refusal stores the
 required output size and the interleaver caller's byte ceiling.
 
+`DiagnosticImage.compose_native` extends a native trace to the public image
+result under a common scalar bound. A native refusal preserves the exact error
+and every earlier message. A native success appends the display trace in order,
+so earlier messages from recovered compact errors are still counted.
+
 The whole-path diagnostic bound still needs tile-part headers, coding
 merges and geometry checks, and native reconstruction. The final S3
 statement must combine those costs with the native, mapping and display bounds and

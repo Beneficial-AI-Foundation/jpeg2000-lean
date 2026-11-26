@@ -1829,6 +1829,7 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.ColorResources.DisplayPrefix.mapped_precision
 #print axioms JPEG2000.Spec.ColorResources.DiagnosticImage.display_refusal
 #print axioms JPEG2000.Spec.ColorResources.DiagnosticImage.image_diagnostics
+#print axioms JPEG2000.Spec.ColorResources.DiagnosticImage.compose_native
 #print axioms JPEG2000.Spec.ColorResources.DiagnosticImage.interleaver_diagnostics
 #print axioms JPEG2000.Spec.ColorResources.DisplayPrefix.display_work
 #print axioms JPEG2000.Spec.ColorResources.DisplayPrefix.interleaving_work

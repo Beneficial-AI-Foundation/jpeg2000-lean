@@ -750,6 +750,46 @@ theorem image_diagnostics {L data opts d} (hd : decodeCodestream L data opts.red
   | limit hv over => exact ⟨rfl,over,hv,rfl⟩
   | malformed _ | unsupported _ => exact ⟨rfl,(trace_cost t).2 _ he⟩
 
+/-- Extend an ordered native diagnostic trace to the public image result. A native
+refusal keeps its complete trace. On native success the display stage appends its
+own construction trees, including when an earlier compact attempt produced a
+message and a wide retry recovered. -/
+theorem compose_native {L data opts cap events}
+    (native : Trace cap (decodeCodestream L data opts.reduce) events)
+    (fits : imageCap L data.size ≤ cap) :
+    ∃ whole : Trace cap (JPEG2000.decode L data opts) (events+1),
+      (∀ e, decodeCodestream L data opts.reduce = .error e →
+        JPEG2000.decode L data opts = .error e ∧ whole.messages = native.messages) ∧
+      (∀ d (ok : decodeCodestream L data opts.reduce = .ok d),
+        whole.messages = native.messages ++ ((imageTrace ok).raiseCap fits).messages) := by
+  have paths : (∃ d, decodeCodestream L data opts.reduce = .ok d) ∨
+      (∃ e, decodeCodestream L data opts.reduce = .error e) := by
+    cases decodeCodestream L data opts.reduce with
+    | ok d => exact .inl ⟨d, rfl⟩
+    | error e => exact .inr ⟨e, rfl⟩
+  rcases paths with ⟨d, hn⟩ | ⟨e, hn⟩
+  · let suffix := (imageTrace (opts := opts) hn).raiseCap fits
+    refine ⟨includeTrace native suffix, ?_, ?_⟩
+    · intro e he
+      cases hn.symm.trans he
+    · intro d' he
+      cases hn.symm.trans he
+      rfl
+  · have refused : JPEG2000.decode L data opts = .error e := by
+      simp only [JPEG2000.decode, hn, bind, Except.bind]
+    let t : Trace cap (JPEG2000.decode L data opts) (events + 1) :=
+      ⟨native.messages, Nat.le_trans native.countBound (Nat.le_add_right ..), by
+        intro e' he
+        rw [refused] at he
+        cases he
+        exact native.origin _ hn⟩
+    refine ⟨t, ?_, ?_⟩
+    · intro e' he
+      cases hn.symm.trans he
+      exact ⟨refused, rfl⟩
+    · intro d he
+      cases hn.symm.trans he
+
 /-- Independent 8/16-bit conversion on an actual output. Either the buffer is
 admitted or its computed size is retained with the external display ceiling.
 The first pass over channel sizes also completes on a byte-budget refusal. -/
