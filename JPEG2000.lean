@@ -3,6 +3,9 @@ import JPEG2000.Limits
 import JPEG2000.Bytes
 import JPEG2000.WidePlane
 import JPEG2000.WideOutput
+import JPEG2000.NativeOutput
+import JPEG2000.WideQuant
+import JPEG2000.WideReversible
 import JPEG2000.Box
 import JPEG2000.Marker
 import JPEG2000.TilePart
@@ -15,6 +18,7 @@ import JPEG2000.Tier1.Decode
 import JPEG2000.Tier1.Modes
 import JPEG2000.Tier1.WidePlain
 import JPEG2000.Tier1.WideModes
+import JPEG2000.Tier1.WideSegments
 import JPEG2000.Progression
 import JPEG2000.Tier2.Packet
 import JPEG2000.DWT53

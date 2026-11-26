@@ -1384,6 +1384,8 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.Tier1Wide.Modes.passBody_equiv
 #print axioms JPEG2000.Spec.Tier1Wide.Modes.segSymbol_equiv
 #print axioms JPEG2000.Spec.Tier1Wide.Modes.runPass_equiv
+#print axioms JPEG2000.Spec.Tier1Wide.Segments.decodeCodeBlockSegs_equiv
+#print axioms JPEG2000.Spec.Tier1Wide.Segments.decodeRanges_equiv
 
 -- Phase 7, tasks 7.3d4b3 and 7.3d6c: spec-level image round trip
 #print axioms JPEG2000.Spec.RoundTrip.spec_roundtrip_with_limits
@@ -1399,3 +1401,34 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.WideOutput.sample_recovers
 #print axioms JPEG2000.Spec.WideOutput.blit_succeeds
 #print axioms JPEG2000.Spec.WideOutput.blit_spec
+#print axioms JPEG2000.Spec.WideQuant.zeroChecked_eq
+#print axioms JPEG2000.Spec.WideQuant.unshift_eq
+#print axioms JPEG2000.Spec.WideQuant.prepare_zero
+#print axioms JPEG2000.Spec.WideQuant.reversible_eq
+#print axioms JPEG2000.Spec.WideQuant.reversible_midpoint
+#print axioms JPEG2000.Spec.WideQuant.irreversible_eq
+#print axioms JPEG2000.Spec.WideQuant.irreversible_error
+#print axioms JPEG2000.Spec.WideQuant.reduced_band
+#print axioms JPEG2000.Spec.WideQuant.blockOffset_eq
+#print axioms JPEG2000.Spec.WideQuant.dequantBlock_succeeds
+#print axioms JPEG2000.Spec.WideQuant.dequantBlock_read
+#print axioms JPEG2000.Spec.WideQuant.dequantBlock_sample
+#print axioms JPEG2000.Spec.WideReversible.idwt53_spec
+#print axioms JPEG2000.Spec.WideReversible.idwt53_of_bandsEq
+#print axioms JPEG2000.Spec.WideReversible.rctInverse_spec
+#print axioms JPEG2000.Spec.WideReversible.reconstruct_rgb
+#print axioms JPEG2000.Spec.NativeOutput.allocOutput_spec
+#print axioms JPEG2000.Spec.NativeOutput.writeComponent_badGeometry
+#print axioms JPEG2000.Spec.NativeOutput.writeComponent_spec
+#print axioms JPEG2000.Spec.NativeOutput.writeComponent_succeeds
+#print axioms JPEG2000.Spec.NativeOutput.disjoint_writes
+#print axioms JPEG2000.Spec.NativeOutput.writeTile_spec
+#print axioms JPEG2000.Spec.NativeOutput.allocOutput_succeeds
+#print axioms JPEG2000.Spec.NativeOutput.backing_size
+#print axioms JPEG2000.Spec.NativeOutput.allocOutput_bounds
+#print axioms JPEG2000.Spec.NativeOutput.writeComponent_roundHalf
+#print axioms JPEG2000.Spec.NativeOutput.writeComponent_recovers
+#print axioms JPEG2000.Spec.NativeOutput.writeTile_succeeds
+
+-- Phase 7, task 7.1j3a: exact scaling through 38 bits
+#print axioms JPEG2000.Scaler.applyNative_make_eq

@@ -8,7 +8,7 @@ import Tests.Pgx
 Plan.md §1 ("What we build": output planes + interleaved 8/16-bit buffer), §8.1 (JP2
 conformance), §9 (`/SMaskInData`).
 
-* **Scaling** (`scaleNat`, `Scaler.apply`): edges at 1, 8, 12, 16, 32 bits, signed and
+* **Scaling** (`scaleNat`, `Scaler.apply`): edges at 1, 8, 12, 16, 32 and 38 bits, signed and
   unsigned, both modes; `Scaler.apply` agrees with `scaleNat` on sweeps.
 * **Interleaving**: 8-bit and 16-bit big-endian layout, alpha last, size checks.
 * **Up-sampling**: replication on the reference grid, even and odd origins.
@@ -99,6 +99,22 @@ def scalingTests : IO Nat := do
             if sc mode d false t v != scaleNat mode d t v then bad := bad + 1
             if v > top || scaleNat mode d t v > 2 ^ t - 1 then bad := bad + 1
   f := f + (← expect s!"apply = scaleNat ({bad} mismatches)" (bad == 0))
+  -- A 38-bit unsigned midpoint is the DC-shifted value of a zero coefficient.
+  let mut wideErrors := 0
+  for d in [31:39] do
+    let top : Nat := 2 ^ d - 1
+    for signed in [false, true] do
+      let offset : Int := if signed then 2 ^ (d - 1) else 0
+      for mode in [Scaling.linear, .opj] do
+        for t in [8, 16] do
+          let scaler := Scaler.make mode d signed t
+          for u in [0, 1, top / 2, top / 2 + 1, top - 1, top] do
+            if (scaler.applyNative ((u : Int) - offset)).toNat != scaleNat mode d t u then
+              wideErrors := wideErrors + 1
+          if scaler.applyNative (-(2^100)) != 0 ||
+              (scaler.applyNative (2^100)).toNat != 2^t - 1 then
+            wideErrors := wideErrors + 1
+  f := f + (← expect s!"wide native scaling ({wideErrors} mismatches)" (wideErrors == 0))
   return f
 
 /-! ## Interleaving, up-sampling, soft mask -/

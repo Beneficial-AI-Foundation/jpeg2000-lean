@@ -44,10 +44,10 @@ the unsigned `d`-bit value `u` is scaled to `t` = 8 or 16 bits:
 * `Scaling.opj`: OpenJPEG's `opj_decompress -p tS` (`scale_component`): `u >> (d − t)` when
   `d > t`, `⌊u·(2^t − 1)/(2^d − 1)⌋` when `d < t`. The two differ by at most 1.
 
-The arithmetic is on `UInt64`: `u < 2^32` (planes are `Int32`, so the decoder refuses
-unsigned depths > 31 and signed depths > 32 — **supported depths are 1…31 unsigned, 1…32
-signed**, below Plan.md §1's 38; deeper components are `unsupported` upstream) and
-`2^t − 1 < 2^16`, so every product is `< 2^48`.
+The display scaler accepts native depths 1…38. Its unsigned input is below `2^38`,
+and its 8- or 16-bit multiplier is below `2^16`. The numerator, including the rounding
+term, fits in `UInt64`. The current decoder supplies planes of `Int32` samples (through
+31 unsigned bits or 32 signed bits).
 
 16-bit output is **big-endian** (most significant byte first), the order of 16-bit samples
 in PDF image data (ISO 32000-2 §8.9.2). By default the alpha channel is **not** included
@@ -295,7 +295,7 @@ structure Scaler where
   /-- Denominator `2^d − 1` (≥ 1). -/
   den : UInt64
 
-/-- The scaler of a channel of depth `d` (1…32) and sign `s` to `t` bits. -/
+/-- The scaler of a channel of depth `d` (1…38) and sign `s` to `t` bits. -/
 def Scaler.make (mode : Scaling) (d : Nat) (s : Bool) (t : Nat) : Scaler :=
   let den := max 1 (2 ^ d - 1)
   { off := if s then Int64.ofNat (2 ^ (d - 1)) else 0
@@ -307,13 +307,66 @@ def Scaler.make (mode : Scaling) (d : Nat) (s : Bool) (t : Nat) : Scaler :=
     half := if mode == .linear then (den / 2).toUInt64 else 0
     den := den.toUInt64 }
 
-/-- Scales one sample: offset, clamp to `[0, 2^d − 1]`, then `scaleNat`. -/
-@[inline] def Scaler.apply (s : Scaler) (v : Int32) : UInt64 :=
-  let x := v.toInt64 + s.off
-  let u : UInt64 := if x < 0 then 0 else if x > s.maxIn then s.maxIn.toUInt64 else x.toUInt64
+@[inline] private def Scaler.scaleUnsigned (s : Scaler) (u : UInt64) : UInt64 :=
   if s.ident then u
   else if s.down then u >>> s.shift
   else (u * s.mul + s.half) / s.den
+
+/-- Scales a narrow component sample after adding its signed offset and clamping. -/
+@[inline] def Scaler.apply (s : Scaler) (v : Int32) : UInt64 :=
+  let x := v.toInt64 + s.off
+  let u := if x < 0 then 0 else if x > s.maxIn then s.maxIn.toUInt64 else x.toUInt64
+  s.scaleUnsigned u
+
+/-- Scales an exact native component sample, including 38-bit signed or unsigned values.
+Offset and clamp precede conversion to the unsigned fixed-width display kernel. -/
+@[inline] def Scaler.applyNative (s : Scaler) (v : Int) : UInt64 :=
+  let u := min s.maxIn.toInt.toNat (v + s.off.toInt).toNat
+  s.scaleUnsigned u.toUInt64
+
+private theorem scaleUnsigned_make (mode : Scaling) {d t u : Nat} (s : Bool)
+    (hd : 1 ≤ d) (hd' : d ≤ 38) (ht : t ≤ 16) (hu : u ≤ 2^d - 1) :
+    ((Scaler.make mode d s t).scaleUnsigned u.toUInt64).toNat = scaleNat mode d t u := by
+  have h1 := Nat.pow_le_pow_right (by decide : 0 < 2) hd
+  have h38 := Nat.pow_le_pow_right (by decide : 0 < 2) hd'
+  have h16 := Nat.pow_le_pow_right (by decide : 0 < 2) ht
+  have den : max 1 (2^d - 1) = 2^d - 1 := Nat.max_eq_right (by omega)
+  have mul : u * (2^t - 1) ≤ (2^38) * (2^16) :=
+    Nat.mul_le_mul (by omega) (by omega)
+  have hu64 : u < 2^64 := by omega
+  have hd64 : 2^d - 1 < 2^64 := by omega
+  have ht64 : 2^t - 1 < 2^64 := by omega
+  have hh64 : (2^d - 1) / 2 < 2^64 := by omega
+  have hm64 : u * (2^t - 1) < 2^64 := by omega
+  have ha64 : u * (2^t - 1) + (2^d - 1) / 2 < 2^64 := by omega
+  have hs64 : d - t < 64 := by omega
+  have hs' : d - t < 2^64 := by omega
+  cases mode <;> by_cases he : d = t <;> by_cases hdown : t < d <;>
+    simp [Scaler.make, Scaler.scaleUnsigned, scaleNat, he, hdown, den, UInt64.toNat_add,
+      UInt64.toNat_mul, UInt64.toNat_shiftRight, Nat.shiftRight_eq_div_pow,
+      Nat.mod_eq_of_lt hu64, Nat.mod_eq_of_lt hd64, Nat.mod_eq_of_lt ht64,
+      Nat.mod_eq_of_lt hh64, Nat.mod_eq_of_lt hm64, Nat.mod_eq_of_lt ha64,
+      Nat.mod_eq_of_lt hs64, Nat.mod_eq_of_lt hs']
+
+/-- For every admitted component depth through 38 bits and output depth up to 16,
+native display scaling equals clamping and the mathematical scaling formula. -/
+theorem Scaler.applyNative_make_eq (mode : Scaling) {d t : Nat} (s : Bool) (v : Int)
+    (hd : 1 ≤ d) (hd' : d ≤ 38) (ht : t ≤ 16) :
+    ((Scaler.make mode d s t).applyNative v).toNat =
+      scaleNat mode d t (min (2^d - 1) (v + (if s then (2 : Int)^(d - 1) else 0)).toNat) := by
+  have h1 := Nat.pow_le_pow_right (by decide : 0 < 2) hd
+  have h38 := Nat.pow_le_pow_right (by decide : 0 < 2) hd'
+  have hpow := Nat.pow_le_pow_right (by decide : 0 < 2) (show d - 1 ≤ 38 by omega)
+  have den : max 1 (2^d - 1) = 2^d - 1 := Nat.max_eq_right (by omega)
+  have cast (x : Nat) (hx : x ≤ 2^38) : (Int64.ofNat x).toInt = x := by
+    change (Int64.ofInt (x : Int)).toInt = _
+    exact Int64.toInt_ofInt_of_le (by omega) (by omega)
+  have hoff : (Scaler.make mode d s t).off.toInt = (if s then (2 : Int)^(d - 1) else 0) := by
+    cases s <;> simp [Scaler.make, cast _ hpow]
+  have hmax : (Scaler.make mode d s t).maxIn.toInt.toNat = 2^d - 1 := by
+    simp [Scaler.make, den, cast _ (show 2^d - 1 ≤ 2^38 by omega)]
+  simp only [Scaler.applyNative, hmax, hoff]
+  exact scaleUnsigned_make mode s hd hd' ht (Nat.min_le_left ..)
 
 /-- Appends pixel `i` of every channel (1 byte, or 2 bytes big-endian, per sample). -/
 def pushPixel (wide : Bool) (i : Nat) (out : ByteArray) : List (Plane × Scaler) → ByteArray

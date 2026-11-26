@@ -78,6 +78,9 @@ import Spec.RoundTrip
 import Spec.Resources
 import Spec.WidePlane
 import Spec.WideOutput
+import Spec.NativeOutput
+import Spec.WideQuant
+import Spec.WideReversible
 import Spec.Resources.BlockPasses
 import Spec.Tier1Equiv.Basic
 import Spec.Tier1Equiv.Rel
@@ -89,6 +92,7 @@ import Spec.Tier1Equiv.Inv
 import Spec.Tier1Equiv
 import Spec.Tier1Wide.Plain
 import Spec.Tier1Wide.Modes
+import Spec.Tier1Wide.Segments
 import Spec.TilePartRoundTrip
 
 /-!
