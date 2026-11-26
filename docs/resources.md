@@ -506,6 +506,15 @@ optional SOP read before returning its result. A packed-header length mismatch
 can follow a successful packet iteration and translation of its byte ranges.
 Both public decoders propagate the refusing tile's error and stop visiting tiles.
 
+`DiagnosticCodeBlock.reader_messages` gives the exact messages for each
+compact or wide Tier-1 reader call. A successful call constructs no message.
+A rejected call constructs one fixed string of at most 128 UTF-8 bytes.
+The source-range scan stops at its first invalid range, including when the
+invalid range is in a later segment. For a block in the visited packet store,
+`public_readers` bounds that scan by the original segment and range counts,
+and each admitted Tier-1 schedule by 91 compact or 874 wide coding passes.
+Component reconstruction can charge the two attempts separately when it retries.
+
 The whole-path diagnostic bound still needs tile-part headers, coding
 merges and geometry checks, native reconstruction and image stages. The final S3
 statement must combine those costs with the native, mapping and display bounds and

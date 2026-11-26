@@ -1900,3 +1900,6 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.Resources.DiagnosticPacket.public_rank_refusal
 #print axioms JPEG2000.Spec.Resources.DiagnosticPacket.ppm_mismatch
 #print axioms JPEG2000.Spec.Resources.DiagnosticPacket.packed_refusal
+#print axioms JPEG2000.Spec.Resources.DiagnosticCodeBlock.reader_messages
+#print axioms JPEG2000.Spec.Resources.DiagnosticCodeBlock.reader_calls
+#print axioms JPEG2000.Spec.Resources.DiagnosticCodeBlock.public_readers

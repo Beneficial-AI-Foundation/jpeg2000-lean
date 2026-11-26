@@ -134,6 +134,7 @@ import Spec.Resources.DiagnosticMarker
 import Spec.Resources.DiagnosticPointers
 import Spec.Resources.DiagnosticPacketRanges
 import Spec.Resources.DiagnosticPacket
+import Spec.Resources.DiagnosticCodeBlock
 import Spec.Resources.GeometryInit
 import Spec.Resources.SegmentHistory
 import Spec.Resources.ReconstructionCost
