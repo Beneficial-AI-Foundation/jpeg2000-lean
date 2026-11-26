@@ -1017,9 +1017,7 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.decode
 #print axioms JPEG2000.decodeCodestream
 #print axioms JPEG2000.decodeCodestreamNarrow
-#print axioms JPEG2000.Spec.CodestreamDispatch.compact_dispatch
 #print axioms JPEG2000.Spec.CodestreamDispatch.compact_read
-#print axioms JPEG2000.Spec.CodestreamDispatch.compact_c9
 #print axioms JPEG2000.Spec.CodestreamDispatch.native_dispatch
 #print axioms JPEG2000.Spec.CodestreamDispatch.native_geometry
 #print axioms JPEG2000.Spec.CodestreamDispatch.native_read
@@ -1519,3 +1517,14 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.NativePlacement.placement_sim
 #print axioms JPEG2000.Spec.NativePlacement.finalize
 #print axioms JPEG2000.Spec.NativeComposition.of_tiles
+
+#print axioms JPEG2000.Spec.IrreversibleDispatch.ict_sources
+#print axioms JPEG2000.Spec.TileDispatch.component_equiv
+#print axioms JPEG2000.Spec.TileDispatch.ComponentRel.centered
+#print axioms JPEG2000.Spec.TileDispatch.parsed_component
+#print axioms JPEG2000.Spec.TileDispatch.components_equiv
+#print axioms JPEG2000.Spec.TileDispatch.parsed_tile
+#print axioms JPEG2000.Spec.C9.c9_narrow
+#print axioms JPEG2000.Spec.RoundTrip.native_roundtrip
+#print axioms JPEG2000.Spec.RoundTrip.native_roundtrip_default
+#print axioms JPEG2000.Spec.RoundTrip.encode_native_roundtrip

@@ -3,7 +3,7 @@ import Spec.RoundTrip.Spec
 import Spec.RoundTrip.Native
 
 /-!
-# C10: `decode (encode img) = img` for the lossless reference encoder (in progress)
+# C10: `decode (encode img) = img` for the lossless reference encoder (proved)
 
 Plan.md §4 (C10), §5.3. Task 7.3. The round trip is assembled from per-stage layers under
 `Spec/RoundTrip/`:
@@ -18,7 +18,7 @@ Plan.md §4 (C10), §5.3. Task 7.3. The round trip is assembled from per-stage l
   dimensions, component depths, signedness and every row-major sample. The theorem
   `spec_roundtrip` specifies sufficient limits and `spec_roundtrip_default` covers the
   default policy under five measured budgets.
-* **Layer 5 (in progress)** — `native_roundtrip_of_c9` transports the exact image
-  equality through every native sample read. The remaining premise is C9 on the
-  encoded bytes at the chosen limits.
+* **Layer 5 (proved)** — `encode_native_roundtrip` recovers the complete encoder image
+  through checked public sample reads. `native_roundtrip` gives sufficient computed
+  limits, and `native_roundtrip_default` specializes to the default budgets.
 -/

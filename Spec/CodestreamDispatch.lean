@@ -1,4 +1,4 @@
-import Spec.C9
+import Spec.Equiv
 import Spec.NativeOutput
 
 /-!

@@ -1,4 +1,4 @@
-import Spec.NativeEquiv
+import Spec.C9
 import Spec.RoundTrip.Spec
 
 /-!
@@ -120,5 +120,32 @@ theorem encode_native_roundtrip_of_c9 {p : Params} {img : Encode.Image} {data : 
     exact ⟨encoderLimits p img e, native_roundtrip_of_c9 h hrev (headerFits_encoderLimits h)
       (by decide : 109 ≤ Limits.default.maxPassesPerCodeBlock) (Nat.le_max_right ..)
       (Nat.le_max_right ..) (Nat.le_max_right ..) (agreement _)⟩
+
+/-- The public decoder recovers the entire input of every successful reversible encoding
+at the limits computed from its header, packet lengths and output dimensions. -/
+theorem native_roundtrip {p : Params} {img : Encode.Image} {e : Encoded}
+    (he : encodeDetailed p img = .ok e) (hrev : p.reversible = true) :
+    ∃ d, decodeCodestream (encoderLimits p img e) e.codestream 0 = .ok d ∧
+      encoderImageOfNative d = some img :=
+  native_roundtrip_of_c9 he hrev (headerFits_encoderLimits he)
+    (by decide : 109 ≤ Limits.default.maxPassesPerCodeBlock)
+    (Nat.le_max_right ..) (Nat.le_max_right ..) (Nat.le_max_right ..) (C9.c9 ..)
+
+/-- Default decoder policy recovers the lossless image when its measured packet,
+work and output-byte budgets fit. -/
+theorem native_roundtrip_default {p : Params} {img : Encode.Image} {e : Encoded}
+    (he : encodeDetailed p img = .ok e) (hrev : p.reversible = true) (budget : ImageBudget p img e 0)
+    (work : img.comps.size * (img.width * img.height) ≤ Limits.default.maxWorkSamples)
+    (bytes : (img.comps.toList.map fun c => img.width * img.height * Header.bytesPerSample c.depth).sum ≤
+      Limits.default.maxDecodedBytes) :
+    ∃ d, decodeCodestream Limits.default e.codestream 0 = .ok d ∧ encoderImageOfNative d = some img := by
+  simpa only [encoderLimits_eq_default_iff.mpr ⟨budget, work, bytes⟩] using native_roundtrip he hrev
+
+/-- C10 for the public byte-returning encoder and native decoder at full resolution.
+Every successful reversible encoding admits limits that recover its complete input. -/
+theorem encode_native_roundtrip {p : Params} {img : Encode.Image} {data : ByteArray}
+    (he : encode p img = .ok data) (hrev : p.reversible = true) :
+    ∃ L d, decodeCodestream L data 0 = .ok d ∧ encoderImageOfNative d = some img :=
+  encode_native_roundtrip_of_c9 he hrev (fun L => C9.c9 L data 0)
 
 end JPEG2000.Spec.RoundTrip

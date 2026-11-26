@@ -36,6 +36,7 @@ import JPEG2000.WideAssembly
 import JPEG2000.Image
 
 import JPEG2000.ReversibleDispatch
+import JPEG2000.TileDispatch
 import JPEG2000.IrreversibleDispatch
 
 /-!

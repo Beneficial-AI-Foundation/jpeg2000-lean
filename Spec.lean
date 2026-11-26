@@ -47,6 +47,7 @@ import Spec.Tier1Equiv.Clamp
 import Spec.Tier1Wire
 import Spec.Tier2WF
 import Spec.HeaderWF
+import Spec.TileDispatch
 import Spec.C9
 import Spec.CodestreamDispatch
 import Spec.WideAssembly
