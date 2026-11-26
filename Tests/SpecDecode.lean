@@ -1,5 +1,6 @@
 import Spec.Decode
 import Encode.Encode
+import JPEG2000.WideReversible
 
 /-!
 # Tests: `Spec.decode` against `decodeCodestream` (tasks 7.1a, 7.1f)
@@ -91,6 +92,50 @@ def encCase (name : String) (p : Encode.Params) (img : Encode.Image) (reduce : N
     if !p.reversible then IO.println s!"  spec-decode {name}: max irreversible difference {m}"
     return n
 
+/-- Two 31-bit signed pixels with 31 coded planes, reversible 5/3 and RCT.
+The Y and Cr low/high subbands are opposite, so intermediate values can exceed
+Int32 and still produce a final red sample strictly inside the declared range. -/
+def rctCancellationStream : Except Error ByteArray := do
+  let comp : Encode.Component := { depth := 8, signed := true, samples := #[0, 0] }
+  let base ← Encode.encode { levels := 1, mct := true }
+    { width := 2, height := 1, comps := #[comp, comp, comp] }
+  let header ← Header.parse Limits.default base
+  let siz := { header.siz with components := header.siz.components.map fun c => { c with depth := 31 } }
+  let cod := header.main.cod
+  let qcd : Marker.QCD := { guardBits := 2, quant := .none #[30, 30, 30, 30] }
+  let params ← Header.mkComp 0 cod.style qcd 0
+  let rect : Header.Rect := ⟨0, 0, 2, 1⟩
+  let m : Int := 2 ^ 31 - 1
+  let mut precs := #[]
+  for (index, low) in (#[(0, m), (1, 0), (2, -m)] : Array (Nat × Int)) do
+    let tc := Tier2.Geometry.tileComp rect (siz.components.getD index default) params
+    let bands := Encode.compBands 2 1 1 fun _ b _ _ => if b == .LL then low else -low
+    let (prec, _) ← Encode.encodeComp Limits.default tc index bands
+    precs := precs.push prec
+  let data := Encode.Tier2.encodeTileLRCP precs
+  let sot : TilePart.SOT := { isot := 0, psot := (14 + data.size).toUInt32, tpsot := 0, tnsot := 1 }
+  let marker := fun k => Encode.Marker.pack (Encode.Marker.be16 k)
+  let seg := Encode.Marker.segment
+  return marker Marker.Code.SOC ++ seg Marker.Code.SIZ (Encode.Marker.serializeSIZ siz) ++
+    seg Marker.Code.COD (Encode.Marker.serializeCOD cod) ++ seg Marker.Code.QCD (Encode.Marker.serializeQCD qcd) ++
+    seg Marker.Code.SOT (Encode.TilePart.serializeSOT sot) ++ marker Marker.Code.SOD ++ data ++ marker Marker.Code.EOC
+
+/-- Check all six final values using the codestream specification and the wide
+spatial/colour kernels on the defining Mallat coefficients. -/
+private def rctCancellation : Except Error Bool := do
+  let L := Limits.default
+  let cs ← rctCancellationStream
+  let spec ← Spec.Decode.decode L cs 0
+  let r : Header.Rect := ⟨0, 0, 2, 1⟩
+  let m : Int := 2 ^ 31 - 1
+  let y ← WideReversible.idwt53 L r 1 #[m, -m]
+  let cb ← WideReversible.idwt53 L r 1 #[0, 0]
+  let cr ← WideReversible.idwt53 L r 1 #[-m, m]
+  let (red, green, blue) ← WideReversible.rctInverse L r r r y cb cr
+  let exact := #[red, green, blue].map fun c => c.map (Spec.MCT.reconRev true 31)
+  let expected := #[#[805306367, 268435455], #[1073741823, 1073741823], #[1073741823, 1073741823]]
+  return exact == expected && spec.comps.map (fun c => c.samples.map (·.value)) == expected
+
 /-- The conformance directory. -/
 def inputDir : System.FilePath := "corpus/files/openjpeg-data/input/conformance"
 
@@ -123,6 +168,10 @@ def run : IO Nat := do
   n := n + (← encCase "9/7+ICT 3 comp 7x7 NL2"
     { levels := 2, reversible := false, stepLog2 := -2, cbWidthExp := 2, cbHeightExp := 2 }
     (image 7 7 3 8))
+  match rctCancellation with
+  | .ok true => pure ()
+  | .ok false => n := n + (← fail "31-plane RCT cancellation" "samples differ")
+  | .error e => n := n + (← fail "31-plane RCT cancellation" (toString e))
   n := n + (← corpusCase "p0_01.j2k" 2)
   n := n + (← corpusCase "p0_09.j2k" 0)
   n := n + (← corpusCase "p0_12.j2k" 0)

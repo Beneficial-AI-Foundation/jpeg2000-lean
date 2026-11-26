@@ -116,6 +116,44 @@ theorem clamp32_int32 (v : Int32) : MCT.clamp32 v.toInt = v.toInt := by
   unfold MCT.clamp32
   apply Spec.MCT.clamp_of_mem <;> omega
 
+private theorem raster_mem (rect : Header.Rect) (j : Nat) (hj : j < rect.width * rect.height) :
+    (specRect rect).mem (posU rect j) (posV rect j) := by
+  simp only [Header.Rect.width, Header.Rect.height] at hj
+  have hW : 0 < rect.x1 - rect.x0 := Nat.pos_of_ne_zero (by intro h0; rw [h0] at hj; simp at hj)
+  have h1 := Nat.mod_lt j hW
+  have h2 : j / (rect.x1 - rect.x0) < rect.y1 - rect.y0 := by
+    rw [Nat.div_lt_iff_lt_mul hW, Nat.mul_comm]; exact hj
+  simp only [specRect, Spec.DWT53.Rect.mem, posU, posV, Header.Rect.width]
+  generalize j % (rect.x1 - rect.x0) = a at h1 ⊢
+  generalize j / (rect.x1 - rect.x0) = b at h2 ⊢
+  omega
+
+private theorem srMulti_bandsEq (p : Plane) (rect : Header.Rect) (nl : Nat) (D : Dec)
+    (hD : D.details.length = nl) (hb : BandsEq rect nl (toDec p rect nl) D)
+    (u v : Int) (hm : (specRect rect).mem u v) :
+    (Spec.DWT53.srMulti (specRect rect) nl (toDec p rect nl)).get u v =
+      (Spec.DWT53.srMulti (specRect rect) nl D).get u v := by
+  rw [← gMulti_sr1d, ← gMulti_sr1d]
+  exact gMulti_local kspec53 nl _ _ _ (by simp [toDec]) hD (bandsEq_agree rect nl _ _ hb) u v hm
+
+/-- Each cell of a successful checked 5/3 reconstruction equals the exact Annex F
+sample for any decomposition agreeing on its B-15 bands. These values can feed RCT. -/
+theorem idwt53Fast_bandsEq (p : Plane) (rect : Header.Rect) (nl : Nat) (D : Dec) (q : Plane)
+    (hw : p.width = rect.width) (hh : p.height = rect.height) (hD : D.details.length = nl)
+    (hf : DWT53.idwt53Fast p rect nl = some q) :
+    q.width = rect.width ∧ q.height = rect.height ∧
+    (BandsEq rect nl (toDec p rect nl) D → ∀ j, j < rect.width * rect.height →
+      ∃ v, q.get? j = some v ∧ v.toInt =
+        (Spec.DWT53.srMulti (specRect rect) nl D).get (posU rect j) (posV rect j)) := by
+  obtain ⟨qw, qh, cells⟩ := idwt53Fast_spec p rect nl q hf
+  refine ⟨qw.trans hw, qh.trans hh, fun hb j hj => ?_⟩
+  have lookup := cells j (by rw [hw, hh]; exact hj)
+  rw [hw] at lookup
+  change (q.get? j).map Int32.toInt = some
+    ((Spec.DWT53.srMulti (specRect rect) nl (toDec p rect nl)).get (posU rect j) (posV rect j)) at lookup
+  rw [srMulti_bandsEq p rect nl D hD hb _ _ (raster_mem rect j hj)] at lookup
+  simpa only [Option.map_eq_some_iff] using lookup
+
 /-- **Stage hypothesis `DWT53PlaneEquiv` of C9, proved** (F.3.1, B-15): `DWT53.idwt53` keeps
 the rectangle's size, and when the bands it reads agree with a decomposition `D` on the
 B-15 band positions, every output cell is `clamp32` of `Spec.DWT53.srMulti D` (fast path:
@@ -124,42 +162,14 @@ theorem dwt53PlaneEquiv : Spec.Equiv.DWT53PlaneEquiv := by
   intro p rect nl D q hw hh hD hq
   unfold DWT53.idwt53 at hq
   rw [if_t ⟨hw, hh⟩] at hq
-  have hloc : BandsEq rect nl (toDec p rect nl) D → ∀ u v, (specRect rect).mem u v →
-      (Spec.DWT53.srMulti (specRect rect) nl (toDec p rect nl)).get u v =
-        (Spec.DWT53.srMulti (specRect rect) nl D).get u v := by
-    intro hb u v hm
-    rw [← gMulti_sr1d, ← gMulti_sr1d]
-    exact gMulti_local kspec53 nl _ _ _ (by simp [toDec]) hD (bandsEq_agree rect nl _ _ hb) u v hm
-  have hmem : ∀ j, j < rect.width * rect.height →
-      (specRect rect).mem (posU rect j) (posV rect j) := by
-    intro j hj
-    simp only [Header.Rect.width, Header.Rect.height] at hj
-    have hW : 0 < rect.x1 - rect.x0 := Nat.pos_of_ne_zero (by intro h0; rw [h0] at hj; simp at hj)
-    have h1 := Nat.mod_lt j hW
-    have h2 : j / (rect.x1 - rect.x0) < rect.y1 - rect.y0 := by
-      rw [Nat.div_lt_iff_lt_mul hW, Nat.mul_comm]; exact hj
-    simp only [specRect, Spec.DWT53.Rect.mem, posU, posV, Header.Rect.width]
-    generalize j % (rect.x1 - rect.x0) = a at h1 ⊢
-    generalize j / (rect.x1 - rect.x0) = b at h2 ⊢
-    omega
   cases hf : DWT53.idwt53Fast p rect nl with
   | some q' =>
     rw [hf] at hq
     cases hq
-    obtain ⟨c1, c2, c3⟩ := idwt53Fast_spec p rect nl q hf
-    refine ⟨by rw [c1, hw], by rw [c2, hh], fun hb j hj => ?_⟩
-    have hj' : j < p.width * p.height := by rw [hw, hh]; exact hj
-    have := c3 j hj'
-    rw [hw] at this
-    obtain ⟨v, hv1, hv2⟩ : ∃ v, q.get? j = some v ∧ v.toInt =
-        (Spec.DWT53.srMulti (specRect rect) nl (toDec p rect nl)).get (posU rect j) (posV rect j) := by
-      cases hg : q.get? j with
-      | none => rw [hg] at this; simp at this
-      | some v =>
-        rw [hg] at this
-        simp only [Option.map_some, Option.some.injEq] at this
-        exact ⟨v, rfl, this⟩
-    rw [hv1, Option.map_some, ← hloc hb _ _ (hmem j hj), ← hv2, clamp32_int32]
+    obtain ⟨qw, qh, exactCell⟩ := idwt53Fast_bandsEq p rect nl D q hw hh hD hf
+    refine ⟨qw, qh, fun hb j hj => ?_⟩
+    obtain ⟨v, hv, hval⟩ := exactCell hb j hj
+    rw [hv, Option.map_some, ← hval, clamp32_int32]
   | none =>
     rw [hf] at hq
     cases hq
@@ -171,7 +181,7 @@ theorem dwt53PlaneEquiv : Spec.Equiv.DWT53PlaneEquiv := by
     rw [c3 j hj', hw]
     simp only [Option.map_some, sat32_clamp]
     congr 2
-    exact hloc hb _ _ (hmem j hj)
+    exact srMulti_bandsEq p rect nl D hD hb _ _ (raster_mem rect j hj)
 
 /-! ## Theorem: the 9/7 plane transform -/
 
@@ -302,6 +312,33 @@ theorem roundRat_err (x : Rat) : ((DWT97.roundRat x : Rat) - x).abs ≤ 1 / 2 :=
   push_cast at b
   constructor <;> grind
 
+/-- A successful checked 9/7 pass is within C8's fixed-point error of the exact
+Annex F sample, including when that rational sample lies outside the Int32 range.
+The band error is measured at the B-15 coordinates of the actual coefficient plane. -/
+theorem idwt97Fast_err (p : Plane) (rect : Header.Rect) (nl F : Nat) (D : Spec.DWT97.Dec)
+    (ε : Rat) (q : Plane) (hw : p.width = rect.width) (hh : p.height = rect.height)
+    (hD : D.details.length = nl) (hf : DWT97.idwt97Fast p rect nl = some q) :
+    q.width = rect.width ∧ q.height = rect.height ∧
+    (BandsClose ε F rect nl (toDec p rect nl) D → ∀ j, j < rect.width * rect.height →
+      ∃ v, q.get? j = some v ∧
+        ((v.toInt : Rat) - ((2 ^ F : Nat) : Rat) *
+          (Spec.DWT97.srMulti (specRect rect) nl D).get (posU rect j) (posV rect j)).abs ≤
+          DWT97.En nl ε) := by
+  obtain ⟨qw, qh, noOverflow, cells⟩ := idwt97Fast_spec p rect nl q hf
+  refine ⟨qw.trans hw, qh.trans hh, fun hb j hj => ?_⟩
+  have hj' : j < p.width * p.height := by rw [hw, hh]; exact hj
+  have hok := noOverflow (by omega)
+  have lookup := cells j hj'
+  rw [hw] at lookup
+  obtain ⟨v, hv1, hv2⟩ : ∃ v, q.get? j = some v ∧ v.toInt =
+      (DWT97.qsrMulti (specRect rect) nl (toDec p rect nl)).get (posU rect j) (posV rect j) := by
+    simpa only [Option.map_eq_some_iff, posU, posV] using lookup
+  refine ⟨v, hv1, ?_⟩
+  have herr := qsrMulti_err_loc nl (specRect rect) (toDec p rect nl) (D.smul ((2 ^ F : Nat) : Rat)) ε
+    (by simp [toDec]) (by simp [Spec.DWT97.Dec.smul, hD]) (bandsClose_agree rect nl F ε _ _ hb) hok _ _ (raster_mem rect j hj)
+  rw [Spec.DWT97.srMulti_smul, ← hv2] at herr
+  exact herr
+
 /-- **Stage hypothesis `DWT97PlaneErr` of C9, proved** (F.3.1, C8, B-15): `DWT97.idwt97` keeps
 the rectangle's size, and when its fixed-point bands are within `ε` ulps of `2^F · D` on the
 B-15 band positions, every output cell is within `En nl ε + 1/2` ulps of
@@ -312,18 +349,6 @@ theorem dwt97PlaneErr : Spec.Equiv.DWT97PlaneErr := by
   intro p rect nl F D ε q hw hh hD hq
   unfold DWT97.idwt97 at hq
   rw [if_t ⟨hw, hh⟩] at hq
-  have hmem : ∀ j, j < rect.width * rect.height →
-      (specRect rect).mem (posU rect j) (posV rect j) := by
-    intro j hj
-    simp only [Header.Rect.width, Header.Rect.height] at hj
-    have hW : 0 < rect.x1 - rect.x0 := Nat.pos_of_ne_zero (by intro h0; rw [h0] at hj; simp at hj)
-    have h1 := Nat.mod_lt j hW
-    have h2 : j / (rect.x1 - rect.x0) < rect.y1 - rect.y0 := by
-      rw [Nat.div_lt_iff_lt_mul hW, Nat.mul_comm]; exact hj
-    simp only [specRect, Spec.DWT53.Rect.mem, posU, posV, Header.Rect.width]
-    generalize j % (rect.x1 - rect.x0) = a at h1 ⊢
-    generalize j / (rect.x1 - rect.x0) = b at h2 ⊢
-    omega
   have hlenD : (D.smul ((2 ^ F : Nat) : Rat)).details.length = nl := by
     simp [Spec.DWT97.Dec.smul, hD]
   have hlenT : (toDec p rect nl).details.length = nl := by simp [toDec]
@@ -336,24 +361,10 @@ theorem dwt97PlaneErr : Spec.Equiv.DWT97PlaneErr := by
   | some q' =>
     rw [hf] at hq
     cases hq
-    obtain ⟨c1, c2, c3, c4⟩ := idwt97Fast_spec p rect nl q hf
-    refine ⟨by rw [c1, hw], by rw [c2, hh], fun hb j hj => ?_⟩
-    have hj' : j < p.width * p.height := by rw [hw, hh]; exact hj
-    have hok := c3 (by omega)
-    have := c4 j hj'
-    rw [hw] at this
-    obtain ⟨v, hv1, hv2⟩ : ∃ v, q.get? j = some v ∧ v.toInt =
-        (DWT97.qsrMulti (specRect rect) nl (toDec p rect nl)).get (posU rect j) (posV rect j) := by
-      cases hg : q.get? j with
-      | none => rw [hg] at this; simp at this
-      | some v =>
-        rw [hg] at this
-        simp only [Option.map_some, Option.some.injEq] at this
-        exact ⟨v, rfl, this⟩
-    refine ⟨v, hv1, ?_⟩
-    have herr := qsrMulti_err_loc nl (specRect rect) (toDec p rect nl) (D.smul ((2 ^ F : Nat) : Rat)) ε
-      hlenT hlenD (bandsClose_agree rect nl F ε _ _ hb) hok _ _ (hmem j hj)
-    rw [hX, ← hv2] at herr
+    obtain ⟨qw, qh, measured⟩ := idwt97Fast_err p rect nl F D ε q hw hh hD hf
+    refine ⟨qw, qh, fun hb j hj => ?_⟩
+    obtain ⟨v, hv, herr⟩ := measured hb j hj
+    refine ⟨v, hv, ?_⟩
     have := clampR_int32 v (((2 ^ F : Nat) : Rat) *
       (Spec.DWT97.srMulti (specRect rect) nl D).get (posU rect j) (posV rect j))
     generalize (Spec.DWT97.srMulti (specRect rect) nl D).get (posU rect j) (posV rect j) = y at *
@@ -372,7 +383,7 @@ theorem dwt97PlaneErr : Spec.Equiv.DWT97PlaneErr := by
     rw [sat32_clamp, ← clampR_int, Spec.DWT97.memo_eq]
     have hl := srMulti_lip nl (specRect rect) (DWT97.castDec (toDec p rect nl))
       (D.smul ((2 ^ F : Nat) : Rat)) ε (by simp [DWT97.castDec, hlenT]) hlenD
-      (bandsClose_agree rect nl F ε _ _ hb) _ _ (hmem j hj)
+      (bandsClose_agree rect nl F ε _ _ hb) _ _ (raster_mem rect j hj)
     rw [hX] at hl
     have hr := roundRat_err ((Spec.DWT97.srMulti (specRect rect) nl
       (DWT97.castDec (toDec p rect nl))).get (posU rect j) (posV rect j))

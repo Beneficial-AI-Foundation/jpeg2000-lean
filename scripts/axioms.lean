@@ -751,6 +751,7 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.DWTPlane.fast_core
 #print axioms JPEG2000.Spec.DWTPlane.idwt53Fast_spec
 #print axioms JPEG2000.Spec.DWTPlane.clamp32_int32
+#print axioms JPEG2000.Spec.DWTPlane.idwt53Fast_bandsEq
 #print axioms JPEG2000.Spec.DWTPlane.dwt53PlaneEquiv
 #print axioms JPEG2000.Spec.DWTPlane.bandsClose_agree
 #print axioms JPEG2000.Spec.DWTPlane.idwt97Fast_spec
@@ -758,6 +759,7 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.DWTPlane.clampR_lip
 #print axioms JPEG2000.Spec.DWTPlane.clampR_int32
 #print axioms JPEG2000.Spec.DWTPlane.roundRat_err
+#print axioms JPEG2000.Spec.DWTPlane.idwt97Fast_err
 #print axioms JPEG2000.Spec.DWTPlane.dwt97PlaneErr
 #print axioms JPEG2000.Spec.DWTPlane.rmax_l
 #print axioms JPEG2000.Spec.DWTPlane.rmax_r
