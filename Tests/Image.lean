@@ -408,11 +408,37 @@ private def wideColour : Except Error Bool := do
   return (lo.channels.getD 0 default).get? 0 == some (-(mid:Int)) &&
     bytes (← lo.interleaved8 {}) == [0] && bytes (← lo.interleaved16 {}) == [0,0]
 
-/-- Public decode, exact channel access and display on signed and unsigned 38-bit fixtures. -/
+/-- Four direct mappings replicate one 2×2 native plane to the 4×4 reference
+grid. Display admission charges all four channels before selecting RGB. -/
+private def displayLimits : Except Error Bool := do
+  let cs ← Encode.encode { levels := 0, mct := false }
+    { width := 2, height := 2, comps := #[comp 8 false [5, 9, 11, 15]] }
+  let h ← Header.parse {} cs
+  let siz := { h.siz with
+    xsiz := 4, ysiz := 4, xtsiz := 4, ytsiz := 4,
+    components := h.siz.components.map fun c => { c with dx := 2, dy := 2 } }
+  let sizMarker := Encode.Marker.pack (Encode.Marker.be16 Marker.Code.SOC) ++
+    Encode.Marker.segment Marker.Code.SIZ (Encode.Marker.serializeSIZ siz)
+  let palette := box "pclr" (be 2 1 ++ [1, 7, 0])
+  let cmap := box "cmap" ((List.replicate 4 [0, 0, 0, 0]).flatten)
+  let file := jp2 4 4 1 7 16 (palette ++ cmap) (sizMarker ++ cs.extract sizMarker.size cs.size)
+  let tight := { Limits.default with maxWorkSamples := 63, maxDecodedBytes := 63 }
+  let .error work := decode tight file | return false
+  let .error bytes := decode { tight with maxWorkSamples := 64 } file | return false
+  let img ← decode { tight with maxWorkSamples := 64, maxDecodedBytes := 64 } file
+  let .error byte8 := img.interleaved8 { maxDecodedBytes := 47 } | return false
+  let .error byte16 := img.interleaved16 { maxDecodedBytes := 95 } | return false
+  return work == .limitExceeded Image.loc .workSamples 64 63 &&
+    bytes == .limitExceeded Image.loc .decodedBytes 64 63 &&
+    byte8 == .limitExceeded Image.loc .decodedBytes 48 47 &&
+    byte16 == .limitExceeded Image.loc .decodedBytes 96 95
+
+/-- Public native and display samples, independent byte limits and replication-work admission. -/
 def nativeTests : IO Nat := do
   let mut failures := 0
   for (name, result) in [("38-bit raw and JP2 midpoints", wideMidpoints),
-      ("mixed tiles, ICC and alpha", mixedDisplay), ("wide palette, sYCC and replication", wideColour)] do
+      ("mixed tiles, ICC and alpha", mixedDisplay), ("wide palette, sYCC and replication", wideColour),
+      ("display limits before and after RGB selection", displayLimits)] do
     match result with
     | .ok ok => failures := failures + (← expect name ok)
     | .error e => failures := failures + (← expect s!"{name}: {e}" false)
