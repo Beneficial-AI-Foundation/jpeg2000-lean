@@ -11,7 +11,7 @@ and ICC profile needed to convert, and the raw per-component planes. `Image.inte
 
 ## Pipeline
 
-1. `decodeCodestreamNarrow` (task 5.5): one plane per codestream component on its own grid
+1. `decodeCodestream` (task 5.5): one plane per codestream component on its own grid
    (T.800 B.2, B-12, B-14 for `reduce`).
 2. `Color.resolve` (task 6.1): colour space (T.800 I.5.3.3), `pclr`/`cmap` mapping
    (I.5.3.4, I.5.3.5), `cdef` layout (I.5.3.6).
@@ -46,8 +46,9 @@ the unsigned `d`-bit value `u` is scaled to `t` = 8 or 16 bits:
 
 The display scaler accepts native depths 1…38. Its unsigned input is below `2^38`,
 and its 8- or 16-bit multiplier is below `2^16`. The numerator, including the rounding
-term, fits in `UInt64`. The current decoder supplies planes of `Int32` samples (through
-31 unsigned bits or 32 signed bits).
+term, fits in `UInt64`. Compact channels retain their four-byte buffers and fixed-width
+scaling kernel. Use `Channel.get?` for exact samples or `channel.plane.compact?` to borrow an
+existing `Bytes.Plane`. `Image.decodedNarrow?` exposes the original compact image records.
 
 16-bit output is **big-endian** (most significant byte first), the order of 16-bit samples
 in PDF image data (ISO 32000-2 §8.9.2). By default the alpha channel is **not** included
@@ -75,14 +76,28 @@ open JPEG2000.Bytes JPEG2000.Header
 /-- One image channel at the image's full resolution (`plane` is `width × height` of the
 image): samples as decoded (after palette / colour conversion), with depth and sign. -/
 structure Channel where
-  /-- Bit depth of the samples (1…32). -/
+  /-- Bit depth of the samples (1…38). -/
   depth : Nat
   /-- Samples are signed. -/
   signed : Bool
-  /-- The samples, row-major, `Int32` cells. -/
-  plane : Plane
+  /-- The samples, row-major, at native precision. -/
+  plane : Color.SamplePlane
 
 instance : Inhabited Channel := ⟨{ depth := 1, signed := false, plane := Plane.zero 0 0 }⟩
+
+/-- Read an exact channel sample after palette, colour conversion and replication. -/
+def Channel.get? (c : Channel) (i : Nat) : Option Int := c.plane.get? i
+
+/-- Borrow the component buffer for colour processing. Both storage kinds in a mixed-depth
+image use their actual plane dimensions. The wide view reads through the codestream accessor. -/
+def CodestreamComponent.samples : CodestreamComponent → Color.SamplePlane
+  | .compact c => .compact c.plane
+  | .native c => .native c
+
+/-- Borrowing a component for colour handling preserves every exact read, including bounds. -/
+theorem CodestreamComponent.samples_get? (c : CodestreamComponent) (i : Nat) :
+    c.samples.get? i = c.get? i := by
+  cases c <;> rfl
 
 /-- A soft mask selected by `/SMaskInData`. -/
 structure SoftMask where
@@ -127,7 +142,7 @@ structure Image where
   iccProfile : Option ByteArray := none
   /-- The codestream decode: header (with the JP2 boxes) and per-component planes on their
   own grids. -/
-  decoded : DecodedImage
+  decoded : CodestreamImage
 
 namespace Image
 
@@ -135,7 +150,20 @@ namespace Image
 def loc : Location := .at .color
 
 /-- The raw per-component planes, each on its own grid (for consumers that want them). -/
-def decodedComponents (img : Image) : Array DecodedComponent := img.decoded.comps
+def decodedComponents (img : Image) : Array CodestreamComponent := img.decoded.comps
+
+/-- Borrow the original `DecodedImage` representation when every raw component has
+four-byte storage. Only the component records are collected. -/
+def decodedNarrow? (img : Image) : Option DecodedImage := do
+  let comps ← img.decoded.comps.mapM fun c => do
+    match c with
+    | .compact d => return d
+    | .native _ =>
+      let plane ← c.samples.compact?
+      return { x0 := c.x0, y0 := c.y0, width := c.width, height := c.height,
+               dx := c.dx, dy := c.dy, depth := c.depth, signed := c.signed, plane }
+  return { header := img.decoded.header, reduce := img.decoded.reduce, comps,
+           saturatedBlocks := img.decoded.saturatedBlocks }
 
 /-! ## Up-sampling to the reference grid -/
 
@@ -153,22 +181,26 @@ def atFullRes (w h : Nat) (c : Color.Channel) : Bool :=
   c.format.dx == 1 && c.format.dy == 1 && c.plane.width == w && c.plane.height == h
 
 /-- The channel on the `w × h` image area with origin `(ox, oy)` on the reference grid, by
-replication (see the module doc). Allocates a new plane unless `atFullRes`; the caller has
-checked the cells against `maxWorkSamples`. -/
-def upsample (ox oy w h : Nat) (c : Color.Channel) : Except Error Plane := do
+replication (see the module doc). Full-resolution channels share their source. Replication
+fills a compact plane or indexes the wide source through a view. The caller has checked
+the output cells against `maxWorkSamples`. -/
+def upsample (ox oy w h : Nat) (c : Color.Channel) : Except Error Color.SamplePlane := do
   if atFullRes w h c then return c.plane
   let p := c.plane
   if w * h > 0 && p.width * p.height == 0 then
     throw (.unsupported loc "a component has no samples inside the image area")
   let ix := Color.chromaIndex ox 1 c.format.dx p.width w
   let iy := Color.chromaIndex oy 1 c.format.dy p.height h
-  return upLoop p w ix iy (Plane.zero w h) 0 (w * h)
+  match p.compact? with
+  | some src => return .compact (upLoop src w ix iy (Plane.zero w h) 0 (w * h))
+  | none =>
+    return .view w h fun i => (p.get? (iy.getD (i / w) 0 * p.width + ix.getD (i % w) 0)).getD 0
 
 /-! ## Colour -/
 
 /-- OpenJPEG's (`opj_decompress`) test for a three-component image to be sYCC: component 0
 has `XRsiz = YRsiz` and component 1 is horizontally sub-sampled. -/
-def looksSycc (comps : Array DecodedComponent) : Bool :=
+def looksSycc (comps : Array CodestreamComponent) : Bool :=
   match comps[0]?, comps[1]? with
   | some c0, some c1 => comps.size == 3 && c0.dx == c0.dy && c1.dx != 1
   | _, _ => false
@@ -200,12 +232,12 @@ pipeline of the module doc. Every stage's error propagates; every allocation is 
 against `L` first. -/
 def decode (L : Limits) (data : ByteArray) (opts : DecodeOptions := {}) :
     Except Error Image := do
-  let d ← decodeCodestreamNarrow L data opts.reduce
+  let d ← decodeCodestream L data opts.reduce
   let siz := d.header.siz
   let hdr? := d.header.container.bind (·.header)
   let info ← Color.resolve L data hdr? siz.components
   let comps : Array Color.Channel := d.comps.map fun c =>
-    { plane := c.plane, format := { depth := c.depth, signed := c.signed, dx := c.dx, dy := c.dy } }
+    { plane := c.samples, format := { depth := c.depth, signed := c.signed, dx := c.dx, dy := c.dy } }
   -- palette and channel layout
   let (mapping, layout) :=
     if opts.applyPalette || info.mapping.palette.isNone then (info.mapping, info.layout)
@@ -368,19 +400,20 @@ theorem Scaler.applyNative_make_eq (mode : Scaling) {d t : Nat} (s : Bool) (v : 
   simp only [Scaler.applyNative, hmax, hoff]
   exact scaleUnsigned_make mode s hd hd' ht (Nat.min_le_left ..)
 
-/-- Appends pixel `i` of every channel (1 byte, or 2 bytes big-endian, per sample). -/
-def pushPixel (wide : Bool) (i : Nat) (out : ByteArray) : List (Plane × Scaler) → ByteArray
+/-- Appends pixel `i` of each channel, using the selected sample-reading kernel. -/
+@[specialize] def pushPixel {P : Type} (sample : P → Scaler → Nat → UInt64)
+    (wide : Bool) (i : Nat) (out : ByteArray) : List (P × Scaler) → ByteArray
   | [] => out
   | (p, s) :: rest =>
-    let u := s.apply ((p.get? i).getD 0)
+    let u := sample p s i
     let out := if wide then (out.push (u >>> 8).toUInt8).push u.toUInt8 else out.push u.toUInt8
-    pushPixel wide i out rest
+    pushPixel sample wide i out rest
 
-/-- Appends pixels `i = i₀ …` (fuel `k`). -/
-def interleaveLoop (wide : Bool) (cs : List (Plane × Scaler)) (out : ByteArray) (i : Nat) :
-    Nat → ByteArray
+/-- Appends pixels starting at `i`. The compact and native kernels specialize this loop. -/
+@[specialize] def interleaveLoop {P : Type} (sample : P → Scaler → Nat → UInt64)
+    (wide : Bool) (cs : List (P × Scaler)) (out : ByteArray) (i : Nat) : Nat → ByteArray
   | 0 => out
-  | k + 1 => interleaveLoop wide cs (pushPixel wide i out cs) (i + 1) k
+  | k + 1 => interleaveLoop sample wide cs (pushPixel sample wide i out cs) (i + 1) k
 
 /-- Interleaves `width × height` channels into one buffer of 8-bit (`wide = false`) or
 16-bit big-endian (`wide = true`) samples, pixel by pixel, channels in the given order, each
@@ -396,7 +429,11 @@ def interleave (L : Limits) (width height : Nat) (chs : Array Channel) (wide : B
   L.check Image.loc .decodedBytes size
   let t := if wide then 16 else 8
   let cs := chs.toList.map fun c => (c.plane, Scaler.make mode c.depth c.signed t)
-  return interleaveLoop wide cs (ByteArray.emptyWithCapacity size) 0 n
+  let out := ByteArray.emptyWithCapacity size
+  if h : cs.all (fun c => c.1.compact?.isSome) then
+    let planes := cs.attach.map fun ⟨c, hc⟩ => (c.1.compact?.get (List.all_eq_true.mp h c hc), c.2)
+    return interleaveLoop (fun p s i => s.apply ((p.get? i).getD 0)) wide planes out 0 n
+  return interleaveLoop (fun p s i => s.applyNative ((p.get? i).getD 0)) wide cs out 0 n
 
 namespace Image
 

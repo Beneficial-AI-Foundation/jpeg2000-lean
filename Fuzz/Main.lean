@@ -133,7 +133,7 @@ def escapeCheck (L : Limits) (img : Image) : Option String := Id.run do
   let mut rbytes := 0
   let mut cells := 0
   for c in img.decoded.comps do
-    if c.plane.width != c.width || c.plane.height != c.height then
+    if c.samples.width != c.width || c.samples.height != c.height then
       return some "component plane geometry"
     rbytes := rbytes + c.width * c.height * Header.bytesPerSample c.depth
     cells := cells + c.width * c.height

@@ -165,8 +165,8 @@ def corpusCase (file : String) (reduce : Nat) : IO Nat := do
     IO.println s!"  spec-decode {file} (reduce {reduce}): agree, max irreversible difference {m}"
     return 0
 
--- Replace only SIZ on neutral, single-tile encoder output.
-private def wideZero (signed : Bool) : Except Error ByteArray := do
+/-- A zero-coefficient packet with signed or unsigned 38-bit SIZ precision. -/
+def wideZero (signed : Bool) : Except Error ByteArray := do
   let img : Encode.Image := { width := 1, height := 1, comps := #[{ depth := 8, samples := #[128] }] }
   let s ← Encode.encode { levels := 0, mct := false } img
   let h ← Header.parse Limits.default s
@@ -182,7 +182,8 @@ private def tile (a b c : Int) : Except Error ByteArray :=
   let input : Encode.Image := { width := 4, height := 2, comps := #[comp false a, comp true b, comp true c] }
   Encode.encode {levels := 1, mct := false} input
 
-private def twoTiles : Except Error ByteArray := do
+/-- Two real tiles with unsigned 38-, signed 8- and signed 38-bit components. -/
+def twoTiles : Except Error ByteArray := do
   let a ← tile 128 2 (-5)
   let b ← tile 129 (-3) 7
   let ha ← Header.parse Limits.default a
