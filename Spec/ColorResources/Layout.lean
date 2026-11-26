@@ -164,4 +164,302 @@ theorem alpha_work (defs : Array ChannelDef) :
   exact ⟨found.trans (by rw [Array.find?_toList,sort]),
     Nat.add_le_add cap (by simpa only [Array.length_toList,size] using visits)⟩
 
+
+private def validateOne (n : Nat) (d : ChannelDef) (_ : Unit) : Except Error (ForInStep Unit) := do
+  if d.cn.toNat ≥ n then throw (malformed s!"cdef: channel {d.cn} ≥ {n} channels")
+  if d.asoc != 0 && d.asoc != 65535 && d.asoc.toNat - 1 ≥ n then
+    throw (malformed s!"cdef: association {d.asoc} > {n} channels")
+  return .yield ()
+
+private def validateDefs (n : Nat) : List ChannelDef → Except Error Unit × Nat
+  | [] => (.ok (),0)
+  | d::ds => match validateOne n d () with
+    | .error e => (.error e,1)
+    | .ok (.done _) => (.ok (),1)
+    | .ok (.yield _) =>
+      let tail := validateDefs n ds
+      (tail.1,1+tail.2)
+
+private theorem validateDefs_work (n : Nat) (ds : List ChannelDef) :
+    (validateDefs n ds).1 = forIn ds () (validateOne n) ∧ (validateDefs n ds).2 ≤ ds.length := by
+  induction ds with
+  | nil => exact ⟨rfl,Nat.zero_le _⟩
+  | cons d ds ih =>
+    rw [validateDefs,List.forIn_cons]
+    cases validateOne n d () with
+    | error => exact ⟨rfl,by simp⟩
+    | ok step =>
+      cases step with
+      | done => exact ⟨rfl,by simp⟩
+      | yield => exact ⟨ih.1,by simp only [List.length_cons]; omega⟩
+
+private def markSeen (xs : Array Nat) (d : ChannelDef) :=
+  xs.setIfInBounds d.cn.toNat (xs.getD d.cn.toNat 0 + 1)
+
+private theorem marks_size (ds : List ChannelDef) (xs : Array Nat) :
+    (ds.foldl markSeen xs).size = xs.size := by
+  induction ds generalizing xs with
+  | nil => rfl
+  | cons d ds ih => exact (ih _).trans (Array.size_setIfInBounds ..)
+
+/-- Meter the initial reference check up to the first error. Once it passes,
+charge one slot per initial count, a read and update per definition, and each
+tested count through the first missing or duplicated channel. -/
+def measuredCdef (n : Nat) (ds : Array ChannelDef) : Except Error Unit × Nat :=
+  let refs := validateDefs n ds.toList
+  match refs.1 with
+  | .error e => (.error e,refs.2)
+  | .ok () =>
+    let seen := ds.foldl markSeen (Array.replicate n 0)
+    let bad := firstMatch (· != 1) seen.toList
+    let result := if bad.1.isSome then .error (malformed "cdef: channels not each defined exactly once")
+                  else .ok ()
+    (result,refs.2+n+2*ds.size+bad.2)
+
+/-- Checking `d` CDEF records against `n` channels costs at most `3*d+2*n`
+record visits and count-slot operations. Both failure stages preserve the exact error. -/
+theorem cdef_work (n : Nat) (ds : Array ChannelDef) :
+    (measuredCdef n ds).1 = checkCdef n ds ∧ (measuredCdef n ds).2 ≤ 3*ds.size+2*n := by
+  obtain ⟨value,visits⟩ := validateDefs_work n ds.toList
+  simp only [Array.forIn_toList,Array.length_toList] at value visits
+  let seen := ds.foldl markSeen (Array.replicate n 0)
+  have size : seen.size = n := by
+    unfold seen
+    rw [← Array.foldl_toList,marks_size,Array.size_replicate]
+  obtain ⟨find,checked⟩ := firstMatch_work (· != 1) seen.toList
+  have found : (firstMatch (· != 1) seen.toList).1.isSome = seen.any (· != 1) := by
+    rw [find,List.isSome_find?,Array.any_toList]
+  simp only [Array.length_toList,size] at checked
+  unfold measuredCdef checkCdef
+  change _ = (forIn ds () (validateOne n) >>= fun _ =>
+    if seen.any (· != 1) then .error (malformed "cdef: channels not each defined exactly once") else .ok ()) ∧ _
+  rw [← value]
+  dsimp only
+  cases (validateDefs n ds.toList).1 with
+  | error => exact ⟨rfl,by dsimp only; omega⟩
+  | ok u =>
+    cases u
+    refine ⟨?_,?_⟩
+    · dsimp only
+      rw [found]
+      rfl
+    · change _+n+2*ds.size+(firstMatch (· != 1) seen.toList).2 ≤ _
+      omega
+
+/-- Charge the full CDEF filter and its two materialisations when looking up a
+colour association. The original selector distinguishes absent and ambiguous keys. -/
+def measuredChannel (ds : Array ChannelDef) (k : Nat) : Except Error Nat × Nat :=
+  let hits := ds.filter fun d => d.typ == 0 && d.asoc.toNat == k
+  let result := match hits.toList with
+    | [d] => .ok d.cn.toNat
+    | [] => .error (malformed s!"cdef: no channel for colour {k}")
+    | _ => .error (malformed s!"cdef: several channels for colour {k}")
+  (result,ds.size+2*hits.size)
+
+private theorem channel_cost (ds : Array ChannelDef) (k : Nat) :
+    (measuredChannel ds k).1 = colourChannel ds k ∧ (measuredChannel ds k).2 ≤ 3*ds.size := by
+  refine ⟨rfl,?_⟩
+  have := @Array.size_filter_le _ (fun d : ChannelDef => d.typ == 0 && d.asoc.toNat == k) ds
+  dsimp only [measuredChannel]
+  omega
+
+
+private def assocList (ds : Array ChannelDef) : List Nat → Except Error (List Nat) × Nat
+  | [] => (.ok [],0)
+  | k::ks =>
+    let one := measuredChannel ds (k+1)
+    match one.1 with
+    | .error e => (.error e,1+one.2)
+    | .ok value =>
+      let rest := assocList ds ks
+      (rest.1.map (value :: ·),1+one.2+rest.2)
+
+private theorem assocList_work (ds : Array ChannelDef) (ks : List Nat) :
+    (assocList ds ks).1 = ks.mapM (fun k => colourChannel ds (k+1)) ∧
+    (assocList ds ks).2 ≤ ks.length*(1+3*ds.size) := by
+  induction ks with
+  | nil => exact ⟨rfl,Nat.zero_le _⟩
+  | cons k ks ih =>
+    obtain ⟨value,cost⟩ := channel_cost ds (k+1)
+    rw [assocList,List.mapM_cons,← value]
+    dsimp only
+    cases (measuredChannel ds (k+1)).1 with
+    | error e => exact ⟨rfl,by simp only [List.length_cons,Nat.succ_mul]; omega⟩
+    | ok v =>
+      constructor
+      · dsimp only
+        rw [ih.1]
+        cases ks.mapM (fun k => colourChannel ds (k+1)) <;> rfl
+      · change 1+(measuredChannel ds (k+1)).2+(assocList ds ks).2 ≤ (ks.length+1)*(1+3*ds.size)
+        rw [Nat.add_mul,Nat.one_mul]
+        omega
+
+/-- Look up successive colour associations, including the full reserved
+range and the lookup that returns a missing or ambiguous association. -/
+def measuredAssociations (ds : Array ChannelDef) (m : Nat) : Except Error (Array Nat) × Nat :=
+  let run := assocList ds (List.range m)
+  (run.1.map List.toArray,2*m+run.2)
+
+/-- Each attempted colour lookup inspects all definitions. A failure returns
+the same association error and stops before later lookups and opacity sorting. -/
+theorem associations_work (ds : Array ChannelDef) (m : Nat) :
+    (measuredAssociations ds m).1 = (List.range m).toArray.mapM (fun k => colourChannel ds (k+1)) ∧
+    (measuredAssociations ds m).2 ≤ 2*m+m*(1+3*ds.size) := by
+  obtain ⟨out,cap⟩ := assocList_work ds (List.range m)
+  simp only [List.length_range] at cap
+  unfold measuredAssociations
+  constructor
+  · simp only [out,Array.mapM_eq_mapM_toList]
+    cases (List.range m).mapM (fun k => colourChannel ds (k+1)) <;> rfl
+  · exact Nat.add_le_add_left cap _
+
+private def remaining (cs : Array Nat) (alpha : Option Nat) : List Nat → List Nat × Nat
+  | [] => ([],0)
+  | i::is =>
+    let found := firstMatch (i == ·) cs.toList
+    let rest := remaining cs alpha is
+    (if !found.1.isSome && alpha != some i then i::rest.1 else rest.1,1+found.2+rest.2)
+
+private theorem remaining_work (cs : Array Nat) (a : Option Nat) (is : List Nat) :
+    (remaining cs a is).1 = is.filter (fun i => !cs.contains i && a != some i) ∧
+    (remaining cs a is).2 ≤ is.length*(1+cs.size) := by
+  induction is with
+  | nil => exact ⟨rfl,Nat.zero_le _⟩
+  | cons i is ih =>
+    obtain ⟨out,cost⟩ := firstMatch_work (i == ·) cs.toList
+    have eq : (firstMatch (i == ·) cs.toList).1.isSome = cs.contains i := by
+      rw [out,List.isSome_find?,Array.any_toList,Array.contains_eq_any_beq]
+    simp only [Array.length_toList] at cost
+    simp only [remaining,eq,ih.1,List.filter_cons,List.length_cons,Nat.succ_mul]
+    exact ⟨trivial,by omega⟩
+
+
+private def colourCount (nc : Option Nat) (ds : Array ChannelDef) : Nat × Nat :=
+  match nc with
+  | some k => (k,0)
+  | none =>
+    let named := ds.filter fun d => d.typ == 0 && d.asoc != 0 && d.asoc != 65535
+    (named.size,ds.size+named.size)
+
+private theorem count_work (nc : Option Nat) (ds : Array ChannelDef) :
+    (colourCount nc ds).1 ≤ nc.getD ds.size ∧ (colourCount nc ds).2 ≤ 2*ds.size := by
+  cases nc with
+  | some k => exact ⟨Nat.le_refl _,Nat.zero_le _⟩
+  | none =>
+    have h := @Array.size_filter_le _ (fun d : ChannelDef => d.typ == 0 && d.asoc != 0 && d.asoc != 65535) ds
+    exact ⟨h,by dsimp only [colourCount]; omega⟩
+
+private def finishLayout (ds : Array ChannelDef) (n : Nat) (cs : Array Nat) :
+    ChannelLayout × Nat :=
+  let alpha := measuredAlpha ds
+  let index := alpha.1.map (·.cn.toNat)
+  let other := remaining cs index (List.range n)
+  (⟨cs,index,alpha.1.any (·.typ == 2),other.1.toArray⟩,alpha.2+3*n+other.2)
+
+private theorem finish_work (ds : Array ChannelDef) (n : Nat) (cs : Array Nat) :
+    let alpha := (ds.qsort (fun a b => a.cn < b.cn)).find? opacity
+    let index := alpha.map (·.cn.toNat)
+    let other := (List.range n).toArray.filter fun i => !cs.contains i && index != some i
+    let f := finishLayout ds n cs
+    f.1 = ⟨cs,index,alpha.any (·.typ == 2),other⟩ ∧
+    f.2 ≤ (ds.size-1)*(ds.size+3)+ds.size+3*n+n*(1+cs.size) := by
+  obtain ⟨alpha,price⟩ := alpha_work ds
+  let index := (measuredAlpha ds).1.map (·.cn.toNat)
+  obtain ⟨vals,checks⟩ := remaining_work cs index (List.range n)
+  simp only [List.length_range] at checks
+  have arr : (remaining cs index (List.range n)).1.toArray =
+      (List.range n).toArray.filter (fun i => !cs.contains i && index != some i) := by
+    apply Array.toList_inj.mp
+    simp only [Array.toList_filter,vals]
+  unfold finishLayout
+  constructor
+  · dsimp only
+    change (measuredAlpha ds).1 = (ds.qsort (fun a b => a.cn < b.cn)).find? opacity at alpha
+    rw [arr, ← alpha]
+  · exact Nat.add_le_add (Nat.add_le_add_right price _) checks
+
+/-- Count validation, association lookups, sorted alpha selection and the
+remaining-channel filter at their actual entry points, stopping at the first
+layout error. Range creation and conversion count by index slots. -/
+def measuredLayout (nc : Option Nat) (n : Nat) (cdef : Option (Array ChannelDef)) :
+    Except Error ChannelLayout × Nat :=
+  match cdef with
+  | none =>
+    let k := min (nc.getD n) n
+    (.ok { colours := (List.range k).toArray, other := ((List.range n).drop k).toArray },2*k+3*n)
+  | some ds =>
+    let validation := measuredCdef n ds
+    match validation.1 with
+    | .error e => (.error e,validation.2)
+    | .ok () =>
+      let count := colourCount nc ds
+      let cs := measuredAssociations ds count.1
+      let spent := validation.2+count.2+cs.2
+      match cs.1 with
+      | .error e => (.error e,spent)
+      | .ok a =>
+        let tail := finishLayout ds n a
+        (.ok tail.1,spent+tail.2)
+
+/-- Layout charge in terms of the channel count `n`, the CDEF record count `d`
+and the upper bound `m` on associations requested from those records. -/
+def layoutBudget (n d m : Nat) :=
+  5*n + 5*d + 2*m + m*(1+3*d) + (d-1)*(d+3) + d + n*(1+m)
+
+/-- The complete channel-layout meter preserves the original result and first
+error, including rejection before sorting. Its work and temporary index
+materialisations have a numeric bound even when the image has no samples. -/
+theorem layout_work (nc : Option Nat) (n : Nat) (cdef : Option (Array ChannelDef)) :
+    let d := (cdef.getD #[]).size
+    let m := nc.getD d
+    let r := measuredLayout nc n cdef
+    r.1 = channelLayout nc n cdef ∧ r.2 ≤ layoutBudget n d m := by
+  cases cdef with
+  | none =>
+    refine ⟨rfl,?_⟩
+    change 2 * min (nc.getD n) n + 3*n ≤ layoutBudget n 0 (nc.getD 0)
+    unfold layoutBudget
+    omega
+  | some ds =>
+    obtain ⟨val,vc⟩ := cdef_work n ds
+    obtain ⟨lim,cc⟩ := count_work nc ds
+    let count := colourCount nc ds
+    obtain ⟨found,fc⟩ := associations_work ds count.1
+    let m := nc.getD ds.size
+    have mc : count.1 ≤ m := lim
+    have search := Nat.mul_le_mul_right (1+3*ds.size) mc
+    have original : channelLayout nc n (some ds) = (do
+        checkCdef n ds
+        let cs ← (List.range count.1).toArray.mapM (fun k => colourChannel ds (k+1))
+        let alpha := (ds.qsort (fun a b => a.cn < b.cn)).find? opacity
+        let index := alpha.map (·.cn.toNat)
+        let other := (List.range n).toArray.filter fun i => !cs.contains i && index != some i
+        pure ⟨cs,index,alpha.any (·.typ == 2),other⟩) := by cases nc <;> rfl
+    rw [original,← val,← found]
+    unfold measuredLayout
+    dsimp only
+    cases hv : (measuredCdef n ds).1 with
+    | error e => exact ⟨rfl,by change (measuredCdef n ds).2 ≤ layoutBudget n ds.size m; unfold layoutBudget; omega⟩
+    | ok u =>
+      cases u
+      simp only [bind,Except.bind,count]
+      cases ha : (measuredAssociations ds (colourCount nc ds).1).1 with
+      | error e =>
+        refine ⟨rfl,?_⟩
+        change (measuredCdef n ds).2+count.2+(measuredAssociations ds count.1).2 ≤ layoutBudget n ds.size m
+        unfold layoutBudget
+        change count.2 ≤ 2*ds.size at cc
+        omega
+      | ok cs =>
+        have success := ha
+        rw [found] at success
+        have size : cs.size = count.1 := by simpa using channel_map_size success
+        obtain ⟨tail,tc⟩ := finish_work ds n cs
+        have other := Nat.mul_le_mul_left n (Nat.add_le_add_left (size ▸ mc : cs.size ≤ m) 1)
+        refine ⟨congrArg Except.ok tail,?_⟩
+        change (measuredCdef n ds).2+count.2+(measuredAssociations ds count.1).2+(finishLayout ds n cs).2 ≤ layoutBudget n ds.size m
+        unfold layoutBudget
+        change count.2 ≤ 2*ds.size at cc
+        omega
+
 end JPEG2000.Spec.ColorResources

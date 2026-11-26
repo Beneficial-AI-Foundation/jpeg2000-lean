@@ -331,6 +331,17 @@ Together they cost at most `(d-1)*(d+3) + d`. It returns the same optional
 definition used by the channel layout, including its premultiplication type.
 An absent opacity record requires a scan of all sorted definitions.
 
+`ColorResources.layout_work` accounts for the complete JP2 channel layout,
+including the first malformed channel or association, duplicate or missing
+channels, the colour-association lookup that fails, and the final filter for
+unassigned channels. Let `n` be the mapped channel count, `d` the CDEF length
+(zero if absent) and `m` the declared colour count (or `d` if unknown). The
+bound in record visits and temporary index slots is
+`5*n + 5*d + 2*m + m*(1+3*d) + (d-1)*(d+3) + d + n*(1+m)`.
+It applies even when no pixels are produced. The validator alone charges at
+most `3*d + 2*n` and does not allocate its channel-count table until all
+references pass the first scan.
+
 ### Maintenance
 
 The statements name checked quantities (`GeometryWithin` mirrors `checkGeometry`;

@@ -1755,3 +1755,6 @@ end AxiomsSelfCheck
 -- JP2 channel metadata and alpha selection.
 #print axioms JPEG2000.Spec.ColorResources.channelSort_work
 #print axioms JPEG2000.Spec.ColorResources.alpha_work
+#print axioms JPEG2000.Spec.ColorResources.cdef_work
+#print axioms JPEG2000.Spec.ColorResources.associations_work
+#print axioms JPEG2000.Spec.ColorResources.layout_work
