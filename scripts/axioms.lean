@@ -1921,6 +1921,7 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.Resources.DiagnosticHeader.public_events
 #print axioms JPEG2000.Spec.Resources.DiagnosticHeader.public_cost
 #print axioms JPEG2000.Spec.Resources.DiagnosticHeader.public_refusal
+#print axioms JPEG2000.Spec.Resources.DiagnosticReconstruction.public_bounds
 #print axioms JPEG2000.Spec.Resources.DiagnosticPacketRanges.parsed_ranges
 #print axioms JPEG2000.Spec.Resources.DiagnosticPacket.public_callback
 #print axioms JPEG2000.Spec.Resources.DiagnosticPacket.admission_free

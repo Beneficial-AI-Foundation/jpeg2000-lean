@@ -137,6 +137,7 @@ import Spec.Resources.DiagnosticTilePart
 import Spec.Resources.DiagnosticCoding
 import Spec.Resources.DiagnosticGeometry
 import Spec.Resources.DiagnosticHeader
+import Spec.Resources.DiagnosticReconstruction
 import Spec.Resources.DiagnosticPacketRanges
 import Spec.Resources.DiagnosticPacket
 import Spec.Resources.DiagnosticCodeBlock
