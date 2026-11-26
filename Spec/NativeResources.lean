@@ -27,28 +27,6 @@ def OnGrid (c : CodestreamComponent) (r : Rect) (f : Marker.Component) : Prop :=
 def LayoutAgrees (cs : Array CodestreamComponent) (rs : Array (Rect × Marker.Component)) : Prop :=
   cs.size = rs.size ∧ ∀ i : Fin rs.size, ∃ c, cs[i.val]? = some c ∧ OnGrid c rs[i].1 rs[i].2
 
-private theorem compact_layout {L : Limits} {data : ByteArray} {reduce : Nat} {d : DecodedImage}
-    (ok : decodeCodestreamNarrow L data reduce = .ok d) :
-    LayoutAgrees d.toCodestream.comps (layout d.header.siz reduce) := by
-  obtain ⟨info, ps, final, ha, dims, eq⟩ := Resources.decodeCodestream_planes ok
-  have size := congrArg List.length dims
-  simp only [List.length_map, Array.length_toList] at size
-  unfold JPEG2000.Decode.allocOutput at ha
-  simp only [bind, Except.bind] at ha
-  split at ha <;> try contradiction
-  split at ha <;> try contradiction
-  simp only [pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at ha
-  obtain ⟨rfl, rfl⟩ := ha
-  simp only [Array.size_map] at size
-  simp only [LayoutAgrees, DecodedImage.toCodestream, eq, Array.size_map, Array.size_zipWith,
-    layout, size, Nat.min_self, true_and]
-  intro i
-  have bound : i.val < d.header.siz.components.size := by simpa using i.isLt
-  simp [Array.getElem_zipWith, bound, size, OnGrid,
-    CodestreamComponent.x0, CodestreamComponent.y0, CodestreamComponent.width,
-    CodestreamComponent.height, CodestreamComponent.depth, CodestreamComponent.signed,
-    CodestreamComponent.dx, CodestreamComponent.dy, JPEG2000.Decode.compImageRect]
-
 private theorem native_layout (ds : Array OutputComponent) (s : Marker.SIZ) (reduce : Nat)
     (hs : ds.map (fun d => (d.rect, d.format)) = layout s reduce) :
     LayoutAgrees (ds.map .native) (layout s reduce) := by
@@ -100,34 +78,10 @@ private theorem native_readable (d : OutputComponent) (i : Nat) :
     simp only [Storage.matches, Bool.and_eq_true, beq_iff_eq] at hs
     simp [OutputComponent.get?, WidePlane.get?, ← hs.1.1.1.1, ← hs.1.1.1.2]
 
-private theorem compact_within {L : Limits} {data : ByteArray} {reduce : Nat} {d : DecodedImage}
-    (ok : decodeCodestreamNarrow L data reduce = .ok d) : Within L data reduce d.toCodestream := by
-  obtain ⟨hr, hh, cells, bytes, dims⟩ := Resources.decodeCodestream_resources ok
-  have hred := (Resources.decodeCodestream_ok ok).2.2.1
-  refine ⟨⟨hred, hr⟩, hh, compact_layout ok, ?_, ?_, ?_, ?_⟩
-  · simpa [DecodedImage.toCodestream, Function.comp_def, CodestreamComponent.width,
-      CodestreamComponent.height, Resources.compCells] using cells
-  · simpa [DecodedImage.toCodestream, Function.comp_def, CodestreamComponent.width,
-      CodestreamComponent.height, CodestreamComponent.depth, Resources.compBytes] using bytes
-  · have cap := sum_bound (fun c : DecodedComponent => c.plane.data.size)
-        (fun c => c.width * c.height) d.comps.toList (by
-          intro c hc
-          obtain ⟨hw, hh⟩ := dims _ (by simpa using hc)
-          rw [c.plane.size_eq, hw, hh]
-          omega)
-    simpa [DecodedImage.toCodestream, Function.comp_def, backingBytes] using
-      (Nat.le_trans cap (Nat.mul_le_mul_left 8 cells))
-  · intro c hc i
-    obtain ⟨a, ha, rfl⟩ := Array.mem_map.mp hc
-    obtain ⟨hw, hh⟩ := dims a ha
-    simp [CodestreamComponent.get?, CodestreamComponent.width, CodestreamComponent.height,
-      Plane.get?, ← hw, ← hh]
-
 private theorem native_within {L : Limits} {data : ByteArray} {reduce : Nat} {h : Header}
     {img : CodestreamImage} (hr : reduce ≤ L.maxDecompLevels) (hp : Header.parse L data = .ok h)
-    (hc : h.siz.components.all JPEG2000.NativeOutput.compact = false)
     (ok : decodeCodestream L data reduce = .ok img) : Within L data reduce img := by
-  obtain ⟨hh, hred, ⟨ds, hd, shape⟩, work, bytes⟩ := CodestreamDispatch.native_geometry hp hc ok
+  obtain ⟨hh, hred, ⟨ds, hd, shape⟩, work, bytes⟩ := CodestreamDispatch.native_geometry hp ok
   rw [← shape, cells, Resources.array_foldl_sum _ _ (fun _ _ => rfl)] at work
   rw [← shape, decodedBytes, Resources.array_foldl_sum _ _ (fun _ _ => rfl)] at bytes
   simp only [Array.toList_map, List.map_map, Function.comp_def] at work bytes
@@ -154,16 +108,6 @@ theorem decodeCodestream_resources {L : Limits} {data : ByteArray} {reduce : Nat
   have hr : reduce ≤ L.maxDecompLevels := (Limits.checkLe_eq_ok_iff ..).mp check
   cases hp : Header.parse L data with
   | error e => simp [decodeCodestream, check, hp, bind, Except.bind] at ok
-  | ok h =>
-    cases hc : h.siz.components.all JPEG2000.NativeOutput.compact with
-    | false => exact native_within hr hp hc ok
-    | true =>
-      rw [CodestreamDispatch.compact_dispatch hp hc] at ok
-      cases hn : decodeCodestreamNarrow L data reduce with
-      | error e => simp [hn, Except.map] at ok
-      | ok d =>
-        simp only [hn, Except.map, Except.ok.injEq] at ok
-        subst img
-        exact compact_within hn
+  | ok h => exact native_within hr hp ok
 
 end JPEG2000.Spec.NativeResources

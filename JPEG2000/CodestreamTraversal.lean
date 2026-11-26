@@ -1,4 +1,4 @@
-import JPEG2000.NativeOutput
+import JPEG2000.TileDispatch
 
 /-!
 # Tile traversal and centred reconstruction
@@ -51,11 +51,12 @@ structure CenteredTile where
   /-- Blocks saturated in dequantisation. -/
   saturated : Nat
 
-/-- Reconstruct actual packet blocks at the requested reduction, retaining centred samples
-and the effective coding for the native writer. The pre-DC kernels use Int32 planes. -/
+/-- Use the effective tile header for component reconstruction and native placement.
+Successful checked reconstruction preserves all coefficients at the selected precision. -/
 def centeredTile (L : Limits) (h : Header) (data : ByteArray) (reduce t : Nat)
-    (tcb : Option Tier2.Packet.TileCodeBlocks) : Except Error CenteredTile :=
-  Assemble.withCenteredTile L h data t reduce tcb fun g coding ps sat =>
-    .ok ⟨g, coding, ps.map .plane, sat⟩
+    (tcb : Option Tier2.Packet.TileCodeBlocks) : Except Error CenteredTile := do
+  let (g, coding) ← Progression.Layout.ofHeader h t
+  let sources ← TileDispatch.tile L h data g coding tcb reduce
+  return ⟨g, coding, sources, 0⟩
 
 end JPEG2000.Decode

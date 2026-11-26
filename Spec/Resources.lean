@@ -652,31 +652,26 @@ theorem public_limitExceeded_of_output {L : Limits} {data : ByteArray} {r : Nat}
     (hp : Header.parse L data = .ok h)
     (hx : L.maxWorkSamples < outputCells h.siz r ∨ L.maxDecodedBytes < outputBytes h.siz r) :
     ∃ loc k v b, decodeCodestream L data r = .error (.limitExceeded loc k v b) ∧ b < v := by
-  cases hc : h.siz.components.all JPEG2000.NativeOutput.compact with
-  | true =>
-    obtain ⟨loc, k, v, b, he, lt⟩ := decodeCodestream_limitExceeded_of_output hp hx
-    exact ⟨loc, k, v, b, by rw [CodestreamDispatch.compact_dispatch hp hc, he]; rfl, lt⟩
-  | false =>
-    rw [CodestreamDispatch.native_dispatch hp hc]
-    unfold Decode.nativeFromHeader JPEG2000.NativeOutput.allocOutput
-    dsimp only
-    rw [(native_budgets_eq h.siz r).1, (native_budgets_eq h.siz r).2]
-    cases hr : L.check (.at .decode) .decompLevels r with
+  rw [CodestreamDispatch.native_dispatch hp]
+  unfold Decode.nativeFromHeader JPEG2000.NativeOutput.allocOutput
+  dsimp only
+  rw [(native_budgets_eq h.siz r).1, (native_budgets_eq h.siz r).2]
+  cases hr : L.check (.at .decode) .decompLevels r with
+  | error e =>
+    obtain ⟨loc, k, v, b, rfl, lt⟩ := LimitOnly.check L _ _ _ _ hr
+    exact ⟨_, _, _, _, rfl, lt⟩
+  | ok u =>
+    cases hw : L.check (.at .decode) .workSamples (outputCells h.siz r) with
     | error e =>
-      obtain ⟨loc, k, v, b, rfl, lt⟩ := LimitOnly.check L _ _ _ _ hr
+      obtain ⟨loc, k, v, b, rfl, lt⟩ := LimitOnly.check L _ _ _ _ hw
       exact ⟨_, _, _, _, rfl, lt⟩
-    | ok u =>
-      cases hw : L.check (.at .decode) .workSamples (outputCells h.siz r) with
-      | error e =>
-        obtain ⟨loc, k, v, b, rfl, lt⟩ := LimitOnly.check L _ _ _ _ hw
-        exact ⟨_, _, _, _, rfl, lt⟩
-      | ok v =>
-        have work := check_ok hw
-        change outputCells h.siz r ≤ L.maxWorkSamples at work
-        have lt := hx.resolve_left (Nat.not_lt.mpr work)
-        refine ⟨.at .decode, .decodedBytes, _, _, ?_, lt⟩
-        simp only [Limits.check, Limits.checkLe, Limits.bound, Nat.not_le.mpr lt,
-          ↓reduceIte, bind, Except.bind]
+    | ok v =>
+      have work := check_ok hw
+      change outputCells h.siz r ≤ L.maxWorkSamples at work
+      have lt := hx.resolve_left (Nat.not_lt.mpr work)
+      refine ⟨.at .decode, .decodedBytes, _, _, ?_, lt⟩
+      simp only [Limits.check, Limits.checkLe, Limits.bound, Nat.not_le.mpr lt,
+        ↓reduceIte, bind, Except.bind]
 
 /-- **Excess ⇒ `limitExceeded`** for `decode` at a reduction: once the header parses, output grids at reduction `opts.reduce` above `maxWorkSamples` cells or `maxDecodedBytes` bytes make `decode` fail with `limitExceeded` (value above bound). -/
 theorem decode_limitExceeded_of_output {L : Limits} {data : ByteArray} {opts : DecodeOptions}
@@ -1080,49 +1075,31 @@ theorem publicCodestream_resources {L : Limits} {data : ByteArray} {r : Nat} {d 
   unfold decodeCodestream at parsed
   simp only [bind_ok] at parsed
   obtain ⟨_, hr, h, hp, -⟩ := parsed
-  cases hc : h.siz.components.all JPEG2000.NativeOutput.compact with
-  | true =>
-    rw [CodestreamDispatch.compact_dispatch hp hc] at ok
-    cases hn : decodeCodestreamNarrow L data r with
-    | error e => rw [hn] at ok; cases ok
-    | ok n =>
-      rw [hn] at ok
-      cases ok
-      obtain ⟨red, hdr, work, bytes, dims⟩ := decodeCodestream_resources hn
-      refine ⟨red, hdr, ?_, ?_, ?_⟩
-      · simpa [publicCells, compCells, DecodedImage.toCodestream, Function.comp_def,
-          CodestreamComponent.width, CodestreamComponent.height] using work
-      · simpa [publicBytes, compBytes, DecodedImage.toCodestream, Function.comp_def,
-          CodestreamComponent.width, CodestreamComponent.height, CodestreamComponent.depth] using bytes
-      · simp only [DecodedImage.toCodestream, Array.mem_map]
-        rintro _ ⟨c, hm, rfl⟩
-        exact dims c hm
-  | false =>
-    obtain ⟨hdr, _, ⟨ds, cs, shape⟩, work, bytes⟩ := CodestreamDispatch.native_geometry hp hc ok
-    rw [← shape] at work bytes
-    unfold JPEG2000.NativeOutput.cells at work
-    unfold JPEG2000.NativeOutput.decodedBytes at bytes
-    rw [array_foldl_sum _ (fun (x : Rect × Marker.Component) => x.1.width * x.1.height) (fun _ _ => rfl)] at work
-    rw [array_foldl_sum _ (fun (x : Rect × Marker.Component) => x.1.width * x.1.height * bytesPerSample x.2.depth.toNat)
-      (fun _ _ => rfl)] at bytes
-    refine ⟨check_ok hr, hdr ▸ parse_within hp, ?_, ?_, ?_⟩
-    · simpa [publicCells, cs, Function.comp_def, CodestreamComponent.width,
-        CodestreamComponent.height] using work
-    · simpa [publicBytes, cs, Function.comp_def, CodestreamComponent.width,
-        CodestreamComponent.height, CodestreamComponent.depth] using bytes
-    · rw [cs]
-      simp only [Array.mem_map]
-      rintro _ ⟨c, _, rfl⟩
-      have valid := c.valid
-      cases hs : c.storage with
-      | narrow p =>
-        simp only [hs, JPEG2000.NativeOutput.Storage.matches, Bool.and_eq_true, beq_iff_eq] at valid
-        simpa [CodestreamComponent.samples, hs, Color.SamplePlane.width, Color.SamplePlane.height,
-          CodestreamComponent.width, CodestreamComponent.height] using valid.1
-      | wide p =>
-        simp only [hs, JPEG2000.NativeOutput.Storage.matches, Bool.and_eq_true, beq_iff_eq] at valid
-        simpa [CodestreamComponent.samples, hs, Color.SamplePlane.width, Color.SamplePlane.height,
-          CodestreamComponent.width, CodestreamComponent.height] using valid.1.1.1
+  obtain ⟨hdr, _, ⟨ds, cs, shape⟩, work, bytes⟩ := CodestreamDispatch.native_geometry hp ok
+  rw [← shape] at work bytes
+  unfold JPEG2000.NativeOutput.cells at work
+  unfold JPEG2000.NativeOutput.decodedBytes at bytes
+  rw [array_foldl_sum _ (fun (x : Rect × Marker.Component) => x.1.width * x.1.height) (fun _ _ => rfl)] at work
+  rw [array_foldl_sum _ (fun (x : Rect × Marker.Component) => x.1.width * x.1.height * bytesPerSample x.2.depth.toNat)
+    (fun _ _ => rfl)] at bytes
+  refine ⟨check_ok hr, hdr ▸ parse_within hp, ?_, ?_, ?_⟩
+  · simpa [publicCells, cs, Function.comp_def, CodestreamComponent.width,
+      CodestreamComponent.height] using work
+  · simpa [publicBytes, cs, Function.comp_def, CodestreamComponent.width,
+      CodestreamComponent.height, CodestreamComponent.depth] using bytes
+  · rw [cs]
+    simp only [Array.mem_map]
+    rintro _ ⟨c, _, rfl⟩
+    have valid := c.valid
+    cases hs : c.storage with
+    | narrow p =>
+      simp only [hs, JPEG2000.NativeOutput.Storage.matches, Bool.and_eq_true, beq_iff_eq] at valid
+      simpa [CodestreamComponent.samples, hs, Color.SamplePlane.width, Color.SamplePlane.height,
+        CodestreamComponent.width, CodestreamComponent.height] using valid.1
+    | wide p =>
+      simp only [hs, JPEG2000.NativeOutput.Storage.matches, Bool.and_eq_true, beq_iff_eq] at valid
+      simpa [CodestreamComponent.samples, hs, Color.SamplePlane.width, Color.SamplePlane.height,
+        CodestreamComponent.width, CodestreamComponent.height] using valid.1.1.1
 
 /-- **S3 for `decode`** (Plan.md §4): the codestream stage's bounds (`PublicCodestreamWithin`, for
 the raw component planes kept in `img.decoded`) and the image's own (`ImageWithin`). -/

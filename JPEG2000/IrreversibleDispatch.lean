@@ -69,13 +69,12 @@ def compactSpatial (p : Plane) (r : Rect) (nl F : Nat) : Option Spatial := do
     return .compact r F q h.1 h.2
   none
 
-/-- Attempt the packet and lifting stages together, distinguishing precision fallback
-from a malformed packet or an exceeded resource limit. -/
+/-- Attempt the packet and lifting stages together, leaving definitive packet validation and
+error reporting to wide assembly whenever the packed attempt fails. -/
 def tryCompact (L : Limits) (data : ByteArray) (tc : TileCompGeom) (depth F reduce : Nat)
     (ps : Array (Array PrecinctOut)) : Except Error (Option Spatial) :=
   match compactBands L data tc depth F reduce ps with
-  | .error (.unsupported ..) => .ok none
-  | .error e => .error e
+  | .error _ => .ok none
   | .ok p => .ok (compactSpatial p (Assemble.reduceRect tc.rect reduce) (tc.params.levels - reduce) F)
 
 /-- Reconstruct one irreversible component from the tile's actual packet store. Setting
