@@ -191,11 +191,11 @@ def inverseMct (rev : Bool) (planes : Array Plane) : Except Error (Array Plane) 
   let (q0, q1, q2) ← if rev then MCT.rctInverse p0 p1 p2 else MCT.ictInverse p0 p1 p2
   return ((planes.setIfInBounds 0 q0).setIfInBounds 1 q1).setIfInBounds 2 q2
 
-/-- **Reconstructs tile `t`** from its Tier-2 result (`none` for a tile without tile-parts:
-all coefficients zero): per component `reconstructTileComp`, then the inverse MCT when
-`Coding.mctApplies`, then DC shift and clamp per component (G.1). -/
-def decodeTile (L : Limits) (h : Header) (data : ByteArray) (t : Nat) (reduce : Nat)
-    (tcb : Option TileCodeBlocks) : Except Error TileOut := do
+/-- Reconstruct the reduced tile and pass its centred, post-MCT planes to the output stage.
+Both native and compact G.1 kernels consume this same reconstruction. -/
+@[inline] def withCenteredTile {α : Type} (L : Limits) (h : Header) (data : ByteArray)
+    (t reduce : Nat) (tcb : Option TileCodeBlocks)
+    (finish : Progression.Layout → Coding → Array Plane → Nat → Except Error α) : Except Error α := do
   let (g, coding) ← Progression.Layout.ofHeader h t
   let s := h.siz
   let mct := coding.mctApplies s
@@ -216,17 +216,28 @@ def decodeTile (L : Limits) (h : Header) (data : ByteArray) (t : Nat) (reduce : 
     sat := sat + n
   if mct then
     planes ← inverseMct ((g.comp 0).params.transform == .reversible53) planes
-  let mut out : Array (Rect × Plane) := #[]
-  for c in [0:g.numComps] do
-    let tc := g.comp c
-    let comp := s.components.getD c default
-    let rev := tc.params.transform == .reversible53
-    let F := if rev then 0 else fracBitsOf s mct c
-    let dc ← MCT.DcShift.make comp.signed comp.depth.toNat F
-    let pl := planes.getD c (Plane.zero 0 0)
-    planes := planes.setIfInBounds c (Plane.zero 0 0)
-    let pl := if rev then MCT.dcShiftClampRev dc pl else MCT.dcShiftClampIrrev dc pl
-    out := out.push (reduceRect tc.rect reduce, pl)
-  return { tile := t, comps := out, saturated := sat }
+  finish g coding planes sat
+
+/-- **Reconstructs tile `t`** from its Tier-2 result (`none` for a tile without tile-parts:
+all coefficients zero): per component `reconstructTileComp`, then the inverse MCT when
+`Coding.mctApplies`, then DC shift and clamp per component (G.1). -/
+def decodeTile (L : Limits) (h : Header) (data : ByteArray) (t : Nat) (reduce : Nat)
+    (tcb : Option TileCodeBlocks) : Except Error TileOut := do
+  withCenteredTile L h data t reduce tcb fun g coding planes sat => do
+    let s := h.siz
+    let mct := coding.mctApplies s
+    let mut planes := planes
+    let mut out : Array (Rect × Plane) := #[]
+    for c in [0:g.numComps] do
+      let tc := g.comp c
+      let comp := s.components.getD c default
+      let rev := tc.params.transform == .reversible53
+      let F := if rev then 0 else fracBitsOf s mct c
+      let dc ← MCT.DcShift.make comp.signed comp.depth.toNat F
+      let pl := planes.getD c (Plane.zero 0 0)
+      planes := planes.setIfInBounds c (Plane.zero 0 0)
+      let pl := if rev then MCT.dcShiftClampRev dc pl else MCT.dcShiftClampIrrev dc pl
+      out := out.push (reduceRect tc.rect reduce, pl)
+    return { tile := t, comps := out, saturated := sat }
 
 end JPEG2000.Assemble

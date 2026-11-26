@@ -199,7 +199,7 @@ def reversibleComp (h : Header.Header) (c : Nat) : Bool :=
 (kind, detail); kind is `agree`, `skip`, `disagree`, `opj-reject` or `opj-crash`. -/
 def opjDiff (tmp : System.FilePath) (L : Limits) (data : ByteArray) : IO (String × String) := do
   let some cs := codestreamOf data | return ("skip", "no codestream")
-  let d ← match JPEG2000.decodeCodestream L cs 0 with
+  let d ← match JPEG2000.decodeCodestreamNarrow L cs 0 with
     | .ok d => pure d
     | .error _ => return ("skip", "we reject the codestream")
   -- opj_decompress up-samples and colour-converts 3-component streams whose chroma is

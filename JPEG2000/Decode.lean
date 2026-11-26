@@ -1,43 +1,32 @@
-import JPEG2000.Assemble
+import JPEG2000.CodestreamTraversal
 
 /-!
 # `JPEG2000.decodeCodestream`: bytes → component planes
 (Plan.md §3 (pipeline), §6 item 7 (reduced resolution); T.800 B.2, B.3, B-12, B-14, Annex I
 (container only))
 
-Task 5.5. `decodeCodestream L data reduce` parses a raw codestream or a JP2 file
-(`Header.parse`), then for every tile of the tile grid in index order decodes its packets
-(Tier-2, with the `PPM` chunk assignment computed once and the coding passes counted over the
-whole image against `Limits.maxCodingPasses`, as `Tier2.Headers.decodeAllTileCodeBlocks`),
-reconstructs it (`Assemble.decodeTile`; tiles without tile-parts decode as zero
-coefficients, i.e. the DC offset) and copies each tile-component into its component plane.
+The entry point parses the header once and dispatches on the SIZ component intervals.
+Images whose outputs fit Int32 use the compact decoder. A mixed-depth image uses
+`NativeOutput.writeTile` on each tile after inverse MCT. Its compact components have
+four bytes per cell and its wide components have eight. Both branches use the same
+packet traversal, dequantisation and inverse transforms.
 
-## Output
+`CodestreamImage.comps` follows SIZ order. Each component covers its own sample grid
+with endpoints from B-12 then B-14, including the image origin and the requested
+reduction. `CodestreamComponent.get?` reads the final DC-shifted, clamped integer.
 
-One `DecodedComponent` per codestream component, **on the component's own sample grid**
-(no up-sampling: display composition, palette, channel definitions and colour are task
-6.2's): the component image covers `[⌈XOsiz/XRsiz⌉, ⌈Xsiz/XRsiz⌉) ×
-[⌈YOsiz/YRsiz⌉, ⌈Ysiz/YRsiz⌉)` (B-12 applied to the image area), and with `reduce = k` every
-coordinate further `⌈· / 2^k⌉` (B-14), as OpenJPEG's `-r k`. Samples are `Int32` cells,
-already DC-shifted and clamped to the component's range (G.1).
-
-## Limits
-
-The output planes **at the requested reduction** are checked together against
-`maxWorkSamples` and (at the output sample width of `Header.bytesPerSample`)
-`maxDecodedBytes` before they are allocated (`allocOutput`); the header checks only the
-declared geometry (side, area, tiles), so a large declared image can be decoded at a reduced
-resolution (task 6.5). `reduce` is bounded by `maxDecompLevels` before any `2^reduce` is
-formed. Tiles are decoded one at a time: a tile's Tier-2 result and reconstructed planes are
-dropped once copied into the output planes, so the working set is the output plus one tile
-(its reduced planes checked against `maxWorkSamples` by `Assemble.decodeTile`).
+Both allocators check the combined reduced area against `maxWorkSamples` and the sum
+of the component byte counts at their declared precisions against `maxDecodedBytes`.
+The tile reconstruction separately bounds the combined reduced tile area. Reconstruction
+before G.1 still uses the existing Int32 kernels. Wider coefficients, DWT and MCT
+intermediates depend on the checked reconstruction dispatch in task 7.1k3.
 -/
 
 namespace JPEG2000
 
 open JPEG2000.Bytes JPEG2000.Marker JPEG2000.Header JPEG2000.TilePart
 
-/-- One decoded component, on its own sample grid. -/
+/-- A component returned by the original Int32 decoder, on its own sample grid. -/
 structure DecodedComponent where
   /-- Left edge of the component image on the component grid (`⌈XOsiz / XRsiz⌉`, reduced). -/
   x0 : Nat
@@ -62,8 +51,7 @@ instance : Inhabited DecodedComponent :=
   ⟨{ x0 := 0, y0 := 0, width := 0, height := 0, depth := 0, signed := false, dx := 1, dy := 1,
      plane := Plane.zero 0 0 }⟩
 
-/-- A decoded codestream: its header (with the JP2 container, for task 6.2's colour
-handling), the resolution reduction used, and one plane per component. -/
+/-- Compact decoder result used by the Int32 plane API and its numerical theorems. -/
 structure DecodedImage where
   /-- The parsed header. -/
   header : Header
@@ -114,40 +102,119 @@ def place (info : Array DecodedComponent) (planes : Array Plane) (t : Assemble.T
     planes := planes.setIfInBounds c dst
   return planes
 
+/-- Decode a parsed header using the original compact output kernels. -/
+def narrowFromHeader (L : Limits) (h : Header) (data : ByteArray) (reduce : Nat) :
+    Except Error DecodedImage := do
+  let (info, planes) ← allocOutput L h.siz reduce
+  withTiles L h data planes (fun t => Assemble.decodeTile L h data t reduce) (·.saturated)
+    (place info) fun ps sat =>
+      { header := h, reduce, comps := info.zipWith (fun m p => { m with plane := p }) ps,
+        saturatedBlocks := sat }
+
 end Decode
 
-open Decode in
-/-- **Decodes a JPEG 2000 codestream** (raw `.j2k`/`.j2c` or a JP2 file) into one plane per
-component on the component's own grid, discarding the `reduce` finest resolution levels
-(Plan.md §6 item 7; `reduce` must not exceed any tile-component's `NL`). Every stage's
-error propagates. -/
-def decodeCodestream (L : Limits) (data : ByteArray) (reduce : Nat := 0) :
+/-- Decode into Int32 planes, preserving the compact decoder's original domain and errors. -/
+def decodeCodestreamNarrow (L : Limits) (data : ByteArray) (reduce : Nat := 0) :
     Except Error DecodedImage := do
-  L.check loc .decompLevels reduce
+  L.check Decode.loc .decompLevels reduce
   let h ← Header.parse L data
-  let s := h.siz
-  let (info, planes0) ← allocOutput L s reduce
-  let mut planes := planes0
-  let idx ← if h.ppm.segments.isEmpty then pure #[] else Tier2.Headers.ppmChunkIndex L h
-  let mut passes := 0
-  let mut sat := 0
-  let mut j := 0
-  for t in [0:numTiles s] do
-    let present := match h.tiles[j]? with
-      | some tp => if tp.index = t then some tp else none
-      | none => none
-    let tcb ← match present with
-      | some tp => do
-        let hs ← Tier2.Headers.headerStreamAt h data tp (idx.getD j #[])
-        let x ← Tier2.Headers.decodeWithStream L h data tp hs passes
-        pure (some x)
-      | none => pure none
-    if present.isSome then j := j + 1
-    if let some x := tcb then passes := passes + x.passes
-    let out ← Assemble.decodeTile L h data t reduce tcb
-    sat := sat + out.saturated
-    planes ← place info planes out
-  let comps := info.zipWith (fun m p => { m with plane := p }) planes
-  return { header := h, reduce, comps, saturatedBlocks := sat }
+  Decode.narrowFromHeader L h data reduce
+
+/-- A decoded codestream component on its reduced sample grid. Compact images retain their
+original planes. Mixed-depth images retain the format-selected native storage per component. -/
+inductive CodestreamComponent where
+  /-- Original compact decoder result. -/
+  | compact (component : DecodedComponent)
+  /-- Checked output of the native tile writer. -/
+  | native (component : NativeOutput.OutputComponent)
+  deriving Inhabited
+
+namespace CodestreamComponent
+
+/-- Read an exact integer sample by row-major index, including the full unsigned 38-bit range. -/
+def get? : CodestreamComponent → Nat → Option Int
+  | .compact c, i => (c.plane.get? i).map Int32.toInt
+  | .native c, i => c.get? i
+
+/-- Left edge on the reduced component grid. -/
+def x0 : CodestreamComponent → Nat
+  | .compact c => c.x0
+  | .native c => c.rect.x0
+
+/-- Top edge on the reduced component grid. -/
+def y0 : CodestreamComponent → Nat
+  | .compact c => c.y0
+  | .native c => c.rect.y0
+
+/-- Width on the reduced component grid. -/
+def width : CodestreamComponent → Nat
+  | .compact c => c.width
+  | .native c => c.rect.width
+
+/-- Height on the reduced component grid. -/
+def height : CodestreamComponent → Nat
+  | .compact c => c.height
+  | .native c => c.rect.height
+
+/-- Declared sample precision. -/
+def depth : CodestreamComponent → Nat
+  | .compact c => c.depth
+  | .native c => c.format.depth.toNat
+
+/-- Declared sample signedness. -/
+def signed : CodestreamComponent → Bool
+  | .compact c => c.signed
+  | .native c => c.format.signed
+
+/-- Horizontal component separation. -/
+def dx : CodestreamComponent → Nat
+  | .compact c => c.dx
+  | .native c => c.format.dx.toNat
+
+/-- Vertical component separation. -/
+def dy : CodestreamComponent → Nat
+  | .compact c => c.dy
+  | .native c => c.format.dy.toNat
+
+end CodestreamComponent
+
+/-- Codestream result with exact native samples on each component's own grid. -/
+structure CodestreamImage where
+  /-- Parsed codestream and container metadata. -/
+  header : Header
+  /-- Number of discarded finest levels. -/
+  reduce : Nat
+  /-- Components in SIZ order. -/
+  comps : Array CodestreamComponent
+  /-- Number of blocks saturated by the pre-DC coefficient reconstruction. -/
+  saturatedBlocks : Nat
+
+/-- Expose compact samples through the exact accessor without copying any plane. -/
+def DecodedImage.toCodestream (img : DecodedImage) : CodestreamImage :=
+  ⟨img.header, img.reduce, img.comps.map .compact, img.saturatedBlocks⟩
+
+namespace Decode
+
+/-- Allocate reduced native grids and place every tile's centred reconstruction with G.1. -/
+def nativeFromHeader (L : Limits) (h : Header) (data : ByteArray) (reduce : Nat) :
+    Except Error CodestreamImage := do
+  let initial ← NativeOutput.allocOutput L h.siz reduce
+  withTiles L h data initial (centeredTile L h data reduce) (·.saturated)
+    (fun dst t => NativeOutput.writeTile L h.siz reduce t.layout t.coding dst t.sources)
+    fun ds sat => ⟨h, reduce, ds.map .native, sat⟩
+
+end Decode
+
+/-- Decode a raw or JP2-wrapped codestream at the requested reduction. Images with any
+component outside the Int32 output interval use checked mixed-depth native placement.
+Read each component with `CodestreamComponent.get?`. -/
+def decodeCodestream (L : Limits) (data : ByteArray) (reduce : Nat := 0) :
+    Except Error CodestreamImage := do
+  L.check Decode.loc .decompLevels reduce
+  let h ← Header.parse L data
+  if h.siz.components.all NativeOutput.compact then
+    return (← Decode.narrowFromHeader L h data reduce).toCodestream
+  else
+    Decode.nativeFromHeader L h data reduce
 
 end JPEG2000

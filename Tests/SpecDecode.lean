@@ -43,7 +43,7 @@ def compare (cs : ByteArray) (reduce : Nat) (tol : Int) : Option String × Int :
           (acc.1 <|> some s!"component {c}: sizes differ", acc.2)
         else
           (List.range sc.size).foldl (fun (acc : Option String × Int) k =>
-            let fv := ((fc.plane.get? k).getD 0).toInt
+            let fv := (fc.get? k).getD 0
             let sv := sc.getD k default
             let d := (fv - sv.value).natAbs
             if sv.reversible then
@@ -165,9 +165,83 @@ def corpusCase (file : String) (reduce : Nat) : IO Nat := do
     IO.println s!"  spec-decode {file} (reduce {reduce}): agree, max irreversible difference {m}"
     return 0
 
+-- Replace only SIZ on neutral, single-tile encoder output.
+private def wideZero (signed : Bool) : Except Error ByteArray := do
+  let img : Encode.Image := { width := 1, height := 1, comps := #[{ depth := 8, samples := #[128] }] }
+  let s ← Encode.encode { levels := 0, mct := false } img
+  let h ← Header.parse Limits.default s
+  let wide := { h.siz with components := h.siz.components.map fun c => { c with depth := 38, signed } }
+  let oldSegment := Encode.Marker.segment Marker.Code.SIZ (Encode.Marker.serializeSIZ h.siz)
+  let newSegment := Encode.Marker.segment Marker.Code.SIZ (Encode.Marker.serializeSIZ wide)
+  return s.extract 0 2 ++ newSegment ++ s.extract (2 + oldSegment.size) s.size
+
+-- Assemble two real packet bodies with distinct values in all three components.
+private def tile (a b c : Int) : Except Error ByteArray :=
+  let comp := fun (signed : Bool) (v : Int) =>
+    ({ depth := 8, signed, samples := Array.replicate 8 v } : Encode.Component)
+  let input : Encode.Image := { width := 4, height := 2, comps := #[comp false a, comp true b, comp true c] }
+  Encode.encode {levels := 1, mct := false} input
+
+private def twoTiles : Except Error ByteArray := do
+  let a ← tile 128 2 (-5)
+  let b ← tile 129 (-3) 7
+  let ha ← Header.parse Limits.default a
+  let hb ← Header.parse Limits.default b
+  if ha.main.cod != hb.main.cod || ha.main.qcd != hb.main.qcd then
+    throw (.malformed (.at .marker) "inconsistent tile coding")
+  let comps := ha.siz.components.mapIdx fun i c => if i == 1 then c else {c with depth := 38}
+  let siz := {ha.siz with xsiz := 8, components := comps}
+  let sz := fun x => Encode.Marker.segment Marker.Code.SIZ (Encode.Marker.serializeSIZ x)
+  -- The SOT marker is followed by Lsot then the two-byte Isot.
+  let bp := hb.main.endPos
+  return a.extract 0 2 ++ sz siz ++ a.extract (2 + (sz ha.siz).size) (a.size - 2) ++
+    b.extract bp (bp + 4) ++ Encode.Marker.pack (Encode.Marker.be16 1) ++
+    b.extract (bp + 6) b.size
+
+private def checkNative (data : ByteArray) (reduce w h : Nat) (L : Limits)
+    (expected : Array (Int × Int)) : Except Error Bool := do
+  let img ← decodeCodestream L data reduce
+  let spec ← Spec.Decode.decode L data reduce
+  return img.reduce == reduce && img.comps.size == expected.size &&
+    spec.comps.size == expected.size && img.saturatedBlocks == 0 &&
+    (Array.range expected.size).all fun k => Id.run do
+      let some component := img.comps[k]? | return false
+      let .native c := component | return false
+      let some s := spec.comps[k]? | return false
+      let fits := match c.storage with
+        | .narrow _ => c.format.depth == 8
+        | .wide _ => c.format.depth == 38
+      let (left, right) := expected.getD k (0, 0)
+      let some format := img.header.siz.components[k]? | return false
+      return fits && c.format == format && component.width == w && component.height == h &&
+        component.x0 == 0 && component.y0 == 0 && component.dx == 1 && component.dy == 1 &&
+        component.get? (w * h) == none &&
+        (Array.range (w * h)).all fun j =>
+          let v := if j % w < (w + 1) / 2 then left else right
+          component.get? j == some v && (s.samples[j]?).map (·.value) == some v
+
+private def checkWideFixtures : Except Error Bool := do
+  for signed in [false, true] do
+    let v : Int := if signed then 0 else 2^37
+    if !(← checkNative (← wideZero signed) 0 1 1 Limits.default #[(v, v)]) then return false
+  let data ← twoTiles
+  for (r, bytes, cells) in [(0, 272, 48), (1, 68, 12)] do
+    let L := {Limits.default with maxDecodedBytes := bytes, maxWorkSamples := cells}
+    if !(← checkNative data r (8 / 2^r) (2 / 2^r) L #[(2^37, 2^37 + 1), (2, -3), (-5, 7)]) then
+      return false
+    match decodeCodestream {L with maxDecodedBytes := bytes - 1} data r with
+    | .error (.limitExceeded _ .decodedBytes v b) => if v != bytes || b != bytes - 1 then return false
+    | _ => return false
+    match decodeCodestream {L with maxWorkSamples := cells - 1} data r with
+    | .error (.limitExceeded _ .workSamples v b) => if v != cells || b != cells - 1 then return false
+    | _ => return false
+  return true
+
 /-- Runs the suite; returns the number of failures. -/
 def run : IO Nat := do
-  let mut n := 0
+  let mut n ← match checkWideFixtures with
+    | .ok true => pure 0
+    | other => fail "native codestream fixtures" (reprStr other)
   n := n + (← encCase "5/3 1 comp 7x5 NL2" { levels := 2, cbWidthExp := 2, cbHeightExp := 2 }
     (image 7 5 1 8))
   n := n + (← encCase "5/3+RCT 3 comp 9x6 NL2" { levels := 2, cbWidthExp := 2, cbHeightExp := 2 }

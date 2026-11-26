@@ -90,12 +90,12 @@ def isCodestreamEntry (e : RefEntry) : Bool :=
   !e.isTiff && (e.profile == some 0 || e.profile == some 1) && e.cls.isSome
 
 /-- A decoded component as a `PgxImage` (sign and depth from the codestream). -/
-def toPgx (c : DecodedComponent) : PgxImage :=
+def toPgx (c : CodestreamComponent) : PgxImage :=
   { width := c.width, height := c.height, depth := c.depth, signed := c.signed,
     samples := JPEG2000.Tests.Decode.samplesOf c }
 
 /-- Compares one entry against a decode (or a decode error), as `compare_images` does. -/
-def judge (e : RefEntry) (dec : Except Error DecodedImage) : IO Outcome := do
+def judge (e : RefEntry) (dec : Except Error CodestreamImage) : IO Outcome := do
   match dec with
   | .error err => return { entry := e, note := s!"decode error: {err}" }
   | .ok img =>

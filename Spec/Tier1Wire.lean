@@ -124,7 +124,7 @@ theorem tier1Equiv : Tier1Equiv := by
 /-- **C9 with Tier-1 discharged**: only `Tier2WF` (task 7.1g) and `HeaderWF` (task 7.1e) remain. -/
 theorem c9_of_header (hT2w : Tier2WF) (hHd : HeaderWF) :
     ∀ (L : Limits) (data : ByteArray) (reduce : Nat),
-      ERel C9Rel (decodeCodestream L data reduce) (Spec.Decode.decode L data reduce) :=
+      ERel C9Rel (decodeCodestreamNarrow L data reduce) (Spec.Decode.decode L data reduce) :=
   Spec.Tier2Wire.c9_of_open hT2w tier1Equiv hHd
 
 end JPEG2000.Spec.Tier1Wire

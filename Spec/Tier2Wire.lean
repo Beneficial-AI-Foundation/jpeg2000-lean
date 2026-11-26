@@ -33,11 +33,11 @@ theorem tier2Equiv : Tier2Equiv :=
 
 /-- **C9 from the stage hypotheses still open** (Plan.md §4 C9): `c9_of_stages` with
 `Tier2Equiv`, `DequantLoopEquiv`, `DWT53PlaneEquiv` and `DWT97PlaneErr` discharged. For every
-limits, input and resolution reduction, `decodeCodestream` and `Spec.Decode.decode` are related
+limits, input and resolution reduction, `decodeCodestreamNarrow` and `Spec.Decode.decode` are related
 by `ERel C9Rel`, assuming `Tier2WF`, `Tier1Equiv` and `HeaderWF`. -/
 theorem c9_of_open (hT2w : Tier2WF) (hT1 : Tier1Equiv) (hHd : HeaderWF) :
     ∀ (L : Limits) (data : ByteArray) (reduce : Nat),
-      ERel C9Rel (decodeCodestream L data reduce) (Spec.Decode.decode L data reduce) :=
+      ERel C9Rel (decodeCodestreamNarrow L data reduce) (Spec.Decode.decode L data reduce) :=
   c9_of_stages tier2Equiv hT2w hT1 Spec.QuantBlock.dequantLoopEquiv Spec.DWTPlane.dwt53PlaneEquiv
     Spec.DWTPlane.dwt97PlaneErr hHd
 

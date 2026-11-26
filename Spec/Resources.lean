@@ -8,7 +8,7 @@ D.3 (coding passes), Annex I (container); see `docs/resources.md`)
 
 ## S2 — totality
 
-`decode`, `decodeCodestream`, `Image.interleaved8/16` are ordinary kernel-checked definitions:
+`decode`, `decodeCodestreamNarrow`, `Image.interleaved8/16` are ordinary kernel-checked definitions:
 every loop is structural recursion or fuel bounded by a size checked against `Limits`
 (Plan.md §3 rule 2), and the kernel accepted each one. In Lean this *is* totality: a `def`
 denotes a total function on every argument, so the formal statement `decode_total` is
@@ -20,7 +20,7 @@ or escapes the logic:
   `JPEG2000.decode` (3236 constants, 1843 in `JPEG2000.*`) the closure audit described in
   `docs/resources.md` finds no opaque, `unsafe`, `implemented_by` or `extern` constant of the
   project;
-* no `sorryAx`: `#print axioms JPEG2000.decode` (and `decodeCodestream`) prints only
+* no `sorryAx`: `#print axioms JPEG2000.decode` (and `decodeCodestreamNarrow`) prints only
   `propext`, `Classical.choice`, `Quot.sound`.
 
 ## S3 — bounded resources
@@ -34,7 +34,7 @@ tile's reduced working set (a viewer can decode a huge declared image at a reduc
 * header (`HeaderWithin`, `GeometryWithin`): image side and area, tile count,
   `tiles × Csiz` (`checkGeometry_ok_iff`), and the exact code-block, precinct and packet
   totals of the whole tile grid (`checkWork_within`);
-* output of `decodeCodestream` (`decodeCodestream_resources`): `reduce ≤ maxDecompLevels`,
+* output of `decodeCodestreamNarrow` (`decodeCodestream_resources`): `reduce ≤ maxDecompLevels`,
   component cells ≤ `maxWorkSamples`, bytes ≤ `maxDecodedBytes`, every plane exactly
   `width × height` (storage `4·width·height` bytes by `Plane.size_eq`);
 * output of `decode` (`decode_resources`, `decode_size`): area ≤ `maxImageArea`; channels drawn
@@ -193,13 +193,13 @@ theorem parse_ok {L : Limits} {data : ByteArray} {h : Header} (hp : Header.parse
   obtain ⟨c', ⟨u, hu, -⟩, -⟩ := hc
   exact check_ok hu
 
-/-- The shape of a successful `decodeCodestream`: `reduce` and the header were checked, and the output components are the records `allocOutput` built, with planes attached. -/
+/-- The shape of a successful `decodeCodestreamNarrow`: `reduce` and the header were checked, and the output components are the records `allocOutput` built, with planes attached. -/
 theorem decodeCodestream_ok {L : Limits} {data : ByteArray} {reduce : Nat} {d : DecodedImage}
-    (hd : decodeCodestream L data reduce = .ok d) :
+    (hd : decodeCodestreamNarrow L data reduce = .ok d) :
     reduce ≤ L.maxDecompLevels ∧ parse L data = .ok d.header ∧ d.reduce = reduce ∧
       ∃ info planes0 planes, Decode.allocOutput L d.header.siz reduce = .ok (info, planes0) ∧
         d.comps = info.zipWith (fun m p => { m with plane := p }) planes := by
-  unfold decodeCodestream at hd
+  unfold decodeCodestreamNarrow Decode.narrowFromHeader Decode.withTiles at hd
   simp only [bind_ok] at hd
   obtain ⟨_, hr, h, hp, ⟨info, planes0⟩, ha, hd⟩ := hd
   refine ⟨check_ok hr, ?_⟩
@@ -294,9 +294,9 @@ theorem parse_within {L : Limits} {data : ByteArray} {h : Header}
   refine ⟨h1, h3, ?_, tot, h4, checkWork_within h4⟩
   rw [h3]; exact (checkGeometry_ok_iff L h.main).1 h2
 
-/-- **S3 for `decodeCodestream`** (sizes): `reduce`, the header (`HeaderWithin`) and the output components' cells and bytes are within `Limits`. -/
+/-- **S3 for `decodeCodestreamNarrow`** (sizes): `reduce`, the header (`HeaderWithin`) and the output components' cells and bytes are within `Limits`. -/
 theorem decodeCodestream_within {L : Limits} {data : ByteArray} {reduce : Nat} {d : DecodedImage}
-    (hd : decodeCodestream L data reduce = .ok d) :
+    (hd : decodeCodestreamNarrow L data reduce = .ok d) :
     reduce ≤ L.maxDecompLevels ∧ HeaderWithin L data d.header ∧
       compCells d.comps ≤ L.maxWorkSamples ∧ compBytes d.comps ≤ L.maxDecodedBytes := by
   obtain ⟨h1, h2, -, info, planes0, planes, h3, h4⟩ := decodeCodestream_ok hd
@@ -407,7 +407,7 @@ def channelBytes (w h : Nat) (full : Array Channel) : Nat :=
 /-- **S3 for `decode`** (output): the image area is within `maxImageArea`; the channels are drawn from an array `full` of `w × h` planes obtained by up-sampling `chans`, where the freshly allocated cells are within `maxWorkSamples` and the bytes of `full` within `maxDecodedBytes` (a channel listed twice in the layout shares its plane). -/
 theorem decode_within {L : Limits} {data : ByteArray} {opts : DecodeOptions} {img : Image}
     (hd : decode L data opts = .ok img) :
-    decodeCodestream L data opts.reduce = .ok img.decoded ∧
+    decodeCodestreamNarrow L data opts.reduce = .ok img.decoded ∧
       img.width * img.height ≤ L.maxImageArea ∧
       ∃ chans full, upCells img.width img.height chans ≤ L.maxWorkSamples ∧
         chans.mapM (upsampleChannel img.x0 img.y0 img.width img.height) = .ok full ∧
@@ -573,13 +573,13 @@ theorem allocOutput_ok_iff (L : Limits) (s : Marker.SIZ) (reduce : Nat) :
     · simp only [Limits.bound]; rw [e1]; exact h1
     · simp only [Limits.bound]; rw [e2]; exact h2
 
-/-- **Excess ⇒ `limitExceeded`** for `decodeCodestream` at a reduction: once the header parses, output grids at reduction `reduce` above `maxWorkSamples` cells or `maxDecodedBytes` bytes make `decodeCodestream` fail with `limitExceeded` (value above bound) before any plane is allocated. -/
+/-- **Excess ⇒ `limitExceeded`** for `decodeCodestreamNarrow` at a reduction: once the header parses, output grids at reduction `reduce` above `maxWorkSamples` cells or `maxDecodedBytes` bytes make `decodeCodestreamNarrow` fail with `limitExceeded` (value above bound) before any plane is allocated. -/
 theorem decodeCodestream_limitExceeded_of_output {L : Limits} {data : ByteArray} {reduce : Nat}
     {h : Header} (hp : Header.parse L data = .ok h)
     (hx : L.maxWorkSamples < outputCells h.siz reduce ∨
       L.maxDecodedBytes < outputBytes h.siz reduce) :
-    ∃ loc k v b, decodeCodestream L data reduce = .error (.limitExceeded loc k v b) ∧ b < v := by
-  unfold decodeCodestream
+    ∃ loc k v b, decodeCodestreamNarrow L data reduce = .error (.limitExceeded loc k v b) ∧ b < v := by
+  unfold decodeCodestreamNarrow Decode.narrowFromHeader
   cases hrd : L.check Decode.loc .decompLevels reduce with
   | error e =>
     obtain ⟨loc', k', v', b', rfl, hlt'⟩ := LimitOnly.check L _ _ _ _ hrd
@@ -616,7 +616,7 @@ theorem decode_limitExceeded_of_geometry {L : Limits} {data : ByteArray} {opts :
     (hm : Marker.parseMainHeader L r = .ok (mh, r')) (hx : ¬ GeometryWithin L mh.siz) :
     ∃ loc k v b, decode L data opts = .error (.limitExceeded loc k v b) ∧ b < v := by
   obtain ⟨loc, k, v, b, hp, hlt⟩ := parse_error_of_geometry hc hr hm hx
-  unfold decode decodeCodestream
+  unfold decode decodeCodestreamNarrow
   cases hrd : L.check Decode.loc .decompLevels opts.reduce with
   | error e =>
     obtain ⟨loc', k', v', b', rfl, hlt'⟩ := LimitOnly.check L _ _ _ _ hrd
@@ -722,13 +722,13 @@ theorem place_dims {info : Array DecodedComponent} {planes planes' : Array Plane
        exact hb)
 
 set_option linter.unusedSimpArgs false in
-/-- The output planes of `decodeCodestream` keep the dimensions `allocOutput` gave them. -/
+/-- The output planes of `decodeCodestreamNarrow` keep the dimensions `allocOutput` gave them. -/
 theorem decodeCodestream_planes {L : Limits} {data : ByteArray} {reduce : Nat} {d : DecodedImage}
-    (hd : decodeCodestream L data reduce = .ok d) :
+    (hd : decodeCodestreamNarrow L data reduce = .ok d) :
     ∃ info planes0 planes, Decode.allocOutput L d.header.siz reduce = .ok (info, planes0) ∧
       planes.toList.map dims = planes0.toList.map dims ∧
       d.comps = info.zipWith (fun m p => { m with plane := p }) planes := by
-  unfold decodeCodestream at hd
+  unfold decodeCodestreamNarrow Decode.narrowFromHeader Decode.withTiles at hd
   simp only [bind_ok, Std.Legacy.Range.forIn_eq_forIn_range'] at hd
   obtain ⟨_, -, h, hp, ⟨info, planes0⟩, ha, hd⟩ := hd
   split at hd
@@ -786,7 +786,7 @@ private theorem zipWith_plane_dims :
 
 /-- Every output component's plane is exactly `width × height` (so its storage is `4·width·height` bytes, `Plane.size_eq`). -/
 theorem decodeCodestream_comp_dims {L : Limits} {data : ByteArray} {reduce : Nat}
-    {d : DecodedImage} (hd : decodeCodestream L data reduce = .ok d) :
+    {d : DecodedImage} (hd : decodeCodestreamNarrow L data reduce = .ok d) :
     ∀ c ∈ d.comps, c.plane.width = c.width ∧ c.plane.height = c.height := by
   obtain ⟨info, planes0, planes, ha, hp, hc⟩ := decodeCodestream_planes hd
   intro c hmem
@@ -946,7 +946,7 @@ theorem decodeTile_work {L : Limits} {h : Header} {data : ByteArray} {t reduce :
     {tcb : Option Tier2.Packet.TileCodeBlocks} {out : Assemble.TileOut}
     (hd : Assemble.decodeTile L h data t reduce tcb = .ok out) :
     ∃ g c, Layout.ofHeader h t = .ok (g, c) ∧ tileCells g reduce ≤ L.maxWorkSamples := by
-  unfold Assemble.decodeTile at hd
+  unfold Assemble.decodeTile Assemble.withCenteredTile at hd
   simp only [bind_ok] at hd
   obtain ⟨⟨g, c⟩, hg, _, hw, -⟩ := hd
   refine ⟨g, c, hg, ?_⟩
@@ -986,7 +986,7 @@ theorem decode_total (L : Limits) (data : ByteArray) (opts : DecodeOptions) :
     ∃ r, decode L data opts = r :=
   ⟨_, rfl⟩
 
-/-- What a successful `decodeCodestream L data reduce` guarantees (S3): `reduce` within
+/-- What a successful `decodeCodestreamNarrow L data reduce` guarantees (S3): `reduce` within
 `maxDecompLevels`, the header facts (`HeaderWithin`: input length, geometry, work totals), the
 output components' cells within `maxWorkSamples` and bytes within `maxDecodedBytes`, and every
 output plane exactly its component's `width × height`. -/
@@ -1008,9 +1008,9 @@ def ImageWithin (L : Limits) (img : Image) : Prop :=
       (∀ c ∈ img.channels, c ∈ full) ∧ (∀ a, img.alpha = some a → a ∈ full) ∧
       (∀ c ∈ img.other, c ∈ full)
 
-/-- **S3 for `decodeCodestream`** (Plan.md §4): output size and allocation bounded by `Limits`. -/
+/-- **S3 for `decodeCodestreamNarrow`** (Plan.md §4): output size and allocation bounded by `Limits`. -/
 theorem decodeCodestream_resources {L : Limits} {data : ByteArray} {reduce : Nat}
-    {d : DecodedImage} (hd : decodeCodestream L data reduce = .ok d) :
+    {d : DecodedImage} (hd : decodeCodestreamNarrow L data reduce = .ok d) :
     CodestreamWithin L data reduce d := by
   obtain ⟨h1, h2, h3, h4⟩ := decodeCodestream_within hd
   exact ⟨h1, h2, h3, h4, decodeCodestream_comp_dims hd⟩

@@ -102,7 +102,7 @@ def units : IO Nat := do
 
 /-- Compares an 8-bit component plane with an 8-bit PGX file byte by byte; the number of
 differing samples, or `none` when the file is not an 8-bit PGX of the plane's size. -/
-def comparePgx8 (b : ByteArray) (c : DecodedComponent) : Option Nat := Id.run do
+def comparePgx8 (b : ByteArray) (c : CodestreamComponent) : Option Nat := Id.run do
   let n := c.width * c.height
   let mut nl := 0
   for i in [0:min b.size 64] do
@@ -110,7 +110,7 @@ def comparePgx8 (b : ByteArray) (c : DecodedComponent) : Option Nat := Id.run do
   if nl == 0 || b.size != nl + 1 + n || c.depth > 8 then return none
   let mut bad := 0
   for i in [0:n] do
-    if ((c.plane.get? i).getD 0).toInt != ((b.get! (nl + 1 + i)).toNat : Int) then bad := bad + 1
+    if (c.get? i).getD 0 != ((b.get! (nl + 1 + i)).toNat : Int) then bad := bad + 1
   return some bad
 
 /-- Decodes the large file at reduction `r` and compares it with `opj_decompress -r r`. -/
