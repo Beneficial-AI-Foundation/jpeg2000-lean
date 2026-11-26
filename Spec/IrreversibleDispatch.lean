@@ -536,7 +536,9 @@ private theorem single_source {ref : Nat → Reference} {c : Nat} {p : Spatial} 
   simpa only [NativeSample.CenteredAgrees, Bool.false_eq_true, ↓reduceIte, postCell, ite_eq_right single, Reference.cell,
     Decode.SpecCell.ofIrrev, bits] using all j hj
 
-private theorem ict_sources {L : Limits} {y cb cr : Spatial} {out : Spatial × Spatial × Spatial}
+/-- The three actual ICT sources meet the native writer's bounds against independent
+component references, including each peer's own resolution level count. -/
+theorem ict_sources {L : Limits} {y cb cr : Spatial} {out : Spatial × Spatial × Spatial}
     {ref : Nat → Reference} (ok : ict L y cb cr = .ok out)
     (p0 : SpatialAgrees y (ref 0).rect (ref 0).bits (ref 0).levels (ref 0).bands)
     (p1 : SpatialAgrees cb (ref 1).rect (ref 1).bits (ref 1).levels (ref 1).bands)

@@ -101,7 +101,8 @@ def encCase (name : String) (p : Encode.Params) (img : Encode.Image) (reduce : N
 At higher resolutions each detail coefficient is the opposite of its LL value.
 Optional COC and SIZ overrides set each component's level count and depth. -/
 private def cancellationStream (w : Nat) (depth : UInt8) (params : Encode.Params)
-    (qcd : Marker.QCD) (ll : Array Int) (levels depths : Array UInt8 := #[]) : Except Error ByteArray := do
+    (qcd : Marker.QCD) (ll : Array Int) (levels depths : Array UInt8 := #[])
+    (transforms : Array Marker.Transform := #[]) : Except Error ByteArray := do
   let comp : Encode.Component := { depth := 8, signed := true, samples := Array.replicate w 0 }
   let base ← Encode.encode params { width := w, height := 1, comps := Array.replicate ll.size comp }
   let header ← Header.parse Limits.default base
@@ -113,8 +114,10 @@ private def cancellationStream (w : Nat) (depth : UInt8) (params : Encode.Params
   let mut precs := #[]
   for index in [0:ll.size] do
     let low := ll.getD index 0
-    let style := {cod.style with levels := levels.getD index cod.style.levels}
-    if style.levels != cod.style.levels then
+    let style := {cod.style with
+      levels := levels.getD index cod.style.levels
+      transform := transforms.getD index cod.style.transform}
+    if style != cod.style then
       overrides := overrides ++ Encode.Marker.segment Marker.Code.COC
         (Encode.Marker.serializeCOC ll.size ⟨index.toUInt16, style⟩)
     let coding ← Header.mkComp 0 style qcd 0
@@ -178,7 +181,10 @@ private def rctCancellation : Except Error Bool := do
   let expected := #[#[805306367, 268435455], #[1073741823, 1073741823], #[1073741823, 1073741823]]
   let (compact, actual) ← reversibleRGB cs
   let legacy ← decodeCodestreamNarrow L cs
-  return legacy.saturatedBlocks == 0 && compact == #[false, true, false] &&
+  let publicImage ← decodeCodestream L cs
+  let publicValues := publicImage.comps.map fun c => (Array.range (c.width * c.height)).map c.get?
+  return cs.size == 116 && publicValues == expected.map (·.map some) &&
+    legacy.saturatedBlocks == 0 && (legacy.comps[0]? >>= fun c => c.plane.get? 0) == some 536870911 && compact == #[false, true, false] &&
     actual == expected && exact == expected && spec.comps.map (fun c => c.samples.map (·.value)) == expected
 
 -- Compact spatial inputs can produce a colour outside Int32. Inspect centred RGB before G.1.
@@ -282,6 +288,30 @@ private def checkWideFixtures : Except Error Bool := do
     | _ => return false
   return true
 
+-- Retain only tile 1 and give its second component a tile-header COC selecting 9/7.
+-- Tile 0 must still be reconstructed from empty precincts using the main-header defaults.
+private def absentOverride : Except Error Bool := do
+  let both ← twoTiles
+  let h ← Header.parse Limits.default both
+  let part := ((h.tiles.getD 1 default).tile.parts.getD 0 default)
+  let override := Encode.Marker.segment Marker.Code.COC (Encode.Marker.serializeCOC h.siz.csiz
+    ⟨1, {h.main.cod.style with transform := .irreversible97}⟩)
+  let sot := {part.sot with psot := part.sot.psot + override.size.toUInt32}
+  let cs := both.extract 0 h.main.endPos ++ Encode.Marker.segment Marker.Code.SOT
+    (Encode.TilePart.serializeSOT sot) ++ override ++ both.extract (part.data.offset - 2) both.size
+  let parsed ← Header.parse Limits.default cs
+  let (g0, _) ← Progression.Layout.ofHeader parsed 0
+  let (g1, _) ← Progression.Layout.ofHeader parsed 1
+  if parsed.tiles.size != 1 || (g0.comp 1).params.transform != .reversible53 ||
+      (g1.comp 1).params.transform != .irreversible97 then return false
+  for red in [0, 1] do
+    if (compare cs red 1).1.isSome then return false
+    let out ← decodeCodestream Limits.default cs red
+    if (out.comps[0]? >>= (·.get? 0)) != some (2^37) then return false
+  match decodeCodestream Limits.default cs 2, Spec.Decode.decode Limits.default cs 2 with
+  | .error (.unsupported ..), .error (.unsupported ..) => return true
+  | _, _ => return false
+
 -- These fixtures each contain one tile. Compare the actual post-MCT values before G.1,
 -- then pass the very same sources to the native writer and inspect its output.
 private def dispatchCase (data : ByteArray) (reduce : Nat) (allowCompact expectCompact : Bool)
@@ -289,13 +319,14 @@ private def dispatchCase (data : ByteArray) (reduce : Nat) (allowCompact expectC
   let L := Limits.default
   let h ← Header.parse L data
   let spec ← Spec.Decode.decode L data reduce
+  let decoded ← decodeCodestream L data reduce
   let blocks ← JPEG2000.Tier2.Headers.decodeAllTileCodeBlocks L h data
   let (g,coding) ← Progression.Layout.ofHeader h 0
   let src ← IrreversibleDispatch.tile L data h.siz g coding blocks[0]? reduce allowCompact
   let dst ← NativeOutput.writeTile L h.siz reduce g coding (← NativeOutput.allocOutput L h.siz reduce) src
   if let some red := expectedRed then
     if (dst[0]? >>= (·.get? 0)) != some red then return false
-  if src.size != spec.comps.size || dst.size != spec.comps.size then return false
+  if src.size != spec.comps.size || dst.size != spec.comps.size || decoded.comps.size != src.size then return false
   return (Array.range src.size).all fun c => Id.run do
     let some p := src[c]? | return false
     let some d := dst[c]? | return false
@@ -309,7 +340,7 @@ private def dispatchCase (data : ByteArray) (reduce : Nat) (allowCompact expectC
       let some s := ref.samples[j]? | return false
       let F := Assemble.fracBitsOf h.siz s.mct c
       let e := Spec.Equiv.cellErr F s.mct s.levels
-      return decide (((z : Rat) / Spec.Equiv.pw F - s.exact).abs ≤ e) &&
+      return (decoded.comps[c]? >>= (·.get? j)) == some v && decide (((z : Rat) / Spec.Equiv.pw F - s.exact).abs ≤ e) &&
         decide (((v : Rat) - s.value).abs ≤ e + 1)
 
 private def dispatchCases : Except Error Bool := do
@@ -341,6 +372,10 @@ private def dispatchCases : Except Error Bool := do
   let mixed ← cancellationStream 7 8 params qcd #[5, -3, 7, 9] #[2,1,0,1] #[8,9,8,12]
   for allow in [true,false] do
     if !(← dispatchCase mixed 0 allow allow) then return false
+  -- ICT on components 0–2, independent reversible reconstruction on component 3.
+  let mixedTransform ← cancellationStream 7 8 params qcd #[5,-3,7,9] #[2,1,0,1] #[8,9,8,12]
+    #[.irreversible97,.irreversible97,.irreversible97,.reversible53]
+  if (compare mixedTransform 0 1).1.isSome then return false
   let rgb ← Encode.encode params (image 7 7 3 8)
   for red in [0,1,2] do
     for allow in [true,false] do
@@ -353,6 +388,7 @@ def run : IO Nat := do
   let mut n ← match checkWideFixtures with
     | .ok true => pure 0
     | other => fail "native codestream fixtures" (reprStr other)
+  if absentOverride.toOption != some true then n := n + (← fail "omitted tile and mixed COC" "dispatch differs")
   match dispatchCases with
   | .ok true => pure ()
   | other => n := n + (← fail "checked irreversible dispatch" (reprStr other))

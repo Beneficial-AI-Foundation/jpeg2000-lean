@@ -333,9 +333,12 @@ private def coded32 : IO Nat := do
       return ← expect (name ++ ": wide coefficients differ") false
   let .ok (compact, reconstructed) := Tests.SpecDecode.reversibleRGB enc.codestream
     | return ← expect (name ++ ": reversible packet dispatch failed") false
+  let .ok decoded := decodeCodestream Limits.default enc.codestream
+    | return ← expect (name ++ ": public decoder rejected the stream") false
+  let observed := decoded.comps.map fun c => (Array.range (c.width * c.height)).map c.get?
   let expected := img.comps.map (·.samples)
   return ← expect name (enc.codestream.size == 704 && wideBlocks.size == 2 &&
-    compact == #[true, false, false] && reconstructed == expected && actual == expected)
+    observed == expected.map (·.map some) && compact == #[true, false, false] && reconstructed == expected && actual == expected)
 
 /-- Runs the suite. -/
 def run : IO Nat := do

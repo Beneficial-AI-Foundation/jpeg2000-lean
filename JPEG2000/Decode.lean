@@ -5,11 +5,9 @@ import JPEG2000.CodestreamTraversal
 (Plan.md §3 (pipeline), §6 item 7 (reduced resolution); T.800 B.2, B.3, B-12, B-14, Annex I
 (container only))
 
-The entry point parses the header once and dispatches on the SIZ component intervals.
-Images whose outputs fit Int32 use the compact decoder. A mixed-depth image uses
-`NativeOutput.writeTile` on each tile after inverse MCT. Its compact components have
-four bytes per cell and its wide components have eight. Both branches use the same
-packet traversal, dequantisation and inverse transforms.
+The public decoder uses checked wavelet and colour reconstruction on every SIZ interval.
+Each component retains a compact or wide spatial raster until native G.1 placement chooses
+its output storage from the declared precision.
 
 `CodestreamImage.comps` follows SIZ order. Each component covers its own sample grid
 with endpoints from B-12 then B-14, including the image origin and the requested
@@ -18,8 +16,7 @@ reduction. `CodestreamComponent.get?` reads the final DC-shifted, clamped intege
 Both allocators check the combined reduced area against `maxWorkSamples` and the sum
 of the component byte counts at their declared precisions against `maxDecodedBytes`.
 The tile reconstruction separately bounds the combined reduced tile area. Reconstruction
-before G.1 still uses the existing Int32 kernels. Wider coefficients, DWT and MCT
-intermediates depend on the checked reconstruction dispatch in task 7.1k3.
+before G.1 can restart from the original packet ranges on a compact precision miss.
 -/
 
 namespace JPEG2000
@@ -120,8 +117,8 @@ def decodeCodestreamNarrow (L : Limits) (data : ByteArray) (reduce : Nat := 0) :
   let h ← Header.parse L data
   Decode.narrowFromHeader L h data reduce
 
-/-- A decoded codestream component on its reduced sample grid. Compact images retain their
-original planes. Mixed-depth images retain the format-selected native storage per component. -/
+/-- A component on its reduced sample grid. Public decoding retains the format-selected
+native storage. A converted legacy result borrows its original compact plane. -/
 inductive CodestreamComponent where
   /-- Original compact decoder result. -/
   | compact (component : DecodedComponent)
@@ -205,16 +202,12 @@ def nativeFromHeader (L : Limits) (h : Header) (data : ByteArray) (reduce : Nat)
 
 end Decode
 
-/-- Decode a raw or JP2-wrapped codestream at the requested reduction. Images with any
-component outside the Int32 output interval use checked mixed-depth native placement.
-Read each component with `CodestreamComponent.get?`. -/
+/-- Decode a raw or JP2-wrapped codestream with checked component and colour reconstruction.
+Read the DC-shifted, clamped samples with `CodestreamComponent.get?`. -/
 def decodeCodestream (L : Limits) (data : ByteArray) (reduce : Nat := 0) :
     Except Error CodestreamImage := do
   L.check Decode.loc .decompLevels reduce
   let h ← Header.parse L data
-  if h.siz.components.all NativeOutput.compact then
-    return (← Decode.narrowFromHeader L h data reduce).toCodestream
-  else
-    Decode.nativeFromHeader L h data reduce
+  Decode.nativeFromHeader L h data reduce
 
 end JPEG2000

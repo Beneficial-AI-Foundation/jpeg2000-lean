@@ -5,7 +5,7 @@ import Spec.NativeOutput
 # Public codestream dispatch and native tile observations
 (Plan.md §§4, 5.1, 5.4, 7; T.800 B.2, B-12, B-14, G.1)
 
-The compact branch retains its numerical C9 theorem. On a mixed-depth header, a successful
+The explicit legacy compact decoder retains its numerical C9 theorem. A successful public
 decode starts with checked zero grids and writes the actual centred reconstructions in tile
 order. The pointwise specification of each write includes translated and untouched cells.
 -/
@@ -18,15 +18,6 @@ private theorem bind_ok {α β : Type} {x : Except Error α} {f : α → Except 
     (x >>= f) = .ok y ↔ ∃ a, x = .ok a ∧ f a = .ok y := by
   cases x <;> simp [bind, Except.bind]
 
-/-- Every compact header takes the original fast path, preserving both errors and samples. -/
-theorem compact_dispatch {L : Limits} {data : ByteArray} {reduce : Nat} {h : Header}
-    (hp : Header.parse L data = .ok h) (hc : h.siz.components.all JPEG2000.NativeOutput.compact) :
-    decodeCodestream L data reduce = (decodeCodestreamNarrow L data reduce).map (·.toCodestream) := by
-  unfold decodeCodestream decodeCodestreamNarrow
-  cases L.check JPEG2000.Decode.loc .decompLevels reduce <;>
-    simp only [hp, hc, bind, Except.bind, ↓reduceIte, Except.map]
-  cases narrowFromHeader L h data reduce <;> rfl
-
 /-- The public accessor returns the compact kernel's exact signed integer at every index. -/
 theorem compact_read (img : DecodedImage) (c i : Nat) :
     (img.toCodestream.comps[c]?).bind (·.get? i) =
@@ -34,26 +25,14 @@ theorem compact_read (img : DecodedImage) (c i : Nat) :
   simp only [DecodedImage.toCodestream, Array.getElem?_map]
   cases img.comps[c]? <;> rfl
 
-/-- C9 for the compact branch of the ordinary entry point, including its failure relation.
-The witness is the original compact result observed through `compact_read`. -/
-theorem compact_c9 {L : Limits} {data : ByteArray} {reduce : Nat} {h : Header}
-    (hp : Header.parse L data = .ok h) (hc : h.siz.components.all JPEG2000.NativeOutput.compact) :
-    Equiv.ERel (fun img spec => ∃ d, img = d.toCodestream ∧ Equiv.C9Rel d spec)
-      (decodeCodestream L data reduce) (Spec.Decode.decode L data reduce) := by
-  rw [compact_dispatch hp hc]
-  have ok := C9.c9 L data reduce
-  cases hn : decodeCodestreamNarrow L data reduce <;> cases hspec : Spec.Decode.decode L data reduce <;>
-    rw [hn, hspec] at ok <;>
-    first | exact ok | exact ⟨_, rfl, ok⟩
-
-/-- Dispatch on a parsed mixed-depth header agrees with the checked native pipeline,
+/-- Dispatch on any parsed header agrees with the checked native pipeline,
 including all allocation and reconstruction errors and the outer reduction check. -/
 theorem native_dispatch {L : Limits} {data : ByteArray} {reduce : Nat} {h : Header}
-    (hp : Header.parse L data = .ok h) (hc : h.siz.components.all JPEG2000.NativeOutput.compact = false) :
+    (hp : Header.parse L data = .ok h) :
     decodeCodestream L data reduce = nativeFromHeader L h data reduce := by
   unfold decodeCodestream
   cases hr : L.check JPEG2000.Decode.loc .decompLevels reduce with
-  | ok u => simp [hp, hc, bind, Except.bind]
+  | ok u => simp [hp, bind, Except.bind]
   | error e =>
     unfold nativeFromHeader JPEG2000.NativeOutput.allocOutput
     change L.check (.at .decode) .decompLevels reduce = .error e at hr
@@ -151,14 +130,13 @@ private theorem tiles_sim {A B T α : Type} {L : Limits} {h : Header} {data : By
 and reduced rectangle in order. The combined area and declared bytes satisfy the limits. -/
 theorem native_geometry {L : Limits} {data : ByteArray} {reduce : Nat} {h : Header}
     {img : CodestreamImage} (hp : Header.parse L data = .ok h)
-    (hc : h.siz.components.all JPEG2000.NativeOutput.compact = false)
     (ok : decodeCodestream L data reduce = .ok img) :
     img.header = h ∧ img.reduce = reduce ∧
       (∃ ds : Array OutputComponent, img.comps = ds.map .native ∧
         ds.map (fun d => (d.rect, d.format)) = layout h.siz reduce) ∧
       cells (layout h.siz reduce) ≤ L.maxWorkSamples ∧
       decodedBytes (layout h.siz reduce) ≤ L.maxDecodedBytes := by
-  rw [native_dispatch hp hc, nativeFromHeader, bind_ok] at ok
+  rw [native_dispatch hp, nativeFromHeader, bind_ok] at ok
   obtain ⟨ds, ha, decoded⟩ := ok
   obtain ⟨work, bytes, _, _⟩ := Spec.NativeOutput.allocOutput_spec ha
   let shape := fun (ps : Array OutputComponent) => ps.map fun d => (d.rect, d.format)
@@ -201,13 +179,12 @@ of G.1 at that coordinate through the same packet and post-MCT tile traversal. T
 comparison uses no externally supplied tiles, packet data or numerical range hypotheses. -/
 theorem native_read {L : Limits} {data : ByteArray} {reduce : Nat} {h : Header}
     {img : CodestreamImage} (hp : Header.parse L data = .ok h)
-    (hc : h.siz.components.all JPEG2000.NativeOutput.compact = false)
     (ok : decodeCodestream L data reduce = .ok img)
     (i : Nat) (hi : i < (layout h.siz reduce).size) (x y : Nat)
     (hx : x < (layout h.siz reduce)[i].1.width) (hy : y < (layout h.siz reduce)[i].1.height) :
     let (r, c) := (layout h.siz reduce)[i]
     replaySample L h data reduce i x y r c = .ok ((img.comps[i]?).bind (·.get? (y * r.width + x))) := by
-  rw [native_dispatch hp hc, nativeFromHeader, bind_ok] at ok
+  rw [native_dispatch hp, nativeFromHeader, bind_ok] at ok
   obtain ⟨ds, ha, decoded⟩ := ok
   let r := (layout h.siz reduce)[i].1
   let c := (layout h.siz reduce)[i].2
