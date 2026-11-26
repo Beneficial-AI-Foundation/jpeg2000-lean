@@ -49,8 +49,8 @@ actual data structures. The principal quantities are listed below.
 | `decode`: up-sampled channels (fresh cells / bytes; every channel, alpha and other channel is one of them, `w × h`) | `maxWorkSamples` / `maxDecodedBytes` | `decode_resources` (`ImageWithin`) |
 | interleaved 8/16-bit buffer (exact size `w·h·n·(1|2)`) | `maxDecodedBytes` | `interleave_size`, `interleaved8_size`, `interleaved16_size` |
 | Aggregate reduced component areas of one tile before reconstruction | `maxWorkSamples` | `NativeResources.centeredTile_work`, `NativeResources.centeredTile_limitExceeded` |
-| per tile: packet iteration work (`iterationWork`, ≥ packets visited) | `maxPackets` | `decodeTilePacketsWith_ok`, `decodeWithStream_ok` |
-| coding passes of all tiles | `maxCodingPasses` | `decodeAllTileCodeBlocks_passes` |
+| Whole-image physical packet visits plus POC membership tests, including a rejecting prefix | `maxTiles × maxPackets` | `PublicPacketWork.decode_packet_work` |
+| Admitted packet passes across all attempted tiles | `maxCodingPasses` | `PublicPacketWork.decode_packet_work` |
 
 `JPEG2000.Spec.NativeResources.decodeCodestream_resources` bounds native output storage for the public
 `decodeCodestream` on both compact and mixed-depth images. A successful decode retains
@@ -66,6 +66,25 @@ reduced component areas. If the sum exceeds `maxWorkSamples`, it returns the exa
 `limitExceeded` value before reconstructing any component. The check covers both
 present and omitted tiles, including mixed wavelets. Intermediate wavelet buffers
 and repeated work during a wide retry are separate obligations below.
+
+### Packet traversal
+
+`Spec.Resources.PublicPacketWork.decode_packet_work` applies to every input, limit
+record and reduction. Erasing its trace returns the exact result of
+`decodeCodestream`, including the diagnostic on failure. Rejection during header
+admission or native output allocation has an empty packet trace. Each later entry
+records the tile, the number of passes already admitted and the current tile-part
+cursor. An omitted tile has an empty packet log.
+
+A physical visit counts one innermost progression position, including positions
+skipped because an earlier POC volume covered them. Each earlier volume tested
+for membership adds one operation. Their combined count is at most the number of
+present tiles times `maxPackets`. All passes admitted from packet contributions
+sum to at most `maxCodingPasses`, even if reconstruction or placement later fails.
+A rejecting packet still counts as an attempt. For example, the pinned
+`issue12213-16.jpx` stream admits 564 passes over 90 packet attempts and three tiles.
+A zero-pass budget records the first attempt and returns the exact limit error
+for its proposed seven passes.
 
 ### Colour, replication and display
 
@@ -158,12 +177,10 @@ The public codestream and image output sizes, palette backing, per-channel domai
 and interleaver lengths above are proved. To finish S3, the following bounds must
 also account for the work performed before an error.
 
-* **Packets and Tier-1 (7.4c1p, 7.4c1t).** The public tile traversal threads a
-  cumulative pass count. Its correspondence theorem preserves that count, and
-  `decodeWithStream_ok` bounds each successful tile. An aggregate bound must
-  connect the actual tile visits, packet iterations and pass-by-cell work to
-  the budgets. The per-block pass bound is already proved by
-  `Spec.Resources.BlockPasses.decodeWithStream_blockPasses`.
+* **Local packet and Tier-1 operations (7.4c1h, 7.4c1t).** Price the work
+  inside each attempted packet, including tag-tree and segment handling before
+  pass admission, and the setup of progression volumes even when empty. Bound
+  Tier-1 cell and reader operations for the actual selected block invocations.
 * **Reconstruction (7.4c2w, 7.4c2s).** The checked decoder can retry using wide
   coefficients. Bound intermediate integer widths, both attempts, lifting and
   colour-transform visits, temporary line arrays and live planes across levels.

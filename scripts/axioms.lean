@@ -1545,3 +1545,22 @@ end AxiomsSelfCheck
 
 #print axioms JPEG2000.Spec.NativeResources.centeredTile_limitExceeded
 #print axioms JPEG2000.Spec.NativeResources.centeredTile_work
+
+#print axioms JPEG2000.Spec.Resources.PacketTraversal.inspectPrevious_any
+#print axioms JPEG2000.Spec.Resources.PacketTraversal.visits_tests_le_charge
+#print axioms JPEG2000.Spec.Resources.PacketTraversal.forPackets_schedule
+#print axioms JPEG2000.Spec.Resources.PacketTraversal.schedule_charge
+#print axioms JPEG2000.Spec.Resources.PacketTraversal.decodePacket_contributions
+#print axioms JPEG2000.Spec.Resources.PacketTraversal.packetStep_passes
+#print axioms JPEG2000.Spec.Resources.PacketTraversal.walk_prefix
+#print axioms JPEG2000.Spec.Resources.PacketTraversal.walk_outcome
+#print axioms JPEG2000.Spec.Resources.PacketTraversal.measureStream_erase
+#print axioms JPEG2000.Spec.Resources.PacketTraversal.measureStream_bounds
+#print axioms JPEG2000.Spec.Resources.PacketTraversal.measureStream_read
+#print axioms JPEG2000.Spec.Resources.PacketTraversal.measureTiles_erase
+#print axioms JPEG2000.Spec.Resources.PacketTraversal.trace_visit
+#print axioms JPEG2000.Spec.Resources.PacketTraversal.trace_bounds
+#print axioms JPEG2000.Spec.Resources.PacketTraversal.measureTiles_finish
+#print axioms JPEG2000.Spec.Resources.PacketTraversal.measureGrid_trace
+#print axioms JPEG2000.Spec.Resources.PacketTraversal.measureTiles_bounds
+#print axioms JPEG2000.Spec.Resources.PublicPacketWork.decode_packet_work

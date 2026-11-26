@@ -81,6 +81,10 @@ import Spec.RoundTrip.Spec
 import Spec.RoundTrip.Native
 import Spec.RoundTrip
 import Spec.Resources
+import Spec.Resources.PacketSchedule
+import Spec.Resources.PacketPrefix
+import Spec.Resources.PacketTraversal
+import Spec.Resources.PublicPacketWork
 import Spec.NativeResources
 import Spec.NativeEquiv
 import Spec.NativeTraversal
