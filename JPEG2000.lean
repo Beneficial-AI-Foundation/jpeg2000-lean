@@ -35,6 +35,9 @@ import JPEG2000.CodestreamTraversal
 import JPEG2000.WideAssembly
 import JPEG2000.Image
 
+import JPEG2000.ReversibleDispatch
+import JPEG2000.IrreversibleDispatch
+
 /-!
 # jpeg2000-lean
 

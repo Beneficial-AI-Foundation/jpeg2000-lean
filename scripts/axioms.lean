@@ -1487,3 +1487,20 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.CodestreamComponent.samples_get?
 #print axioms JPEG2000.Spec.Resources.public_limitExceeded_of_output
 #print axioms JPEG2000.Spec.Resources.publicCodestream_resources
+
+#print axioms JPEG2000.Spec.ReversibleDispatch.mallat_read
+#print axioms JPEG2000.Spec.ReversibleDispatch.wideBands
+#print axioms JPEG2000.Spec.ReversibleDispatch.tileComp_sound
+#print axioms JPEG2000.Spec.ReversibleDispatch.tileComp_equiv
+#print axioms JPEG2000.Spec.ReversibleDispatch.parsed_component_ok
+#print axioms JPEG2000.Spec.ReversibleDispatch.parsed_component
+#print axioms JPEG2000.Spec.ReversibleDispatch.colour_spec
+#print axioms JPEG2000.Spec.ReversibleDispatch.colour_cells
+#print axioms JPEG2000.Spec.ReversibleDispatch.colour_mctSpec
+#print axioms JPEG2000.Spec.IrreversibleDispatch.compactBands_ok
+#print axioms JPEG2000.Spec.IrreversibleDispatch.source_fixed
+#print axioms JPEG2000.Spec.IrreversibleDispatch.component_c8
+#print axioms JPEG2000.Spec.IrreversibleDispatch.ict_c8
+#print axioms JPEG2000.Spec.IrreversibleDispatch.sources_c8
+#print axioms JPEG2000.Spec.IrreversibleDispatch.tile_c8
+#print axioms JPEG2000.Spec.IrreversibleDispatch.parsed_tile_c8

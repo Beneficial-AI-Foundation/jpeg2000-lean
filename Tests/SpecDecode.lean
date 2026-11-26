@@ -46,13 +46,15 @@ def compare (cs : ByteArray) (reduce : Nat) (tol : Int) : Option String × Int :
           (acc.1 <|> some s!"component {c}: sizes differ", acc.2)
         else
           (List.range sc.size).foldl (fun (acc : Option String × Int) k =>
-            let fv := (fc.get? k).getD 0
-            let sv := sc.getD k default
-            let d := (fv - sv.value).natAbs
-            if sv.reversible then
-              if d = 0 then acc else (acc.1 <|> some s!"component {c} sample {k}: {fv} vs {sv.value}", acc.2)
-            else if d ≤ tol then (acc.1, max acc.2 d)
-            else (acc.1 <|> some s!"component {c} sample {k}: {fv} vs {sv.value} (irreversible)", max acc.2 d))
+            match fc.get? k with
+            | none => (acc.1 <|> some s!"component {c} sample {k} is missing", acc.2)
+            | some fv =>
+              let sv := sc.getD k default
+              let d := (fv - sv.value).natAbs
+              if sv.reversible then
+                if d = 0 then acc else (acc.1 <|> some s!"component {c} sample {k}: {fv} vs {sv.value}", acc.2)
+              else if d ≤ tol then (acc.1, max acc.2 d)
+              else (acc.1 <|> some s!"component {c} sample {k}: {fv} vs {sv.value} (irreversible)", max acc.2 d))
             acc)
         (none, 0)
 

@@ -104,6 +104,9 @@ import Spec.Tier1Wide.Modes
 import Spec.Tier1Wide.Segments
 import Spec.TilePartRoundTrip
 
+import Spec.ReversibleDispatch
+import Spec.IrreversibleDispatch
+
 /-!
 # Executable specifications
 
