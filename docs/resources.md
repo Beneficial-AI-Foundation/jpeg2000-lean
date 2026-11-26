@@ -91,11 +91,14 @@ headline ones:
 | per tile: packet iteration work (`iterationWork`, ≥ packets visited) | `maxPackets` | `decodeTilePacketsWith_ok`, `decodeWithStream_ok` |
 | coding passes of all tiles | `maxCodingPasses` | `decodeAllTileCodeBlocks_passes` |
 
-The Int32 plane theorems in this table apply to `decodeCodestreamNarrow`. The ordinary
-codestream entry point uses those planes on compact headers. Its mixed-depth branch
-preserves the reduced SIZ layout and the aggregate work and byte bounds by
-`Spec.CodestreamDispatch.native_geometry`. Each native backing has its exact byte
-size by `Spec.NativeOutput.backing_size`.
+`JPEG2000.Spec.NativeResources.decodeCodestream_resources` proves S3 for the public
+`decodeCodestream` on both compact and mixed-depth images. A successful decode retains
+the requested reduction, the component order and metadata from SIZ, and each component's
+reduced grid. Exact reads succeed precisely at indices below its area. Across all output
+components, the cell count is at most `maxWorkSamples`, the declared output size is at most
+`maxDecodedBytes`, and the physical backing arrays occupy at most `8 × maxWorkSamples`
+bytes. Compact backing uses four bytes per cell and wide backing uses eight. The
+`Spec.Resources` Int32 plane theorems also remain available for `decodeCodestreamNarrow`.
 
 **Declared versus allocated (task 6.5).** The header bounds what the stream *declares*
 (side, area, tiles, tile-components, at full resolution: absurd headers are refused before

@@ -1067,7 +1067,9 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.Resources.decodeTile_work
 #print axioms JPEG2000.Spec.Resources.reconstructTileComp_work
 #print axioms JPEG2000.Spec.Resources.decode_total
+#print axioms JPEG2000.Spec.Resources.array_foldl_sum
 #print axioms JPEG2000.Spec.Resources.decodeCodestream_resources
+#print axioms JPEG2000.Spec.NativeResources.decodeCodestream_resources
 #print axioms JPEG2000.Spec.Resources.decode_resources
 #print axioms JPEG2000.Spec.Resources.decode_size
 

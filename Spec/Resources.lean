@@ -223,7 +223,7 @@ private theorem list_foldl_sum {α : Type} (f : Nat → α → Nat) (g : α → 
     omega
 
 /-- `Array.foldl` adding `g x` per element is the sum of `g` over the elements. -/
-private theorem array_foldl_sum {α : Type} (f : Nat → α → Nat) (g : α → Nat) (hf : ∀ a x, f a x = a + g x)
+theorem array_foldl_sum {α : Type} (f : Nat → α → Nat) (g : α → Nat) (hf : ∀ a x, f a x = a + g x)
     (xs : Array α) : xs.foldl f 0 = (xs.toList.map g).sum := by
   rw [← Array.foldl_toList, list_foldl_sum f g hf]; simp
 
