@@ -1,4 +1,5 @@
 import JPEG2000.Image
+import Spec.CodestreamDispatch
 
 /-!
 # S2 (totality) and S3 (bounded resources) as theorems over `Limits`
@@ -319,7 +320,7 @@ private theorem upLoop_dims (src : Plane) (w : Nat) (ix iy : Array Nat) :
     · exact ⟨rfl, rfl⟩
 
 /-- `Image.upsample` gives a `w × h` plane. -/
-theorem upsample_dims {ox oy w h : Nat} {c : Color.Channel} {p : Plane}
+theorem upsample_dims {ox oy w h : Nat} {c : Color.Channel} {p : Color.SamplePlane}
     (hu : Image.upsample ox oy w h c = .ok p) : p.width = w ∧ p.height = h := by
   unfold Image.upsample at hu
   by_cases hf : Image.atFullRes w h c = true
@@ -330,9 +331,12 @@ theorem upsample_dims {ox oy w h : Nat} {c : Color.Channel} {p : Plane}
   · simp only [hf, Bool.false_eq_true, ↓reduceIte] at hu
     split at hu
     · cases hu
-    · simp only [pure, Except.pure, Except.ok.injEq] at hu
-      subst hu
-      exact upLoop_dims _ _ _ _ _ _ _
+    · simp only [pure, Except.pure] at hu
+      split at hu
+      · cases hu
+        exact upLoop_dims _ _ _ _ _ _ _
+      · cases hu
+        exact ⟨rfl, rfl⟩
 
 /-- Two lists related element-wise. -/
 inductive Forall2 {α β : Type} (P : α → β → Prop) : List α → List β → Prop
@@ -396,7 +400,8 @@ def upsampleChannel (ox oy w h : Nat) (c : Color.Channel) : Except Error Channel
   let plane ← Image.upsample ox oy w h c
   pure { depth := c.format.depth, signed := c.format.signed, plane }
 
-/-- Cells `decode` freshly allocates when up-sampling: `w × h` per channel not already at full resolution. -/
+/-- Cells charged for replication, one output grid per channel below full resolution.
+Compact replication allocates these cells, while wide views borrow the source samples. -/
 def upCells (w h : Nat) (chans : Array Color.Channel) : Nat :=
   (chans.toList.map fun c => if Image.atFullRes w h c then 0 else w * h).sum
 
@@ -404,10 +409,10 @@ def upCells (w h : Nat) (chans : Array Color.Channel) : Nat :=
 def channelBytes (w h : Nat) (full : Array Channel) : Nat :=
   (full.toList.map fun c => w * h * bytesPerSample c.depth).sum
 
-/-- **S3 for `decode`** (output): the image area is within `maxImageArea`; the channels are drawn from an array `full` of `w × h` planes obtained by up-sampling `chans`, where the freshly allocated cells are within `maxWorkSamples` and the bytes of `full` within `maxDecodedBytes` (a channel listed twice in the layout shares its plane). -/
+/-- **S3 for `decode`** (output): the image area is within `maxImageArea`; the channels are drawn from an array `full` of `w × h` planes obtained by up-sampling `chans`, where the cells charged for replication are within `maxWorkSamples` and the bytes of `full` within `maxDecodedBytes` (a channel listed twice in the layout shares its plane). -/
 theorem decode_within {L : Limits} {data : ByteArray} {opts : DecodeOptions} {img : Image}
     (hd : decode L data opts = .ok img) :
-    decodeCodestreamNarrow L data opts.reduce = .ok img.decoded ∧
+    decodeCodestream L data opts.reduce = .ok img.decoded ∧
       img.width * img.height ≤ L.maxImageArea ∧
       ∃ chans full, upCells img.width img.height chans ≤ L.maxWorkSamples ∧
         chans.mapM (upsampleChannel img.x0 img.y0 img.width img.height) = .ok full ∧
@@ -475,23 +480,24 @@ theorem decode_within {L : Limits} {data : ByteArray} {opts : DecodeOptions} {im
         (array_mapM_forall _ _ (fun _ _ h => pick_mem h) _ _ hother) c (Array.mem_def.1 hc)
 
 /-- `pushPixel` appends one sample (1 or 2 bytes) per channel. -/
-private theorem pushPixel_size (wide : Bool) (i : Nat) :
-    ∀ (cs : List (Plane × Scaler)) (out : ByteArray),
-      (pushPixel wide i out cs).size = out.size + cs.length * (if wide then 2 else 1)
+private theorem pushPixel_size {P : Type} (sample : P → Scaler → Nat → UInt64) (wide : Bool) (i : Nat) :
+    ∀ (cs : List (P × Scaler)) (out : ByteArray),
+      (pushPixel sample wide i out cs).size = out.size + cs.length * (if wide then 2 else 1)
   | [], out => by simp [pushPixel]
   | (p, sc) :: rest, out => by
     simp only [pushPixel]
-    rw [pushPixel_size wide i rest]
+    rw [pushPixel_size sample wide i rest]
     cases wide <;> simp [ByteArray.size_push, Nat.add_mul] <;> omega
 
 /-- `interleaveLoop` appends `k` pixels. -/
-private theorem interleaveLoop_size (wide : Bool) (cs : List (Plane × Scaler)) :
+private theorem interleaveLoop_size {P : Type} (sample : P → Scaler → Nat → UInt64)
+    (wide : Bool) (cs : List (P × Scaler)) :
     ∀ (k : Nat) (out : ByteArray) (i : Nat),
-      (interleaveLoop wide cs out i k).size = out.size + k * (cs.length * (if wide then 2 else 1))
+      (interleaveLoop sample wide cs out i k).size = out.size + k * (cs.length * (if wide then 2 else 1))
   | 0, out, i => by simp [interleaveLoop]
   | k + 1, out, i => by
     simp only [interleaveLoop]
-    rw [interleaveLoop_size wide cs k, pushPixel_size, Nat.succ_mul]
+    rw [interleaveLoop_size sample wide cs k, pushPixel_size, Nat.succ_mul]
     omega
 
 /-- **Interleaved output size**: an interleaved buffer has exactly `w·h·channels·(1 or 2)` bytes, within `maxDecodedBytes`. -/
@@ -501,18 +507,15 @@ theorem interleave_size {L : Limits} {w h : Nat} {chs : Array Channel} {wide : B
   unfold interleave at hi
   simp only [bind_ok] at hi
   obtain ⟨_, -, _, hc, hi⟩ := hi
-  simp only [pure, Except.pure, Except.ok.injEq] at hi
-  subst hi
   have e := check_ok hc
   simp only [Limits.bound] at e
-  have hs : (interleaveLoop wide (chs.toList.map fun c => (c.plane, Scaler.make mode c.depth c.signed
-      (if wide then 16 else 8))) (ByteArray.emptyWithCapacity (w * h * chs.size * (if wide then 2 else 1)))
-      0 (w * h)).size = w * h * chs.size * (if wide then 2 else 1) := by
+  have zero (capacity : Nat) : (ByteArray.emptyWithCapacity capacity).size = 0 := rfl
+  cases wide <;> simp only [Bool.false_eq_true, ↓reduceIte] at hi e ⊢
+  all_goals split at hi <;> simp only [pure, Except.pure, Except.ok.injEq] at hi <;> subst hi
+  all_goals
     rw [interleaveLoop_size]
-    simp only [List.length_map, Array.length_toList]
-    rw [show (ByteArray.emptyWithCapacity (w * h * chs.size * (if wide then 2 else 1))).size = 0 from rfl]
-    simp [Nat.mul_assoc]
-  exact ⟨hs, hs ▸ e⟩
+    simp [zero, Nat.mul_assoc] at e ⊢
+    exact e
 
 /-- The 8-bit interleaved output is within `maxDecodedBytes`. -/
 theorem interleaved8_size {img : Image} {L : Limits} {withAlpha : Bool} {mode : Scaling} {buf : ByteArray}
@@ -616,7 +619,7 @@ theorem decode_limitExceeded_of_geometry {L : Limits} {data : ByteArray} {opts :
     (hm : Marker.parseMainHeader L r = .ok (mh, r')) (hx : ¬ GeometryWithin L mh.siz) :
     ∃ loc k v b, decode L data opts = .error (.limitExceeded loc k v b) ∧ b < v := by
   obtain ⟨loc, k, v, b, hp, hlt⟩ := parse_error_of_geometry hc hr hm hx
-  unfold decode decodeCodestreamNarrow
+  unfold decode decodeCodestream
   cases hrd : L.check Decode.loc .decompLevels opts.reduce with
   | error e =>
     obtain ⟨loc', k', v', b', rfl, hlt'⟩ := LimitOnly.check L _ _ _ _ hrd
@@ -634,13 +637,54 @@ theorem decode_limitExceeded_of_area {L : Limits} {data : ByteArray} {opts : Dec
     ∃ loc k v b, decode L data opts = .error (.limitExceeded loc k v b) ∧ b < v :=
   decode_limitExceeded_of_geometry hc hr hm fun hg => Nat.lt_irrefl _ (Nat.lt_of_lt_of_le hx hg.2.2.1)
 
+private theorem native_budgets_eq (s : Marker.SIZ) (r : Nat) :
+    JPEG2000.NativeOutput.cells (JPEG2000.NativeOutput.layout s r) = outputCells s r ∧
+    JPEG2000.NativeOutput.decodedBytes (JPEG2000.NativeOutput.layout s r) = outputBytes s r := by
+  unfold JPEG2000.NativeOutput.cells JPEG2000.NativeOutput.decodedBytes
+  rw [array_foldl_sum _ (fun (x : Rect × Marker.Component) => x.1.width * x.1.height) (fun _ _ => rfl),
+    array_foldl_sum _ (fun (x : Rect × Marker.Component) => x.1.width * x.1.height * bytesPerSample x.2.depth.toNat)
+      (fun _ _ => rfl)]
+  simp only [JPEG2000.NativeOutput.layout, Array.toList_map, List.map_map]
+  exact ⟨rfl, rfl⟩
+
+/-- Either public codestream storage branch rejects excessive reduced output before allocation. -/
+theorem public_limitExceeded_of_output {L : Limits} {data : ByteArray} {r : Nat} {h : Header}
+    (hp : Header.parse L data = .ok h)
+    (hx : L.maxWorkSamples < outputCells h.siz r ∨ L.maxDecodedBytes < outputBytes h.siz r) :
+    ∃ loc k v b, decodeCodestream L data r = .error (.limitExceeded loc k v b) ∧ b < v := by
+  cases hc : h.siz.components.all JPEG2000.NativeOutput.compact with
+  | true =>
+    obtain ⟨loc, k, v, b, he, lt⟩ := decodeCodestream_limitExceeded_of_output hp hx
+    exact ⟨loc, k, v, b, by rw [CodestreamDispatch.compact_dispatch hp hc, he]; rfl, lt⟩
+  | false =>
+    rw [CodestreamDispatch.native_dispatch hp hc]
+    unfold Decode.nativeFromHeader JPEG2000.NativeOutput.allocOutput
+    dsimp only
+    rw [(native_budgets_eq h.siz r).1, (native_budgets_eq h.siz r).2]
+    cases hr : L.check (.at .decode) .decompLevels r with
+    | error e =>
+      obtain ⟨loc, k, v, b, rfl, lt⟩ := LimitOnly.check L _ _ _ _ hr
+      exact ⟨_, _, _, _, rfl, lt⟩
+    | ok u =>
+      cases hw : L.check (.at .decode) .workSamples (outputCells h.siz r) with
+      | error e =>
+        obtain ⟨loc, k, v, b, rfl, lt⟩ := LimitOnly.check L _ _ _ _ hw
+        exact ⟨_, _, _, _, rfl, lt⟩
+      | ok v =>
+        have work := check_ok hw
+        change outputCells h.siz r ≤ L.maxWorkSamples at work
+        have lt := hx.resolve_left (Nat.not_lt.mpr work)
+        refine ⟨.at .decode, .decodedBytes, _, _, ?_, lt⟩
+        simp only [Limits.check, Limits.checkLe, Limits.bound, Nat.not_le.mpr lt,
+          ↓reduceIte, bind, Except.bind]
+
 /-- **Excess ⇒ `limitExceeded`** for `decode` at a reduction: once the header parses, output grids at reduction `opts.reduce` above `maxWorkSamples` cells or `maxDecodedBytes` bytes make `decode` fail with `limitExceeded` (value above bound). -/
 theorem decode_limitExceeded_of_output {L : Limits} {data : ByteArray} {opts : DecodeOptions}
     {h : Header} (hp : Header.parse L data = .ok h)
     (hx : L.maxWorkSamples < outputCells h.siz opts.reduce ∨
       L.maxDecodedBytes < outputBytes h.siz opts.reduce) :
     ∃ loc k v b, decode L data opts = .error (.limitExceeded loc k v b) ∧ b < v := by
-  obtain ⟨loc, k, v, b, hd, hlt⟩ := decodeCodestream_limitExceeded_of_output hp hx
+  obtain ⟨loc, k, v, b, hd, hlt⟩ := public_limitExceeded_of_output hp hx
   refine ⟨loc, k, v, b, ?_, hlt⟩
   unfold decode
   simp only [hd, bind, Except.bind]
@@ -698,11 +742,11 @@ private theorem setIfInBounds_dims {planes : Array Plane} {c : Nat} {p : Plane}
       simp [Array.getD, h1]
     · rw [Array.getElem_setIfInBounds_ne (by simpa using h1) hc, Array.getElem_setIfInBounds_ne h1 hc]
 
-/-- `Decode.place` keeps the dimensions of every component plane (tiles are copied in place). -/
+/-- `JPEG2000.Decode.place` keeps the dimensions of every component plane (tiles are copied in place). -/
 theorem place_dims {info : Array DecodedComponent} {planes planes' : Array Plane}
-    {t : Assemble.TileOut} (h : Decode.place info planes t = .ok planes') :
+    {t : Assemble.TileOut} (h : JPEG2000.Decode.place info planes t = .ok planes') :
     planes'.toList.map dims = planes.toList.map dims := by
-  unfold Decode.place at h
+  unfold JPEG2000.Decode.place at h
   simp only [Std.Legacy.Range.forIn_eq_forIn_range', bind_ok] at h
   obtain ⟨st, hst, h⟩ := h
   simp only [pure, Except.pure, Except.ok.injEq] at h
@@ -997,7 +1041,7 @@ def CodestreamWithin (L : Limits) (data : ByteArray) (reduce : Nat) (d : Decoded
 
 /-- What a successful `decode` guarantees about its own output (S3): the image area within
 `maxImageArea`; every colour, alpha and other channel taken from an array `full` of
-`width × height` planes, obtained by up-sampling `chans`, whose freshly allocated cells are within
+`width × height` planes, obtained by up-sampling `chans`, whose replication cells are within
 `maxWorkSamples` and whose output bytes are within `maxDecodedBytes`. -/
 def ImageWithin (L : Limits) (img : Image) : Prop :=
   img.width * img.height ≤ L.maxImageArea ∧
@@ -1015,13 +1059,78 @@ theorem decodeCodestream_resources {L : Limits} {data : ByteArray} {reduce : Nat
   obtain ⟨h1, h2, h3, h4⟩ := decodeCodestream_within hd
   exact ⟨h1, h2, h3, h4, decodeCodestream_comp_dims hd⟩
 
-/-- **S3 for `decode`** (Plan.md §4): the codestream stage's bounds (`CodestreamWithin`, for
+/-- Total cells of the actual codestream components across both storage branches. -/
+def publicCells (cs : Array CodestreamComponent) : Nat :=
+  (cs.toList.map fun c => c.width * c.height).sum
+
+/-- Total declared bytes of the actual components, at their individual precisions. -/
+def publicBytes (cs : Array CodestreamComponent) : Nat :=
+  (cs.toList.map fun c => c.width * c.height * bytesPerSample c.depth).sum
+
+/-- The raw plane bounds and dimensions for either storage branch of the public decoder. -/
+def PublicCodestreamWithin (L : Limits) (data : ByteArray) (r : Nat) (d : CodestreamImage) : Prop :=
+  r ≤ L.maxDecompLevels ∧ HeaderWithin L data d.header ∧
+    publicCells d.comps ≤ L.maxWorkSamples ∧ publicBytes d.comps ≤ L.maxDecodedBytes ∧
+    ∀ c ∈ d.comps, c.samples.width = c.width ∧ c.samples.height = c.height
+
+/-- The public dispatch preserves the compact resource guarantees for both representations. -/
+theorem publicCodestream_resources {L : Limits} {data : ByteArray} {r : Nat} {d : CodestreamImage}
+    (ok : decodeCodestream L data r = .ok d) : PublicCodestreamWithin L data r d := by
+  have parsed := ok
+  unfold decodeCodestream at parsed
+  simp only [bind_ok] at parsed
+  obtain ⟨_, hr, h, hp, -⟩ := parsed
+  cases hc : h.siz.components.all JPEG2000.NativeOutput.compact with
+  | true =>
+    rw [CodestreamDispatch.compact_dispatch hp hc] at ok
+    cases hn : decodeCodestreamNarrow L data r with
+    | error e => rw [hn] at ok; cases ok
+    | ok n =>
+      rw [hn] at ok
+      cases ok
+      obtain ⟨red, hdr, work, bytes, dims⟩ := decodeCodestream_resources hn
+      refine ⟨red, hdr, ?_, ?_, ?_⟩
+      · simpa [publicCells, compCells, DecodedImage.toCodestream, Function.comp_def,
+          CodestreamComponent.width, CodestreamComponent.height] using work
+      · simpa [publicBytes, compBytes, DecodedImage.toCodestream, Function.comp_def,
+          CodestreamComponent.width, CodestreamComponent.height, CodestreamComponent.depth] using bytes
+      · simp only [DecodedImage.toCodestream, Array.mem_map]
+        rintro _ ⟨c, hm, rfl⟩
+        exact dims c hm
+  | false =>
+    obtain ⟨hdr, _, ⟨ds, cs, shape⟩, work, bytes⟩ := CodestreamDispatch.native_geometry hp hc ok
+    rw [← shape] at work bytes
+    unfold JPEG2000.NativeOutput.cells at work
+    unfold JPEG2000.NativeOutput.decodedBytes at bytes
+    rw [array_foldl_sum _ (fun (x : Rect × Marker.Component) => x.1.width * x.1.height) (fun _ _ => rfl)] at work
+    rw [array_foldl_sum _ (fun (x : Rect × Marker.Component) => x.1.width * x.1.height * bytesPerSample x.2.depth.toNat)
+      (fun _ _ => rfl)] at bytes
+    refine ⟨check_ok hr, hdr ▸ parse_within hp, ?_, ?_, ?_⟩
+    · simpa [publicCells, cs, Function.comp_def, CodestreamComponent.width,
+        CodestreamComponent.height] using work
+    · simpa [publicBytes, cs, Function.comp_def, CodestreamComponent.width,
+        CodestreamComponent.height, CodestreamComponent.depth] using bytes
+    · rw [cs]
+      simp only [Array.mem_map]
+      rintro _ ⟨c, _, rfl⟩
+      have valid := c.valid
+      cases hs : c.storage with
+      | narrow p =>
+        simp only [hs, JPEG2000.NativeOutput.Storage.matches, Bool.and_eq_true, beq_iff_eq] at valid
+        simpa [CodestreamComponent.samples, hs, Color.SamplePlane.width, Color.SamplePlane.height,
+          CodestreamComponent.width, CodestreamComponent.height] using valid.1
+      | wide p =>
+        simp only [hs, JPEG2000.NativeOutput.Storage.matches, Bool.and_eq_true, beq_iff_eq] at valid
+        simpa [CodestreamComponent.samples, hs, Color.SamplePlane.width, Color.SamplePlane.height,
+          CodestreamComponent.width, CodestreamComponent.height] using valid.1.1.1
+
+/-- **S3 for `decode`** (Plan.md §4): the codestream stage's bounds (`PublicCodestreamWithin`, for
 the raw component planes kept in `img.decoded`) and the image's own (`ImageWithin`). -/
 theorem decode_resources {L : Limits} {data : ByteArray} {opts : DecodeOptions} {img : Image}
     (hd : decode L data opts = .ok img) :
-    CodestreamWithin L data opts.reduce img.decoded ∧ ImageWithin L img := by
+    PublicCodestreamWithin L data opts.reduce img.decoded ∧ ImageWithin L img := by
   obtain ⟨h1, h2, h3⟩ := decode_within hd
-  exact ⟨decodeCodestream_resources h1, h2, h3⟩
+  exact ⟨publicCodestream_resources h1, h2, h3⟩
 
 /-- **S3, the headline numbers**: a decoded image has area at most `maxImageArea`, came from an
 input of at most `maxInputBytes`, and its raw component planes hold at most `maxWorkSamples`
@@ -1029,8 +1138,8 @@ cells and `maxDecodedBytes` output bytes. -/
 theorem decode_size {L : Limits} {data : ByteArray} {opts : DecodeOptions} {img : Image}
     (hd : decode L data opts = .ok img) :
     data.size ≤ L.maxInputBytes ∧ img.width * img.height ≤ L.maxImageArea ∧
-      compCells img.decoded.comps ≤ L.maxWorkSamples ∧
-      compBytes img.decoded.comps ≤ L.maxDecodedBytes := by
+      publicCells img.decoded.comps ≤ L.maxWorkSamples ∧
+      publicBytes img.decoded.comps ≤ L.maxDecodedBytes := by
   obtain ⟨⟨-, ⟨hin, -⟩, hc, hb, -⟩, ha, -⟩ := decode_resources hd
   exact ⟨hin, ha, hc, hb⟩
 end JPEG2000.Spec.Resources

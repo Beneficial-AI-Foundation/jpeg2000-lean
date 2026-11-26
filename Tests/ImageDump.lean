@@ -12,7 +12,7 @@ T.800 Annex B (component geometry), Annex I (JP2 colour handling, via `JPEG2000.
 as `opj_decompress -r`) and writes
 
 * `<outprefix>_raw_<k>.pgx` — codestream component `k` on its own grid, as
-  the compact `decodeCodestreamNarrow` produced it (before palette, colour conversion, up-sampling);
+  `decodeCodestream` produced it (before palette, colour conversion, up-sampling);
 * `<outprefix>_img_<k>.pgx` — output channel `k` of the `Image` at the image size: the colour
   channels in colour order, then the opacity channel, then the other channels.
 
@@ -25,9 +25,9 @@ raw <k> <w> <h> <depth> <signed> <reversible>
 img <k> <colour|alpha|other> <w> <h> <depth> <signed>
 ```
 
-If `decode` fails but `decodeCodestreamNarrow` succeeds, the raw planes are still written and the
+If `decode` fails but `decodeCodestream` succeeds, the raw planes are still written and the
 line `error image <message>` is printed (exit 0); if the codestream itself fails,
-`error decode <message>` and exit 1. PGX files are big-endian (`PG ML ±d w h`), 1, 2 or 4
+`error decode <message>` and exit 1. PGX files are big-endian (`PG ML ±d w h`), 1, 2, 4 or 8
 bytes per sample, as OpenJPEG writes them.
 -/
 
@@ -36,24 +36,27 @@ namespace JPEG2000.Tests.ImageDump
 open JPEG2000 JPEG2000.Bytes
 
 /-- PGX bytes of a `w × h` plane with the given depth and sign (two's complement storage). -/
-def pgx (w h depth : Nat) (signed : Bool) (p : Plane) : ByteArray := Id.run do
-  let bps := if depth ≤ 8 then 1 else if depth ≤ 16 then 2 else 4
+def pgx (w h depth : Nat) (signed : Bool) (p : Color.SamplePlane) : ByteArray := Id.run do
+  let bps := if depth ≤ 8 then 1 else if depth ≤ 16 then 2 else if depth ≤ 32 then 4 else 8
   let hdr := s!"PG ML {if signed then "-" else "+"}{depth} {w} {h}\n"
   let mut out := ByteArray.emptyWithCapacity (hdr.utf8ByteSize + w * h * bps)
   out := out.append hdr.toUTF8
   for i in [0:w * h] do
-    let v : UInt32 := ((p.get? i).getD 0).toUInt32
-    if bps == 4 then out := out.push (v >>> 24).toUInt8 |>.push (v >>> 16).toUInt8
+    let v := ((p.get? i).getD 0).toInt64.toUInt64
+    if bps == 8 then
+      out := out.push (v >>> 56).toUInt8 |>.push (v >>> 48).toUInt8
+      out := out.push (v >>> 40).toUInt8 |>.push (v >>> 32).toUInt8
+    if bps ≥ 4 then out := out.push (v >>> 24).toUInt8 |>.push (v >>> 16).toUInt8
     if bps ≥ 2 then out := out.push (v >>> 8).toUInt8
     out := out.push v.toUInt8
   return out
 
 /-- Writes the raw codestream components; returns the description lines. -/
-def dumpRaw (d : DecodedImage) (pre : String) : IO (Array String) := do
+def dumpRaw (d : CodestreamImage) (pre : String) : IO (Array String) := do
   let mut lines := #[]
   for k in [0:d.comps.size] do
     let c := d.comps[k]!
-    IO.FS.writeBinFile s!"{pre}_raw_{k}.pgx" (pgx c.width c.height c.depth c.signed c.plane)
+    IO.FS.writeBinFile s!"{pre}_raw_{k}.pgx" (pgx c.width c.height c.depth c.signed c.samples)
     let rev := JPEG2000.Tests.Decode.reversibleComp d.header k
     lines := lines.push s!"raw {k} {c.width} {c.height} {c.depth} {c.signed} {rev}"
   return lines
@@ -95,7 +98,7 @@ def run (path pre : String) (r : Nat) : IO UInt32 := do
     for l in ← dumpImage img pre do IO.println l
     return 0
   | .error e =>
-    match JPEG2000.decodeCodestreamNarrow Limits.default data r with
+    match JPEG2000.decodeCodestream Limits.default data r with
     | .ok d =>
       for l in ← dumpRaw d pre do IO.println l
       IO.println s!"error image {e}"
