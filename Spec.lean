@@ -60,6 +60,11 @@ import Spec.RoundTrip.PrecinctIndex
 import Spec.RoundTrip.PacketBlocks
 import Spec.RoundTrip.InitAdmission
 import Spec.RoundTrip.TileDecode
+import Spec.RoundTrip.CodewordBudget
+import Spec.RoundTrip.ImageBudget
+import Spec.RoundTrip.Link
+import Spec.RoundTrip.BlockReconstruction
+import Spec.RoundTrip.DisplayReconstruction
 import Spec.RoundTrip
 import Spec.Resources
 import Spec.Resources.BlockPasses

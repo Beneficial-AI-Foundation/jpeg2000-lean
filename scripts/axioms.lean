@@ -1268,3 +1268,32 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.RoundTrip.tagTree_create_of_le
 #print axioms JPEG2000.Spec.RoundTrip.initPrecincts_of_encCounts
 #print axioms JPEG2000.Spec.RoundTrip.initPrecincts_of_headerFits
+
+-- Phase 7, task 7.3f5e1: CodewordBudget
+#print axioms JPEG2000.Spec.RoundTrip.included_size_le_packet
+#print axioms JPEG2000.Spec.RoundTrip.ReversibleTilePackets.packet_size_le_tile
+#print axioms JPEG2000.Spec.RoundTrip.PacketBlockCall.planes_le_37
+#print axioms JPEG2000.Spec.RoundTrip.encodeDetailed_packetBlockOK
+
+-- Phase 7, task 7.3f5e2: ImageBudget
+#print axioms JPEG2000.Spec.RoundTrip.imageArea_of_check
+#print axioms JPEG2000.Spec.RoundTrip.imageCodeBlocks_eq_encCounts
+#print axioms JPEG2000.Spec.RoundTrip.precincts_le_default_of_check
+#print axioms JPEG2000.Spec.RoundTrip.headerFits_default_iff
+#print axioms JPEG2000.Spec.RoundTrip.ImageBudget.headerFits
+#print axioms JPEG2000.Spec.RoundTrip.ImageBudget.packetPasses
+#print axioms JPEG2000.Spec.RoundTrip.imageBudget_iff
+
+-- Phase 7, task 7.3f5e3: Link
+#print axioms JPEG2000.Spec.RoundTrip.reversible_tile_roundtrip
+
+-- Phase 7, task 7.3d2: DisplayReconstruction
+#print axioms JPEG2000.Spec.RoundTrip.check_component_samples
+#print axioms JPEG2000.Spec.RoundTrip.reversibleRows_size
+#print axioms JPEG2000.Spec.RoundTrip.mctSpec_reversibleRows
+#print axioms JPEG2000.Spec.RoundTrip.dcSpec_shifted
+#print axioms JPEG2000.Spec.RoundTrip.display_reconstruction
+
+-- Phase 7, task 7.3d1: BlockReconstruction
+#print axioms JPEG2000.Spec.RoundTrip.DecodedEncoderBands.reconstructBlock
+#print axioms JPEG2000.Spec.RoundTrip.DecodedEncoderTile.reconstructBlock
