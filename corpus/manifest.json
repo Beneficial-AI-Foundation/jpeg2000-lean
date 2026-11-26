@@ -4341,8 +4341,13 @@
     "levels": 0,
     "wavelet": "5-3 reversible"
    },
-   "known_deviations": {
-    "codestream": "OpenJPEG 2.5.3 (Debian's opj_decompress) aborts with 'munmap_chunk(): invalid pointer' on this stream: tile 0 has two extra zero-length tile-parts (Psot 14, TPsot 1 and 2, TNsot 0). With those two tile-parts removed OpenJPEG decodes it, bit-identical to our decode of the unmodified stream (every sample 0). We accept the empty tile-parts; OpenJPEG's failure is the reference's, not a decoder disagreement."
+   "recorded_plane": {
+    "width": 128,
+    "height": 64,
+    "depth": 8,
+    "signed": false,
+    "constant": 0,
+    "source": "Recorded OpenJPEG 2.5.3 decode with the two empty tile-parts omitted. Compare the original identified by this entry's sha256 to this single plane."
    }
   },
   {
@@ -5677,6 +5682,9 @@
     "pdf-jpx"
    ],
    "source_pdf": "pdf-sources/pdfbox/JPXTestCMYK.pdf",
+   "jp2_boxes": {
+    "colr": "enumerated:12"
+   },
    "object": [
     12,
     0
