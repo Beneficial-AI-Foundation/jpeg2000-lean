@@ -1483,3 +1483,7 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.WideHeaderBounds.ComponentBounds.block_planes
 #print axioms JPEG2000.Spec.WideHeaderBounds.parsed_component
 #print axioms JPEG2000.Spec.WideHeaderBounds.absent_component
+
+#print axioms JPEG2000.CodestreamComponent.samples_get?
+#print axioms JPEG2000.Spec.Resources.public_limitExceeded_of_output
+#print axioms JPEG2000.Spec.Resources.publicCodestream_resources

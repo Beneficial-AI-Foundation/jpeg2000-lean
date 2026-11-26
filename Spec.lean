@@ -77,6 +77,7 @@ import Spec.RoundTrip.EncoderDomain
 import Spec.RoundTrip.SingleTile
 import Spec.RoundTrip.ReconstructedTile
 import Spec.RoundTrip.Spec
+import Spec.RoundTrip.Native
 import Spec.RoundTrip
 import Spec.Resources
 import Spec.NativeResources

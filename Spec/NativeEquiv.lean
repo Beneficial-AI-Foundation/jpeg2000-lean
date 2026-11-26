@@ -1,12 +1,12 @@
 import Spec.NativeSample
-import Spec.WideAssembly
+import Spec.Tier2Equiv.Header
 
 /-!
 # Public codestream sample relation
 
 Plan.md §4 C9 and C10. Component metadata, raster length and all observable integer
 samples are compared on the native output type. The selected tile transform sets the
-sample's reversible flag and its irreversible precision.
+sample's reversible flag and its irreversible precision (T.800 Annexes F and G).
 -/
 
 namespace JPEG2000.Spec.NativeEquiv
@@ -40,10 +40,10 @@ structure ImageRel (reduce : Nat) (d : CodestreamImage) (s : SpecImage) : Prop w
   component : ∀ i (hi : i < d.comps.size) (hs : i < s.comps.size),
     ComponentRel s.header.siz i d.comps[i] s.comps[i]
 
-/-- Public C9 proposition for a particular input and limits. Both decoders must return
-the same error or images related at every component and sample. -/
+/-- Public C9 proposition for a particular input and limits. A successful decode on either side requires a
+successful decode on the other. Rejected inputs may have different diagnostic details (Annex B). -/
 def Agrees (L : Limits) (data : ByteArray) (reduce : Nat) : Prop :=
-  WideAssembly.ResultRel (ImageRel reduce) (decodeCodestream L data reduce)
+  Tier2Equiv.Res (ImageRel reduce) (decodeCodestream L data reduce)
     (Spec.Decode.decode L data reduce)
 
 end JPEG2000.Spec.NativeEquiv

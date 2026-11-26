@@ -5,7 +5,8 @@ import Spec.RoundTrip.Spec
 # Reading the lossless round trip through the public codestream accessor
 
 Plan.md §4 C9/C10. The encoder image is reconstructed by reading each native sample
-in raster order. Any missing sample propagates through the optional result.
+in raster order after the inverse transforms and DC level shift (T.800 Annexes F and G).
+Any missing sample propagates through the optional result.
 -/
 
 namespace JPEG2000.Spec.RoundTrip
@@ -100,7 +101,7 @@ theorem native_roundtrip_of_c9 {L : Limits} {p : Params} {img : Encode.Image} {e
   unfold NativeEquiv.Agrees at agreement
   rw [hs] at agreement
   cases hd : decodeCodestream L e.codestream 0 with
-  | error err => simp [hd, WideAssembly.ResultRel] at agreement
+  | error err => simp [hd, Tier2Equiv.Res] at agreement
   | ok d =>
     rw [hd] at agreement
     exact ⟨d, rfl, (encoderImageOfNative_eq agreement reversible).trans (congrArg some image)⟩
