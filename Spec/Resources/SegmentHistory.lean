@@ -998,4 +998,155 @@ theorem tile_translation_work {L : Limits} {h : Header} {data : ByteArray} {tp :
   intro sn _
   simpa using sum_cap (List.range sn.2) _ (rangeLimit L) (fun k _ => (each (sn.1+k)).2)
 
+private def overSpans (spans : Array (Array (Nat × Nat))) (f : Nat → Nat) :=
+  (spans.toList.map fun row => (row.toList.map fun sn =>
+    ((List.range sn.2).map fun k => f (sn.1+k)).sum).sum).sum
+
+private theorem overSpans_le (spans : Array (Array (Nat × Nat))) (f : Nat → Nat)
+    (cap : Nat) (bound : ∀ j, f j ≤ cap) : overSpans spans f ≤ spanCount spans * cap := by
+  unfold overSpans spanCount
+  rw [← sum_mul]
+  apply sum_mono
+  intro row _
+  rw [← sum_mul]
+  apply sum_mono
+  intro sn _
+  simpa using sum_cap (List.range sn.2) _ cap (fun k _ => bound (sn.1+k))
+
+private def precinctSlots (st : PrecState) :=
+  3 + 2*st.bands.size + 2*(st.bands.toList.map (fun b => b.blocks.size)).sum + 2*retained st.bands
+
+/-- Logical slots and visits of the post-packet maps. Rows and resolutions
+allocate arrays and each emitted precinct also materialises a range index.
+Segment and input-range visits occur even with an empty part table. A probe
+can construct both an intersection and its coalesced replacement descriptor. -/
+def translationCharge (s : LoopState) (parts : Parts) (spans : Array (Array (Nat × Nat))) :=
+  1 + 2*spans.size + 3*(spans.toList.map Array.size).sum +
+    overSpans spans (fun j => precinctSlots (s.precs.getD j default)) + 3*tileProbes s parts spans
+
+/-- Uniform post-packet traversal and allocation allowance at the parsed dimensions. -/
+def translationBudget (L : Limits) :=
+  1 + 2*L.maxComponents + 3*(L.maxComponents*(L.maxDecompLevels+1)) +
+    L.maxPrecincts*(3+2*3+2*(3*L.maxCodeBlocks)+2*segmentLimit L) +
+    3*(L.maxPrecincts*rangeLimit L)
+
+/-- Translation at the successful iterator before the packed-stream length
+check can discard the entire constructed store. -/
+theorem iteration_translation {L : Limits} {h : Header} {data : ByteArray} {tp : TileParams}
+    {g c precs base spans buf parts} {hs : Option HeaderStream} {pb s}
+    (parsed : Header.parse L data = .ok h) (member : tp ∈ h.tiles)
+    (layout : Layout.ofHeader h tp.index = .ok (g,c))
+    (quota : L.check JPEG2000.Tier2.Packet.loc .packets (iterationWork g c.progression c.poc) = .ok ())
+    (init : initPrecincts L g = .ok (precs,base,spans)) (input : tileData data tp.tile = .ok (buf,parts))
+    (run : forPackets g c.progression c.poc (packetStep L c base (hs.map (·.bytes)).isNone pb)
+      (firstState precs buf hs) = .ok s) :
+    translationCharge s parts spans ≤ translationBudget L := by
+  obtain ⟨valid,records,packets⟩ := completed_iteration parsed layout quota init run
+  have total : tileRecords s ≤ segmentLimit L := Nat.le_trans records (Nat.mul_le_mul_right _ packets)
+  have count := HeaderWork.initPrecincts_storage init
+  have np := Nat.le_trans (Nat.le_of_eq (init_span_count init)) count.1
+  have dims := HeaderWork.layout_budget parsed layout
+  have nc := Nat.le_trans (Nat.le_of_eq count.2.2.1) dims.1
+  have nr := sum_cap spans.toList Array.size (L.maxDecompLevels+1) (by
+    intro row mem
+    obtain ⟨i,hi,eq⟩ := Array.mem_iff_getElem.mp (Array.mem_toList_iff.mp mem)
+    subst row
+    exact Nat.le_trans (Nat.le_of_eq ((GeometryInit.init_index_rows init).2 i _ (Array.getElem?_eq_getElem hi)))
+      (dims.2 ⟨i, count.2.2.1 ▸ hi⟩))
+  have rows := Nat.le_trans nr (Nat.mul_le_mul_right _ (by simpa only [Array.length_toList] using nc))
+  have partLen := ((HeaderWork.tileData_copy_charge data tp.tile).2.2 buf parts input).2
+  have partCap := Nat.le_trans (Nat.le_of_eq partLen) (HeaderWork.parse_tile_storage parsed tp member).1
+  have probes (j : Nat) : precinctProbes parts (s.precs.getD j default) ≤ rangeLimit L :=
+    Nat.le_trans (precinct_probes parts _) (Nat.mul_le_mul (Nat.le_trans (state_records s j) total) partCap)
+  have probeSum := Nat.le_trans (overSpans_le spans _ _ probes) (Nat.mul_le_mul_right _ np)
+  change tileProbes s parts spans ≤ L.maxPrecincts*rangeLimit L at probeSum
+  have slots (j : Nat) : precinctSlots (s.precs.getD j default) ≤
+      3+2*3+2*(3*L.maxCodeBlocks)+2*segmentLimit L := by
+    have hr := Nat.le_trans (state_records s j) total
+    have shape : PacketLocalWork.valid L (s.precs.getD j default) := by
+      rw [Array.getD_eq_getD_getElem?]
+      cases he : s.precs[j]? with
+      | none => exact ⟨by decide,by intro b hb; change b ∈ (#[] : Array BandState) at hb; simp at hb⟩
+      | some st => exact valid _ (Array.mem_of_getElem? he)
+    let st := s.precs.getD j default
+    have nb := shape.1
+    have hb := sum_cap st.bands.toList (fun b => b.blocks.size) L.maxCodeBlocks
+      (fun b h => (shape.2 b (Array.mem_toList_iff.mp h)).1)
+    have blocks := Nat.le_trans hb (Nat.mul_le_mul_right _ (by simpa only [Array.length_toList] using nb))
+    unfold precinctSlots
+    dsimp only [st] at blocks
+    omega
+  have slotSum := Nat.le_trans (overSpans_le spans _ _ slots) (Nat.mul_le_mul_right _ np)
+  unfold translationCharge translationBudget
+  omega
+
+private def outSlots (p : PrecinctOut) :=
+  1 + (p.bands.toList.map fun b => 1 + (b.blocks.toList.map fun cb =>
+    1 + segmentSlots cb.segments).sum).sum
+
+/-- Actual retained component, resolution, precinct, band, block, segment
+and translated range descriptors of the raw result before exhaustion checks. -/
+def storeSlots (out : TileCodeBlocks) :=
+  1 + (out.comps.toList.map fun row => 1 + (row.toList.map fun ps =>
+    1 + (ps.toList.map outSlots).sum).sum).sum
+
+private theorem sumPlus {α : Type} (xs : List α) (f g : α → Nat) :
+    (xs.map (fun a => f a + g a)).sum = (xs.map f).sum + (xs.map g).sum := by
+  induction xs with
+  | nil => simp
+  | cons x xs ih => simp only [List.map_cons,List.sum_cons,ih]; omega
+
+private theorem outSlots_le (s : PrecState) (ps : Parts) (k : Nat) :
+    outSlots (s.out ps k) ≤ precinctSlots s + precinctProbes ps s := by
+  have cb (b : CodeBlock) : segmentSlots (outputBlock ps b).segments ≤
+      segmentSlots b.segments + (translateBlock ps b).2 := by
+    change (b.segments.map _).size + rangeCount (outputBlock ps b) ≤
+      b.segments.size + rangeCount b + (translateBlock ps b).2
+    rw [Array.size_map,translated_block]
+    have := block_ranges ps b
+    dsimp only
+    omega
+  have bs (b : BandState) :
+      (b.blocks.toList.map (fun x => 1+segmentSlots (outputBlock ps x).segments)).sum ≤
+        b.blocks.size + (b.blocks.toList.map (fun x => segmentSlots x.segments)).sum +
+          (b.blocks.toList.map (fun x => (translateBlock ps x).2)).sum := by
+    have le := sum_mono b.blocks.toList _ _ (fun x _ => Nat.add_le_add_left (cb x) 1)
+    simpa only [sumPlus,List.map_const',List.sum_replicate_nat,Array.length_toList,Nat.mul_one,
+      Nat.add_assoc] using le
+  change 1 + ((s.bands.map _).toList.map _).sum ≤ _
+  simp only [Array.toList_map,List.map_map,Function.comp_def]
+  change 1 + (s.bands.toList.map fun b => 1 +
+    (b.blocks.toList.map (fun x => 1+segmentSlots (outputBlock ps x).segments)).sum).sum ≤ _
+  have le := sum_mono s.bands.toList _ _ (fun b _ => Nat.add_le_add_left (bs b) 1)
+  simp only [sumPlus,List.map_const',List.sum_replicate_nat,Array.length_toList,Nat.mul_one] at le
+  change _ ≤ 3 + 2*s.bands.size + 2*(s.bands.toList.map (fun b => b.blocks.size)).sum +
+    2*(s.bands.toList.map (fun b => (b.blocks.toList.map (fun x => segmentSlots x.segments)).sum)).sum +
+    (s.bands.toList.map (fun b => (b.blocks.toList.map fun x => (translateBlock ps x).2).sum)).sum
+  simp only [sumPlus,List.map_const',List.sum_replicate_nat,Array.length_toList,Nat.mul_one]
+  omega
+
+/-- All allocated output descriptors have a bound even if the public
+packed-stream wrapper immediately rejects this raw result. -/
+theorem raw_store_slots {L : Limits} {h : Header} {data : ByteArray} {tp : TileParams}
+    {hs : Option HeaderStream} {pb : Nat} {out : TileCodeBlocks}
+    (parsed : Header.parse L data = .ok h) (mem : tp ∈ h.tiles)
+    (raw : decodeTilePacketsWith L h data tp (hs.map (·.bytes)) pb = .ok out) :
+    storeSlots out ≤ translationBudget L := by
+  unfold decodeTilePacketsWith at raw
+  obtain ⟨⟨g,c⟩,layout,raw⟩ := Tier2Equiv.bind_ok raw
+  obtain ⟨_,quota,raw⟩ := Tier2Equiv.bind_ok raw
+  obtain ⟨⟨ps,base,spans⟩,init,raw⟩ := Tier2Equiv.bind_ok raw
+  obtain ⟨⟨buf,parts⟩,input,raw⟩ := Tier2Equiv.bind_ok raw
+  obtain ⟨s,run,raw⟩ := Tier2Equiv.bind_ok raw
+  cases raw
+  apply Nat.le_trans _ (iteration_translation (hs := hs) parsed mem layout quota init input run)
+  simp only [storeSlots,Array.toList_map,List.map_map,Function.comp_def,Array.toList_range]
+  have le := sum_mono spans.toList _ _ (fun row _ => Nat.add_le_add_left
+    (sum_mono row.toList _ _ (fun sn _ => Nat.add_le_add_left (sum_mono (List.range sn.2) _ _
+      (fun k _ => outSlots_le (s.precs.getD (sn.1+k) default) parts k)) 1)) 1)
+  simp only [sumPlus,List.map_const',List.sum_replicate_nat,Array.length_toList,Nat.mul_one] at le
+  unfold translationCharge overSpans tileProbes
+  simp only [sumPlus,List.map_const',List.sum_replicate_nat,Array.length_toList,Nat.mul_one]
+  omega
+
 end JPEG2000.Spec.Resources.SegmentHistory

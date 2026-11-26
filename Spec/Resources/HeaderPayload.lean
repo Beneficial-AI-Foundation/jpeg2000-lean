@@ -1727,6 +1727,25 @@ private theorem parts_sum (h : Header) : (h.tiles.toList.map (fun t => t.tile.pa
   | nil => simp
   | cons x xs ih => intro a; simp only [List.map_cons,List.sum_cons,List.foldl_cons,← ih,Nat.add_assoc]
 
+/-- Row and rank slots retained by the actual public PPM preflight. An empty
+PPM directory retains an empty rank table even when the header has tiles. -/
+theorem rank_storage {L : Limits} {h : Header} {d : ByteArray} {idx : Array (Array Nat)}
+    (hp : Header.parse L d = .ok h)
+    (ok : (if h.ppm.segments.isEmpty then pure #[] else ppmChunkIndex L h) = .ok idx) :
+    idx.size ≤ L.maxTiles ∧ (idx.map Array.size).toList.sum ≤ L.maxTileParts := by
+  split at ok
+  · cases ok
+    simp
+  unfold ppmChunkIndex at ok
+  obtain ⟨_,quota,ok⟩ := bind_ok ok
+  split at ok <;> try contradiction
+  cases ok
+  have outer := congrArg Array.size (rank_table h)
+  have inner := parts_sum h
+  rw [rank_table]
+  refine ⟨Nat.le_trans (by simpa only [Array.size_map] using Nat.le_of_eq outer) (parsed_tiles hp),?_⟩
+  exact Nat.le_trans (Nat.le_of_eq (by simpa using inner)) (check_limit quota)
+
 private def rankWrites (xs : List ((Nat × Nat × Nat) × Nat)) (a : Array (Array Nat)) :
     Array (Array Nat) × Nat :=
   match xs with

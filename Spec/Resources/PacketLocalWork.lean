@@ -1709,6 +1709,54 @@ def CompletedStore (L : Limits) (tp : TileParams) (out : TileCodeBlocks) : Prop 
     out.comps = spans.map (fun si => si.map fun (start,n) =>
       (Array.range n).map fun k => (s.precs.getD (start+k) default).out parts k)
 
+/-- Logical segment/range count of the whole updated tile at any completed
+body prefix, together with the contribution table still live during that
+prefix. The next piece skip or the cumulative pass check can still fail. -/
+theorem partial_body_store {L : Limits} {s : LoopState} {j st}
+    (shape : StatesValid L s) (records : tileRecords s ≤ s.seq*recordGrowth L)
+    (seq : s.seq < L.maxPackets) (get : s.precs[j]? = some st)
+    {layer : Nat} {nonEmpty : Bool} {br pre cs bits}
+    (header : (if nonEmpty then headerBands L layer st br else pure (st,#[],br)) = .ok (pre,cs,bits))
+    {xs : List Contribution} (sub : xs <+: cs.toList) {body : Reader} {z}
+    (read : forIn xs (pre.bands,body) Tier2Equiv.bodyBody = .ok z) :
+    weight cs ≤ 3*(L.maxCodeBlocks*(1+L.maxPassesPerCodeBlock)) ∧
+    tileRecords {s with precs := s.precs.setIfInBounds j {pre with bands := z.1}} ≤
+      L.maxPackets*recordGrowth L := by
+  obtain ⟨bands,geom⟩ := shape _ (Array.mem_of_getElem? get)
+  have blockCap := Nat.mul_le_mul_right (L.maxCodeBlocks*(1+L.maxPassesPerCodeBlock)) bands
+  have h := packet_prefix_storage geom header sub body read
+  have step : retained z.1 ≤ retained st.bands + recordGrowth L :=
+    Nat.le_trans h (Nat.add_le_add_left (Nat.mul_le_mul_left 2 blockCap) _)
+  have stored := slots_set (fun p => retained p.bands) get (new := {pre with bands := z.1}) step
+  have next := Nat.mul_le_mul_right (recordGrowth L) (Nat.succ_le_of_lt seq)
+  rw [Nat.succ_mul] at next
+  refine ⟨?_,Nat.le_trans stored (Nat.le_trans (Nat.add_le_add_right records _) next)⟩
+  cases nonEmpty
+  · cases header; exact Nat.zero_le _
+  · exact Nat.le_trans (headers_post geom header).2 blockCap
+
+/-- The final iterator state before range translation, including a tile whose
+packed-header consumption check subsequently fails. -/
+theorem completed_iteration {L : Limits} {h : Header} {data : ByteArray} {t g c ps base spans}
+    {hs : Option HeaderStream} {pb : Nat} {buf : ByteArray} {s : LoopState}
+    (parsed : Header.parse L data = .ok h) (layout : Layout.ofHeader h t = .ok (g,c))
+    (quota : L.check JPEG2000.Tier2.Packet.loc .packets (iterationWork g c.progression c.poc) = .ok ())
+    (init : initPrecincts L g = .ok (ps,base,spans))
+    (run : forPackets g c.progression c.poc (packetStep L c base (hs.map (·.bytes)).isNone pb)
+      (firstState ps buf hs) = .ok s) :
+    StatesValid L s ∧ tileRecords s ≤ s.seq * recordGrowth L ∧ s.seq ≤ L.maxPackets := by
+  have wf := Tier2Equiv.ofHeader_wf (Equiv.parse_dxdy parsed) layout
+  rw [forPackets_schedule g wf] at run
+  have initial : tileRecords (firstState ps buf hs) ≤ (firstState ps buf hs).seq * recordGrowth L := by
+    rw [initial_records init]; exact Nat.zero_le _
+  obtain ⟨records,count⟩ := prefix_records L _ _ _ _ _ _ (initial_valid parsed layout init) initial run
+  have charged := visits_tests_le_charge (schedule g [] (volumes g c.progression c.poc))
+  rw [schedule_charge g wf] at charged
+  have allowed := (Limits.check_eq_ok_iff ..).1 quota
+  change iterationWork g c.progression c.poc ≤ L.maxPackets at allowed
+  change s.seq ≤ 0+(schedule g [] (volumes g c.progression c.poc)).length at count
+  exact ⟨prefix_valid L _ _ _ _ _ _ (initial_valid parsed layout init) run, records, by omega⟩
+
 private theorem raw_completed {L : Limits} {h : Header} {data : ByteArray} {tp : TileParams}
     {hs : Option HeaderStream} {pb : Nat} {out : TileCodeBlocks}
     (parsed : Header.parse L data = .ok h)
@@ -1721,20 +1769,9 @@ private theorem raw_completed {L : Limits} {h : Header} {data : ByteArray} {tp :
   obtain ⟨⟨buf,parts⟩,input,tail⟩ := Tier2Equiv.bind_ok tail
   obtain ⟨s,run,ret⟩ := Tier2Equiv.bind_ok tail
   cases ret
-  have wf := Tier2Equiv.ofHeader_wf (Equiv.parse_dxdy parsed) layout
-  change forPackets g c.progression c.poc (packetStep L c base (hs.map (·.bytes)).isNone pb)
-    (firstState ps buf hs) = .ok s at run
-  rw [forPackets_schedule g wf] at run
-  have initial : tileRecords (firstState ps buf hs) ≤ (firstState ps buf hs).seq * recordGrowth L := by
-    rw [initial_records init]; exact Nat.zero_le _
-  obtain ⟨records,count⟩ := prefix_records L _ _ _ _ _ _ (initial_valid parsed layout init) initial run
-  have charged := visits_tests_le_charge (schedule g [] (volumes g c.progression c.poc))
-  rw [schedule_charge g wf] at charged
-  have allowed := (Limits.check_eq_ok_iff ..).1 quota
-  change iterationWork g c.progression c.poc ≤ L.maxPackets at allowed
-  change s.seq ≤ 0+(schedule g [] (volumes g c.progression c.poc)).length at count
+  obtain ⟨_,records,count⟩ := completed_iteration parsed layout quota init (hs := hs) run
   exact ⟨s,parts,spans,((HeaderWork.tileData_copy_charge data tp.tile).2.2 buf parts input).2,
-    rfl,by omega,records,rfl⟩
+    rfl,count,records,rfl⟩
 
 /-- A successful tile at the public header-stream callback exposes the actual
 pre-translation states, a packet-count limit and the retained history bound. -/

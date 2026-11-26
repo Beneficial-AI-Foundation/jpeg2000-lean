@@ -254,7 +254,9 @@ def afterRun {log α β : Type} (x : Measured log α) (k : α → Except Error �
 private theorem before_erase {log α β : Type} (x : Except Error α) (k : α → Measured log β) :
     (before x k).2 = x >>= fun a => (k a).2 := by cases x <;> rfl
 
-private def outputTile (tp : TileParams) (same : Bool) (buf : ByteArray) (parts : List (Nat × Nat × Nat))
+/-- Materialize the raw packet result from the iterator state and original part table,
+before validating exhaustion of a separate packed-header stream. -/
+def outputTile (tp : TileParams) (same : Bool) (buf : ByteArray) (parts : List (Nat × Nat × Nat))
     (spans : Array (Array (Nat × Nat))) (s : LoopState) : TileCodeBlocks :=
   let comps := spans.map fun si => si.map fun (start, n) =>
     (Array.range n).map fun k => (s.precs.getD (start + k) default).out parts k
