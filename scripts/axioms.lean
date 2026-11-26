@@ -1885,6 +1885,10 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.Resources.DiagnosticBox.public_admission_excess
 #print axioms JPEG2000.Spec.Resources.DiagnosticBox.public_raw
 #print axioms JPEG2000.Spec.Resources.DiagnosticBox.signature_replacement
+#print axioms JPEG2000.Spec.Resources.DiagnosticPointers.sort_events
+#print axioms JPEG2000.Spec.Resources.DiagnosticPointers.main_ranges
+#print axioms JPEG2000.Spec.Resources.DiagnosticPointers.public_cost
+#print axioms JPEG2000.Spec.Resources.DiagnosticPointers.public_refusal
 #print axioms JPEG2000.Spec.Resources.DiagnosticPacketRanges.parsed_ranges
 #print axioms JPEG2000.Spec.Resources.DiagnosticPacket.public_callback
 #print axioms JPEG2000.Spec.Resources.DiagnosticPacket.admission_free

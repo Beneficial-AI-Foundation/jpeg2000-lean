@@ -131,6 +131,7 @@ import Spec.Resources.DiagnosticCost
 import Spec.Resources.DiagnosticBox
 import Spec.Resources.DiagnosticMarkerOrigin
 import Spec.Resources.DiagnosticMarker
+import Spec.Resources.DiagnosticPointers
 import Spec.Resources.DiagnosticPacketRanges
 import Spec.Resources.DiagnosticPacket
 import Spec.Resources.GeometryInit

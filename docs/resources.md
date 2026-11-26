@@ -489,6 +489,15 @@ an earlier colour-box diagnostic before the main-header parser encounters its
 first error. The combined bound charges both events and gives the exact error
 returned by the native and display decoders.
 
+`DiagnosticPointers.public_cost` counts pointer payload reads and diagnostic
+construction once main-header geometry and coding checks admit the input.
+For an input of length `N` and tile-part limit `T`, the pointer pass produces
+at most `2*(T+1) + 2 + N*(2*T+8)` diagnostic events. Their scalar fields fit
+`max (2^32) (max N (2*T+1))`. This covers a four-byte packed-header length
+split across physical PPM segments and a cumulative TLM count that exceeds the
+limit after both individual segments pass. Both public decoders preserve the
+resulting error and its absolute marker offset.
+
 `DiagnosticPacket.decode_work` adds the Tier-2 diagnostic charge to native work.
 For a prefix with `V` visited tiles and `A` attempted packets, the diagnostic
 charge is bounded by `(1 + 2*V + 2*A) * eventBudget (tileCap L data.size)`.
@@ -497,7 +506,7 @@ optional SOP read before returning its result. A packed-header length mismatch
 can follow a successful packet iteration and translation of its byte ranges.
 Both public decoders propagate the refusing tile's error and stop visiting tiles.
 
-The whole-path diagnostic bound still needs pointer and tile-part headers, coding
+The whole-path diagnostic bound still needs tile-part headers, coding
 merges and geometry checks, native reconstruction and image stages. The final S3
 statement must combine those costs with the native, mapping and display bounds and
 identify the limit errors returned when a checked budget is exceeded.
