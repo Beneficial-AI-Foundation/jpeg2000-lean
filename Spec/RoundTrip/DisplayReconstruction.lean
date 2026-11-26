@@ -6,7 +6,9 @@ import Spec.Decode
 
 The full-resolution inverse DWT supplies row-major integer values in spec cell planes.
 The encoder's component check supplies the shape and sample range needed to undo the
-optional RCT and DC shift on those planes.
+optional RCT and DC shift on those planes. The RCT acts on components 0, 1 and 2 when
+enabled. Every later component, and every component of a one- or two-component image,
+passes directly to the DC stage.
 -/
 
 namespace JPEG2000.Spec.RoundTrip
@@ -77,38 +79,45 @@ theorem check_component_samples {L : Limits} {p : Params} {img : Image}
     by simpa only [Array.all_eq_true_iff_forall_mem, decide_eq_true_eq] using ha⟩,
     Except.ok.inj hr.symm⟩
 
-private theorem three_entries {α : Type} (xs : Array α) (d : α) (hs : xs.size = 3) :
-    ∃ a b c, xs = #[a, b, c] := by
-  refine ⟨xs.getD 0 d, xs.getD 1 d, xs.getD 2 d, ?_⟩
-  apply Array.ext (by simpa using hs)
-  intro i hi _
-  have : i = 0 ∨ i = 1 ∨ i = 2 := by omega
-  rcases this with rfl | rfl | rfl <;> exact Array.getElem_eq_getD d
+private def setFirstThree {α : Type} (xs : Array α) (a b c : α) : Array α :=
+  ((xs.setIfInBounds 0 a).setIfInBounds 1 b).setIfInBounds 2 c
+
+private theorem getD_setFirstThree {α : Type} {xs : Array α} {a b c d : α}
+    (hs : 3 ≤ xs.size) {i : Nat} :
+    (setFirstThree xs a b c).getD i d = match i with
+      | 0 => a | 1 => b | 2 => c | k + 3 => xs.getD (k + 3) d := by
+  have h0 : 0 < xs.size := by omega
+  have h1 : 1 < xs.size := by omega
+  have h2 : 2 < xs.size := by omega
+  match i with
+  | 0 | 1 | 2 | k + 3 => simp [setFirstThree, Array.getD_eq_getD_getElem?, h0, h1, h2]
 
 private def fwdTriples (a b c : Array Int) :=
   Array.ofFn (n := a.size) fun i =>
     Spec.MCT.rctFwd (a.getD i 0, b.getD i 0, c.getD i 0)
 
-private theorem mct3_three (a b c : Array Int) :
-    mct3 Spec.MCT.rctFwd #[a, b, c] =
-      #[(fwdTriples a b c).map (·.1), (fwdTriples a b c).map (·.2.1),
-        (fwdTriples a b c).map (·.2.2)] := by rfl
+private theorem mct3_firstThree (rows : Array (Array Int)) :
+    let ts := fwdTriples (rows.getD 0 #[]) (rows.getD 1 #[]) (rows.getD 2 #[])
+    mct3 Spec.MCT.rctFwd rows = setFirstThree rows (ts.map (·.1)) (ts.map (·.2.1))
+      (ts.map (·.2.2)) := by rfl
 
 private def invTriples (a b c : CellPlane) :=
   Array.ofFn (n := a.width * a.height) fun i =>
     rctCells (a.cells.getD i default) (b.cells.getD i default) (c.cells.getD i default)
 
-private theorem mctSpec_three (a b c : CellPlane)
-    (hd : b.width = a.width ∧ b.height = a.height ∧ c.width = a.width ∧ c.height = a.height) :
-    mctSpec true #[a, b, c] = .ok #[{a with cells := (invTriples a b c).map (·.1)},
-      {b with cells := (invTriples a b c).map (·.2.1)},
-      {c with cells := (invTriples a b c).map (·.2.2)}] := by
+private theorem mctSpec_firstThree (ps : Array CellPlane) :
+    let x := ps.getD 0 CellPlane.empty
+    let y := ps.getD 1 CellPlane.empty
+    let z := ps.getD 2 CellPlane.empty
+    let ts := invTriples x y z
+    y.width = x.width ∧ y.height = x.height ∧ z.width = x.width ∧ z.height = x.height →
+      mctSpec true ps = .ok (setFirstThree ps {x with cells := ts.map (·.1)}
+        {y with cells := ts.map (·.2.1)} {z with cells := ts.map (·.2.2)}) := by
+  intro x y z ts hd
   unfold mctSpec
   dsimp only
-  split
-  · rfl
-  · rename_i h
-    exact (h hd).elim
+  rw [ite_eq_left hd]
+  rfl
 
 /-- A full component plane and its row-major integer values, as read by the display stages. -/
 structure ReversibleRow (w h : Nat) (pl : CellPlane) (xs : Array Int) : Prop where
@@ -162,64 +171,65 @@ private theorem shifted_size_at {L : Limits} {p : Params} {img : Image}
   rw [shifted_at img hi, Array.size_map]
   exact (check_component_samples hc _ (Array.getElem_mem hi)).2.1
 
-private theorem three_cases {P : Nat → Prop} (h0 : P 0) (h1 : P 1) (h2 : P 2)
-    (i : Nat) (hi : i < 3) : P i := by
-  have : i = 0 ∨ i = 1 ∨ i = 2 := by omega
-  rcases this with rfl | rfl | rfl <;> assumption
-
-private theorem rct_rows_size {w h : Nat} {rows : Array (Array Int)} (hs : rows.size = 3)
-    (hn : (rows.getD 0 #[]).size = w * h) :
-    (mct3 Spec.MCT.rctFwd rows).size = 3 ∧
-    ∀ i, i < 3 → ((mct3 Spec.MCT.rctFwd rows).getD i #[]).size = w * h := by
-  obtain ⟨a, b, c, rfl⟩ := three_entries rows #[] hs
-  change a.size = w * h at hn
-  rw [mct3_three]
-  refine ⟨rfl, three_cases ?_ ?_ ?_⟩
-  all_goals change (Array.map _ (fwdTriples a b c)).size = w * h
-  all_goals simpa only [Array.size_map, fwdTriples, Array.size_ofFn] using hn
-
-private theorem three_of_encMct {p : Params} {img : Image}
-    (hn : img.comps.size = 1 ∨ img.comps.size = 3) (hm : encMct p img = true) :
-    img.comps.size = 3 := by
+private theorem three_le_of_encMct {p : Params} {img : Image} (hm : encMct p img = true) :
+    3 ≤ img.comps.size := by
   simp only [encMct, Bool.and_eq_true, decide_eq_true_eq] at hm
-  omega
+  exact hm.2
 
-/-- `bands53` receives one integer array per component and one entry per image pixel,
-including when a requested MCT is skipped on a single component. -/
+/-- The forward reversible rows contain one integer per pixel of every checked component.
+When MCT is enabled it replaces the first three rows and preserves the rest. -/
+theorem reversibleRows_size_all_components {L : Limits} {p : Params} {img : Image}
+    (hc : Encode.check L p img = .ok ()) :
+    (reversibleRows p img).size = img.comps.size ∧ ∀ i, i < img.comps.size →
+      ((reversibleRows p img).getD i #[]).size = img.width * img.height := by
+  have hs : (shifted img).size = img.comps.size := by simp [shifted]
+  unfold reversibleRows
+  split
+  · rename_i hm
+    have h3 := three_le_of_encMct hm
+    rw [mct3_firstThree]
+    refine ⟨by simp [setFirstThree, hs], fun i hi => ?_⟩
+    rw [getD_setFirstThree (xs := shifted img) (hs ▸ h3)]
+    match i with
+    | 0 | 1 | 2 =>
+      simpa only [Array.size_map, fwdTriples, Array.size_ofFn] using
+        shifted_size_at hc (i := 0) (by omega)
+    | k + 3 => exact shifted_size_at hc hi
+  · exact ⟨hs, fun _ hi => shifted_size_at hc hi⟩
+
+/-- Row sizes for the one- and three-component special cases. -/
 theorem reversibleRows_size {L : Limits} {p : Params} {img : Image}
     (hc : Encode.check L p img = .ok ()) (hn : img.comps.size = 1 ∨ img.comps.size = 3) :
     (reversibleRows p img).size = img.comps.size ∧ ∀ i, i < img.comps.size →
       ((reversibleRows p img).getD i #[]).size = img.width * img.height := by
-  unfold reversibleRows
-  split
-  · rename_i hm
-    have hs := three_of_encMct hn hm
-    have h := rct_rows_size (by simpa [shifted] using hs : (shifted img).size = 3)
-      (shifted_size_at hc (i := 0) (by omega))
-    simpa only [hs] using h
-  · exact ⟨by simp [shifted], fun _ hi => shifted_size_at hc hi⟩
+  have _ := hn
+  exact reversibleRows_size_all_components hc
 
-private theorem rct_rows_inverse {w h : Nat} {rows : Array (Array Int)} {ps : Array CellPlane}
-    (hr : rows.size = 3) (hp : ps.size = 3) (hn : (rows.getD 0 #[]).size = w * h)
-    (hv : ∀ i, i < 3 → ReversibleRow w h (ps.getD i CellPlane.empty)
+private theorem rct_rows_inverse {w h n : Nat} {rows : Array (Array Int)} {ps : Array CellPlane}
+    (h3 : 3 ≤ n) (hr : rows.size = n) (hp : ps.size = n) (hn : (rows.getD 0 #[]).size = w * h)
+    (hv : ∀ i, i < n → ReversibleRow w h (ps.getD i CellPlane.empty)
       ((mct3 Spec.MCT.rctFwd rows).getD i #[])) :
-    ∃ qs, mctSpec true ps = .ok qs ∧ qs.size = 3 ∧ ∀ i, i < 3 →
+    ∃ qs, mctSpec true ps = .ok qs ∧ qs.size = n ∧ ∀ i, i < n →
       ReversibleRow w h (qs.getD i CellPlane.empty) (rows.getD i #[]) := by
-  obtain ⟨a, b, c, rfl⟩ := three_entries rows #[] hr
-  obtain ⟨x, y, z, rfl⟩ := three_entries ps CellPlane.empty hp
-  rw [mct3_three] at hv
-  have hx := hv 0 (by decide)
-  have hy := hv 1 (by decide)
-  have hz := hv 2 (by decide)
-  have out := invertThree a b c x y z hn hx hy hz
-  refine ⟨_, mctSpec_three x y z ⟨hy.width.trans hx.width.symm, hy.height.trans hx.height.symm,
-    hz.width.trans hx.width.symm, hz.height.trans hx.height.symm⟩, rfl, ?_⟩
-  exact three_cases out.1 out.2.1 out.2.2
+  simp only [mct3_firstThree, getD_setFirstThree (xs := rows) (hr ▸ h3)] at hv
+  have hx := hv 0 (by omega)
+  have hy := hv 1 (by omega)
+  have hz := hv 2 (by omega)
+  have out := invertThree _ _ _ _ _ _ hn hx hy hz
+  refine ⟨_, mctSpec_firstThree ps ⟨hy.width.trans hx.width.symm, hy.height.trans hx.height.symm,
+    hz.width.trans hx.width.symm, hz.height.trans hx.height.symm⟩, by simp [setFirstThree, hp], ?_⟩
+  intro i hi
+  rw [getD_setFirstThree (xs := ps) (hp ▸ h3)]
+  match i with
+  | 0 => exact out.1
+  | 1 => exact out.2.1
+  | 2 => exact out.2.2
+  | k + 3 => exact hv (k + 3) hi
 
-/-- The optional inverse MCT in `decodeTile` succeeds on the reconstructed forward
-rows and returns the encoder's DC-shifted integers in every component. -/
-theorem mctSpec_reversibleRows {L : Limits} {p : Params} {img : Image} {ps : Array CellPlane}
-    (hc : Encode.check L p img = .ok ()) (hn : img.comps.size = 1 ∨ img.comps.size = 3)
+/-- The optional inverse MCT in `decodeTile` recovers the DC-shifted integers of every
+checked component, including those after the first three. -/
+theorem mctSpec_reversibleRows_all_components {L : Limits} {p : Params} {img : Image} {ps : Array CellPlane}
+    (hc : Encode.check L p img = .ok ())
     (hp : ps.size = img.comps.size)
     (hv : ∀ i, i < img.comps.size → ReversibleRow img.width img.height
       (ps.getD i CellPlane.empty) ((reversibleRows p img).getD i #[])) :
@@ -228,13 +238,23 @@ theorem mctSpec_reversibleRows {L : Limits} {p : Params} {img : Image} {ps : Arr
         ReversibleRow img.width img.height (qs.getD i CellPlane.empty) ((shifted img).getD i #[]) := by
   split
   · rename_i hm
-    have hs := three_of_encMct hn hm
-    rw [hs]
-    apply rct_rows_inverse (by simp [shifted, hs]) (hp.trans hs)
-      (shifted_size_at hc (i := 0) (by omega))
-    simpa only [reversibleRows, hm, ↓reduceIte, hs] using hv
+    have h3 := three_le_of_encMct hm
+    apply rct_rows_inverse h3 (by simp [shifted]) hp (shifted_size_at hc (i := 0) (by omega))
+    simpa only [reversibleRows, hm, ↓reduceIte] using hv
   · rename_i hm
     exact ⟨ps, rfl, hp, by simpa [reversibleRows, hm] using hv⟩
+
+/-- Inverse MCT reconstruction specialised to one or three components. -/
+theorem mctSpec_reversibleRows {L : Limits} {p : Params} {img : Image} {ps : Array CellPlane}
+    (hc : Encode.check L p img = .ok ()) (hn : img.comps.size = 1 ∨ img.comps.size = 3)
+    (hp : ps.size = img.comps.size)
+    (hv : ∀ i, i < img.comps.size → ReversibleRow img.width img.height
+      (ps.getD i CellPlane.empty) ((reversibleRows p img).getD i #[])) :
+    ∃ qs, (if encMct p img then mctSpec true ps else .ok ps) = .ok qs ∧
+      qs.size = img.comps.size ∧ ∀ i, i < img.comps.size →
+        ReversibleRow img.width img.height (qs.getD i CellPlane.empty) ((shifted img).getD i #[]) := by
+  have _ := hn
+  exact mctSpec_reversibleRows_all_components hc hp hv
 
 /-- The reversible DC stage of `decodeTile`, with the signedness and depth read from
 the encoded SIZ, recovers each checked sample at its original linear index. -/
@@ -267,8 +287,8 @@ theorem dcSpec_shifted {L : Limits} {p : Params} {img : Image} {pl : CellPlane}
 /-- Display reconstruction of the full reversible tile. Given the inverse-DWT planes
 in component order, the optional RCT succeeds and the DC output of every plane has
 the image dimensions and exactly the original row-major sample array. -/
-theorem display_reconstruction {L : Limits} {p : Params} {img : Image} {ps : Array CellPlane}
-    (hc : Encode.check L p img = .ok ()) (hn : img.comps.size = 1 ∨ img.comps.size = 3)
+theorem display_reconstruction_all_components {L : Limits} {p : Params} {img : Image} {ps : Array CellPlane}
+    (hc : Encode.check L p img = .ok ())
     (hp : ps.size = img.comps.size)
     (hv : ∀ i, i < img.comps.size → ReversibleRow img.width img.height
       (ps.getD i CellPlane.empty) ((reversibleRows p img).getD i #[])) :
@@ -278,7 +298,7 @@ theorem display_reconstruction {L : Limits} {p : Params} {img : Image} {ps : Arr
         let out := dcSpec (comp.signed, comp.depth.toNat) true (qs.getD i CellPlane.empty)
         out.width = img.width ∧ out.height = img.height ∧ out.samples.size = img.width * img.height ∧
           out.samples.map SpecSample.value = img.comps[i].samples := by
-  obtain ⟨qs, hm, hq, hrows⟩ := mctSpec_reversibleRows hc hn hp hv
+  obtain ⟨qs, hm, hq, hrows⟩ := mctSpec_reversibleRows_all_components hc hp hv
   refine ⟨qs, hm, hq, fun i hi => ?_⟩
   obtain ⟨hw, hh, hs, hv⟩ := dcSpec_shifted hc hi (hrows i hi)
   refine ⟨hw, hh, hs, ?_⟩
@@ -290,5 +310,20 @@ theorem display_reconstruction {L : Limits} {p : Params} {img : Image} {ps : Arr
   rw [Array.getElem_eq_getD (fallback := (default : SpecSample)),
     Array.getElem_eq_getD (xs := img.comps[i].samples) 0]
   exact hv j hj
+
+/-- Full reversible display reconstruction specialised to one or three components. -/
+theorem display_reconstruction {L : Limits} {p : Params} {img : Image} {ps : Array CellPlane}
+    (hc : Encode.check L p img = .ok ()) (hn : img.comps.size = 1 ∨ img.comps.size = 3)
+    (hp : ps.size = img.comps.size)
+    (hv : ∀ i, i < img.comps.size → ReversibleRow img.width img.height
+      (ps.getD i CellPlane.empty) ((reversibleRows p img).getD i #[])) :
+    ∃ qs, (if encMct p img then mctSpec true ps else .ok ps) = .ok qs ∧
+      qs.size = img.comps.size ∧ ∀ i (hi : i < img.comps.size),
+        let comp := (encSIZ img).components.getD i default
+        let out := dcSpec (comp.signed, comp.depth.toNat) true (qs.getD i CellPlane.empty)
+        out.width = img.width ∧ out.height = img.height ∧ out.samples.size = img.width * img.height ∧
+          out.samples.map SpecSample.value = img.comps[i].samples := by
+  have _ := hn
+  exact display_reconstruction_all_components hc hp hv
 
 end JPEG2000.Spec.RoundTrip
