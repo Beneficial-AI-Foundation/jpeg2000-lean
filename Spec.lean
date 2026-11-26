@@ -79,8 +79,11 @@ import Spec.Resources
 import Spec.WidePlane
 import Spec.WideOutput
 import Spec.NativeOutput
+import Spec.NativeSample
 import Spec.WideQuant
 import Spec.WideReversible
+import Spec.WideICT
+import Spec.WideDWT97
 import Spec.Resources.BlockPasses
 import Spec.Tier1Equiv.Basic
 import Spec.Tier1Equiv.Rel

@@ -6,6 +6,8 @@ import JPEG2000.WideOutput
 import JPEG2000.NativeOutput
 import JPEG2000.WideQuant
 import JPEG2000.WideReversible
+import JPEG2000.WideICT
+import JPEG2000.WideDWT97
 import JPEG2000.Box
 import JPEG2000.Marker
 import JPEG2000.TilePart

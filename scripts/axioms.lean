@@ -1419,6 +1419,14 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.WideReversible.idwt53_of_bandsEq
 #print axioms JPEG2000.Spec.WideReversible.rctInverse_spec
 #print axioms JPEG2000.Spec.WideReversible.reconstruct_rgb
+#print axioms JPEG2000.Spec.WideICT.ictInverse_ok
+#print axioms JPEG2000.Spec.WideICT.ictInverse_fixed_error
+#print axioms JPEG2000.Spec.WideICT.ictInverse_error
+#print axioms JPEG2000.Spec.WideICT.ictInverse_c8
+#print axioms JPEG2000.Spec.WideDWT97.product_err
+#print axioms JPEG2000.Spec.WideDWT97.idwt97_spec
+#print axioms JPEG2000.Spec.WideDWT97.level_work
+#print axioms JPEG2000.Spec.WideDWT97.idwt97_of_bandsClose
 #print axioms JPEG2000.Spec.NativeOutput.allocOutput_spec
 #print axioms JPEG2000.Spec.NativeOutput.writeComponent_badGeometry
 #print axioms JPEG2000.Spec.NativeOutput.writeComponent_spec
@@ -1431,6 +1439,8 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.NativeOutput.writeComponent_roundHalf
 #print axioms JPEG2000.Spec.NativeOutput.writeComponent_recovers
 #print axioms JPEG2000.Spec.NativeOutput.writeTile_succeeds
+#print axioms JPEG2000.Spec.NativeSample.placed_sample
+#print axioms JPEG2000.Spec.NativeSample.writeTile_sample
 
 -- Phase 7, task 7.1j3a: exact scaling through 38 bits
 #print axioms JPEG2000.Scaler.applyNative_make_eq
