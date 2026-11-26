@@ -1665,3 +1665,5 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.Resources.Tier1Work.compactModeReads
 #print axioms JPEG2000.Spec.Resources.parsed_tile_signed_width
 #print axioms JPEG2000.Spec.Resources.centeredTile_signed_width
+#print axioms JPEG2000.Spec.Resources.PublicPacketWork.admission_error
+#print axioms JPEG2000.Spec.Resources.PublicPacketWork.admission_excess

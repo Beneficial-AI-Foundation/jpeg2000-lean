@@ -101,6 +101,12 @@ admission or native output allocation has an empty packet trace. Each later entr
 records the tile, the number of passes already admitted and the current tile-part
 cursor. An omitted tile has an empty packet log.
 
+`PublicPacketWork.admission_error` proves that both public entry points return
+the same error from reduction admission, header parsing or native output
+allocation, with the same location, kind and payload and zero packet visits. When the reduction and input length both exceed their limits,
+`admission_excess` identifies the reduction error. With an admitted reduction,
+an oversized input yields the input-size error at byte zero.
+
 A physical visit counts one innermost progression position, including positions
 skipped because an earlier POC volume covered them. Each earlier volume tested
 for membership adds one operation. Their combined count is at most the number of
