@@ -1,6 +1,6 @@
 import Spec.Decode
 import Encode.Encode
-import JPEG2000.WideReversible
+import JPEG2000.ReversibleDispatch
 
 /-!
 # Tests: `Spec.decode` against `decodeCodestream` (tasks 7.1a, 7.1f)
@@ -132,6 +132,24 @@ def ictCancellationStream : Except Error ByteArray :=
   cancellationStream 1 8 { levels := 0, reversible := false, mct := true }
     { guardBits := 7, quant := .expounded #[{ exponent := 8, mantissa := 0 }] } #[14020, 0, -10000]
 
+/-- Exercise reversible dispatch on the first tile's parsed packet store and native G.1
+writer. Return the compact spatial branches alongside the final three rasters. -/
+def reversibleRGB (data : ByteArray) : Except Error (Array Bool × Array (Array Int)) := do
+  let L := Limits.default
+  let h ← Header.parse L data
+  let blocks ← Tier2.Headers.decodeAllTileCodeBlocks L h data
+  let (g, coding) ← Progression.Layout.ofHeader h 0
+  let dst ← NativeOutput.allocOutput L h.siz 0
+  let spatial ← (Array.ofFn (n := g.numComps) id).mapM fun c =>
+    ReversibleDispatch.component L data h.siz g coding blocks[0]? c 0
+  let #[y, cb, cr] := spatial | throw (.malformed Assemble.loc "expected three components")
+  let (r, green, b) ← ReversibleDispatch.colour L y cb cr
+  let dst ← NativeOutput.writeTile L h.siz 0 g coding dst #[r, green, b]
+  let values ← dst.mapM fun p =>
+    (Array.range (p.rect.width * p.rect.height)).mapM fun i =>
+      (p.get? i).elim (.error (.malformed Assemble.loc "missing output cell")) Except.ok
+  return (spatial.map (fun | .plane _ => true | .exact .. => false), values)
+
 /-- Check all six final values using the codestream specification and the wide
 spatial/colour kernels on the defining Mallat coefficients. -/
 private def rctCancellation : Except Error Bool := do
@@ -146,7 +164,21 @@ private def rctCancellation : Except Error Bool := do
   let (red, green, blue) ← WideReversible.rctInverse L r r r y cb cr
   let exact := #[red, green, blue].map fun c => c.map (Spec.MCT.reconRev true 31)
   let expected := #[#[805306367, 268435455], #[1073741823, 1073741823], #[1073741823, 1073741823]]
-  return exact == expected && spec.comps.map (fun c => c.samples.map (·.value)) == expected
+  let (compact, actual) ← reversibleRGB cs
+  let legacy ← decodeCodestreamNarrow L cs
+  return legacy.saturatedBlocks == 0 && compact == #[false, true, false] &&
+    actual == expected && exact == expected && spec.comps.map (fun c => c.samples.map (·.value)) == expected
+
+-- Compact spatial inputs can produce a colour outside Int32. Inspect centred RGB before G.1.
+private def compactColour : Except Error Bool := do
+  let pixel (v : Int32) : NativeOutput.Source := .plane ((Bytes.Plane.zero 1 1).set 0 v (by decide))
+  let (r, g, b) ← ReversibleDispatch.colour Limits.default
+    (pixel 2147483647) (pixel (-2147483647)) (pixel 2147483647)
+  let (r', g', b') ← ReversibleDispatch.colour Limits.default (pixel 2) (pixel (-4)) (pixel 8)
+  let packed : NativeOutput.Source → Bool | .plane _ => true | .exact .. => false
+  return !packed r && r.get? 0 == some 4294967294 && g.get? 0 == some 2147483647 &&
+    b.get? 0 == some 0 && packed r' && packed g' && packed b' &&
+    r'.get? 0 == some 9 && g'.get? 0 == some 1 && b'.get? 0 == some (-3)
 
 /-- The conformance directory. -/
 def inputDir : System.FilePath := "corpus/files/openjpeg-data/input/conformance"
@@ -254,6 +286,7 @@ def run : IO Nat := do
   n := n + (← encCase "9/7+ICT 3 comp 7x7 NL2"
     { levels := 2, reversible := false, stepLog2 := -2, cbWidthExp := 2, cbHeightExp := 2 }
     (image 7 7 3 8))
+  if compactColour.toOption != some true then n := n + (← fail "compact-input RCT" "centred RGB differs")
   match rctCancellation with
   | .ok true => pure ()
   | .ok false => n := n + (← fail "31-plane RCT cancellation" "samples differ")
