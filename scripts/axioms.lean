@@ -1904,6 +1904,14 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.Resources.DiagnosticTilePart.tileParts_payload
 #print axioms JPEG2000.Spec.Resources.DiagnosticTilePart.public_cost
 #print axioms JPEG2000.Spec.Resources.DiagnosticTilePart.public_refusal
+#print axioms JPEG2000.Spec.Resources.DiagnosticCoding.tile_positions
+#print axioms JPEG2000.Spec.Resources.DiagnosticCoding.merge_refusal
+#print axioms JPEG2000.Spec.Resources.DiagnosticCoding.repeated_overrides
+#print axioms JPEG2000.Spec.Resources.DiagnosticCoding.public_digits
+#print axioms JPEG2000.Spec.Resources.DiagnosticCoding.public_cost
+#print axioms JPEG2000.Spec.Resources.DiagnosticCoding.main_refusal
+#print axioms JPEG2000.Spec.Resources.DiagnosticCoding.short_quantization_refusal
+#print axioms JPEG2000.Spec.Resources.DiagnosticCoding.inherited_quantization_refusal
 #print axioms JPEG2000.Spec.Resources.DiagnosticPacketRanges.parsed_ranges
 #print axioms JPEG2000.Spec.Resources.DiagnosticPacket.public_callback
 #print axioms JPEG2000.Spec.Resources.DiagnosticPacket.admission_free
