@@ -1468,3 +1468,18 @@ end AxiomsSelfCheck
 
 -- Phase 7, task 7.1j3a: exact scaling through 38 bits
 #print axioms JPEG2000.Scaler.applyNative_make_eq
+
+#print axioms JPEG2000.Spec.HeaderWF.readArray_inv
+#print axioms JPEG2000.Spec.HeaderWF.parseMainHeader_fields
+#print axioms JPEG2000.Spec.HeaderWF.parseTileParts_fields
+#print axioms JPEG2000.Spec.HeaderWF.mem_extract
+#print axioms JPEG2000.Spec.HeaderWF.overrides_inv
+#print axioms JPEG2000.Spec.HeaderWF.getD_none
+#print axioms JPEG2000.Spec.HeaderWF.getD_getD
+#print axioms JPEG2000.Spec.HeaderWF.arrayMapM_mem
+#print axioms JPEG2000.Spec.HeaderWF.list_foldl_inv
+#print axioms JPEG2000.Spec.HeaderWF.geom_params
+#print axioms JPEG2000.Spec.WideHeaderBounds.parsed_component_bounds
+#print axioms JPEG2000.Spec.WideHeaderBounds.ComponentBounds.block_planes
+#print axioms JPEG2000.Spec.WideHeaderBounds.parsed_component
+#print axioms JPEG2000.Spec.WideHeaderBounds.absent_component

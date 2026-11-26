@@ -50,6 +50,7 @@ import Spec.HeaderWF
 import Spec.C9
 import Spec.CodestreamDispatch
 import Spec.WideAssembly
+import Spec.WideHeaderBounds
 import Spec.RoundTrip.Tier1
 import Spec.RoundTrip.Tier2Bits
 import Spec.RoundTrip.Tier2
