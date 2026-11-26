@@ -553,6 +553,13 @@ fails, the trace includes its compact and final errors after any earlier
 component messages. The tile bound is twice `maxComponents` events. Typed
 workspace refusals can stop the tile before its first block reader.
 
+`DiagnosticColour.messages` extends that same component trace through tile
+colour conversion. An RCT shape error can format six dimensions. Each axis
+is at most 2³², even when the other axis is zero. The combined area of the
+first three actual source planes fits the admitted tile-workspace limit.
+Colour conversion contributes at most one additional text construction and
+preserves the earlier reader visits and retry messages.
+
 `DiagnosticImage.image_diagnostics` covers the public image path after native
 decoding succeeds. Mapping, sYCC conversion, upsampling and channel selection
 construct at most one diagnostic string in total. A typed refusal retains its
@@ -569,7 +576,6 @@ and every earlier message. A native success appends the display trace in order,
 so earlier messages from recovered compact errors are still counted.
 
 The whole-path diagnostic bound still needs the header stages composed in parser
-order, the tile colour and placement stages, and their composition across native
-decoding. The final S3
+order, native allocation and placement, and their composition across tiles. The final S3
 statement must combine those costs with the native, mapping and display bounds and
 identify the limit errors returned when a checked budget is exceeded.

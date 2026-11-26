@@ -1934,3 +1934,6 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.Resources.DiagnosticComponent.tile_eq
 #print axioms JPEG2000.Spec.Resources.DiagnosticComponent.messages
 #print axioms JPEG2000.Spec.Resources.DiagnosticComponent.public_components
+#print axioms JPEG2000.Spec.Resources.DiagnosticColour.source_geometry
+#print axioms JPEG2000.Spec.Resources.DiagnosticColour.messages
+#print axioms JPEG2000.Spec.Resources.DiagnosticColour.public_colour
