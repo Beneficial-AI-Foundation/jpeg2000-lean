@@ -2,7 +2,7 @@ import JPEG2000.Error
 import JPEG2000.Limits
 import JPEG2000.Bytes
 import JPEG2000.Box
-import JPEG2000.Marker
+import JPEG2000.Decode
 
 /-!
 # Colour: colour space, palette, component mapping, channel definitions (Plan.md §1, §9)
@@ -24,8 +24,7 @@ renderer needs, without any colour management of its own:
   the output channels. A palette index outside `0 … NE−1` is **clamped** (negative → 0, too
   large → `NE − 1`), as `opj_jp2_apply_pclr`. Unsigned entries keep all their stored bytes,
   even when padding bits are set, as in OpenJPEG. Signed entries are sign-extended from their
-  declared depth (T.800 I.5.3.4). Depths and unsigned values exceeding the `Int32` plane's
-  range are `unsupported`.
+  declared depth (T.800 I.5.3.4). Wide table entries retain their exact integer values.
 * **Channel definitions** (I.5.3.6): `channelLayout` validates `cdef` (every channel defined
   exactly once, indices and associations in range, as `opj_jp2_check_color`) and orders the
   colour channels by association, identifies the whole-image opacity channel (`Typ` 1, or 2
@@ -142,19 +141,13 @@ structure Mapping where
 /-- Depth (1…38) and signedness of a `B_i` / `BPC`-style byte. -/
 def bitsDepth (b : UInt8) : Nat × Bool := ((b &&& 0x7F).toNat + 1, b &&& 0x80 != 0)
 
-/-- Checks the palette's own consistency and that every column fits an `Int32` plane. -/
+/-- Check the palette shape and the maximum Part 1 precision. -/
 def checkPalette (p : Palette) : Except Error Unit := do
   if p.ne == 0 || p.npc == 0 then throw (malformed "pclr: NE or NPC is 0")
   if p.bits.size != p.npc || p.entries.size != p.ne * p.npc then
     throw (malformed "pclr: entry table does not match NE × NPC")
   for b in p.bits do
-    let (d, s) := bitsDepth b
-    if (s && d > 32) || (!s && d > 31) then
-      throw (unsupported s!"pclr: column depth {d} ({if s then "signed" else "unsigned"}) \
-        does not fit a 32-bit sample")
-  for e in p.entries, i in [:p.entries.size] do
-    if e > 0x7fffffff && !(bitsDepth (p.bits.getD (i % p.npc) 0)).2 then
-      throw (unsupported "pclr: unsigned entry exceeds the Int32 sample range")
+    if (bitsDepth b).1 > 38 then throw (unsupported "pclr: column depth exceeds 38 bits")
 
 /-- Validates one `cmap` entry against `nComps` components and the palette. -/
 def entrySource (nComps : Nat) (p : Palette) (e : CmapEntry) : Except Error Source := do
@@ -234,24 +227,59 @@ def Mapping.formats (m : Mapping) (comps : Array Format) : Array Format :=
         | none => (f.depth, f.signed)
       { f with depth := d, signed := s }
 
-/-- A decoded channel: its sample plane (`Int32` cells, row-major) and format. -/
+/-- A row-major channel. Compact images use their original buffer. A view borrows its
+source and evaluates exact samples by index, including replication and palette lookup. -/
+inductive SamplePlane where
+  /-- Original four-byte cells. -/
+  | compact (p : Plane)
+  /-- A borrowed native codestream component in its format-selected storage. -/
+  | native (c : NativeOutput.OutputComponent)
+  /-- Exact samples of a grid, computed from retained buffers. -/
+  | view (w h : Nat) (read : Nat → Int)
+
+instance : Coe Plane SamplePlane := ⟨.compact⟩
+
+/-- Width of the channel grid. -/
+def SamplePlane.width : SamplePlane → Nat
+  | .compact p => p.width
+  | .native c => match c.storage with | .narrow p => p.width | .wide p => p.width
+  | .view w _ _ => w
+
+/-- Height of the channel grid. -/
+def SamplePlane.height : SamplePlane → Nat
+  | .compact p => p.height
+  | .native c => match c.storage with | .narrow p => p.height | .wide p => p.height
+  | .view _ h _ => h
+
+/-- Exact integer at a row-major index on this grid. -/
+@[inline] def SamplePlane.get? : SamplePlane → Nat → Option Int
+  | .compact p, i => (p.get? i).map Int32.toInt
+  | .native c, i => (CodestreamComponent.native c).get? i
+  | .view w h read, i => if i < w * h then some (read i) else none
+
+/-- Borrow the existing four-byte plane when the channel has compact storage. -/
+def SamplePlane.compact? : SamplePlane → Option Plane
+  | .compact p => some p
+  | .native c => match c.storage with | .narrow p => some p | .wide _ => none
+  | .view .. => none
+
+/-- A decoded channel on its component grid. -/
 structure Channel where
   /-- The samples. -/
-  plane : Plane
+  plane : SamplePlane
   /-- Depth, sign and sub-sampling. -/
   format : Format
 
-/-- A parsed palette entry as an Int32 sample. Unsigned columns keep the stored bytes
-(OpenJPEG compatibility). Signed columns sign-extend the low `depth` bits (T.800 I.5.3.4). -/
-def entryValue (bi : UInt8) (e : UInt64) : Int32 :=
+/-- A parsed palette entry. Unsigned columns keep the stored bytes (OpenJPEG
+compatibility). Signed columns sign-extend the low `depth` bits (T.800 I.5.3.4). -/
+def entryValue (bi : UInt8) (e : UInt64) : Int :=
   let (d, s) := bitsDepth bi
-  if !s then e.toUInt32.toInt32 else
+  if !s then e.toNat else
   let v := e.toNat % 2 ^ d
-  if v ≥ 2 ^ (d - 1) then Int32.ofInt (Int.ofNat v - Int.ofNat (2 ^ d))
-  else Int32.ofInt (Int.ofNat v)
+  if v ≥ 2 ^ (d - 1) then Int.ofNat v - Int.ofNat (2 ^ d) else Int.ofNat v
 
-/-- Column `col` of a palette as a lookup table of `NE` sample values. -/
-def paletteColumn (p : Palette) (col : Nat) : Array Int32 :=
+/-- Column `col` of a palette as a lookup table of `NE` exact samples. -/
+def paletteColumn (p : Palette) (col : Nat) : Array Int :=
   let bi := p.bits.getD col 0
   (List.range p.ne).toArray.map fun j => entryValue bi (p.entries.getD (j * p.npc + col) 0)
 
@@ -277,25 +305,47 @@ def palettePlane (L : Limits) (tbl : Array Int32) (src : Plane) : Except Error P
   let dst ← Plane.zeroChecked L (.at .color) src.width src.height
   return mapPlane tbl src dst 0 (src.width * src.height)
 
+/-- Palette lookup with an exact index, clamped before table access (I.5.3.4). -/
+def indexedPlane (tbl : Array Int) (src : SamplePlane) : SamplePlane :=
+  .view src.width src.height fun i =>
+    tbl.getD (min ((src.get? i).getD 0).toNat (tbl.size - 1)) 0
+
+/-- Apply one validated JP2 source. Check the running palette area and the length
+of its lookup column before constructing the table, including for empty index planes. -/
+def mapSource (L : Limits) (m : Mapping) (comps : Array Channel)
+    (state : Array Channel × Nat) (entry : Source × Format) : Except Error (Array Channel × Nat) := do
+  let (out, total) := state
+  let (src, fmt) := entry
+  match src with
+  | .direct c =>
+    let some ch := comps[c]? | throw (malformed s!"component {c} missing")
+    return (out.push ch, total)
+  | .palette c col =>
+    let some ch := comps[c]? | throw (malformed s!"component {c} missing")
+    let some p := m.palette | throw (malformed "palette mapping without pclr")
+    let total := total + ch.plane.width * ch.plane.height
+    L.check (.at .color) .workSamples total
+    L.check (.at .color) .paletteEntries p.ne
+    let tbl := paletteColumn p col
+    let plane ← match ch.plane.compact? with
+      | some src =>
+        if tbl.all (fun v => -2147483648 ≤ v && v ≤ 2147483647) then
+          SamplePlane.compact <$> palettePlane L (tbl.map Int32.ofInt) src
+        else pure (indexedPlane tbl ch.plane)
+      | none => pure (indexedPlane tbl ch.plane)
+    return (out.push { plane, format := fmt }, total)
+
 /-- Builds the output channels from the codestream components (`comps`, in component order)
-by a validated mapping. Direct channels share the component's plane; palette channels are new
-planes, whose running sample total is checked against `maxWorkSamples`. -/
+by a validated mapping. Direct channels share the component's plane. Palette channels with
+compact indices and values use the four-byte kernel. Others borrow the index plane and
+retain exact table entries. Source count, column length and running palette area are checked
+against `maxComponents`, `maxPaletteEntries` and `maxWorkSamples` respectively. -/
 def applyMapping (L : Limits) (m : Mapping) (comps : Array Channel) :
     Except Error (Array Channel) := do
+  L.check (.at .color) .components m.sources.size
   let fmts := m.formats (comps.map (·.format))
   let (out, _) ← (m.sources.zip fmts).foldlM (init := ((#[] : Array Channel), 0))
-    fun (out, total) (src, fmt) => do
-      match src with
-      | .direct c =>
-        let some ch := comps[c]? | throw (malformed s!"component {c} missing")
-        return (out.push ch, total)
-      | .palette c col =>
-        let some ch := comps[c]? | throw (malformed s!"component {c} missing")
-        let some p := m.palette | throw (malformed "palette mapping without pclr")
-        let total := total + ch.plane.width * ch.plane.height
-        L.check (.at .color) .workSamples total
-        let plane ← palettePlane L (paletteColumn p col) ch.plane
-        return (out.push { plane, format := fmt }, total)
+    (mapSource L m comps)
   return out
 
 /-- Validates `pclr` + `cmap` against the components and applies them (T.800 I.5.3.4,
@@ -442,14 +492,43 @@ def syccLoop (off upb : Int64) (w : Nat) (y cb cr : Plane)
       else (r, g, b) else (r, g, b) else (r, g, b)
     else (r, g, b)
 
+/-- Number of leading zero-chroma columns by luma row for the Annex I edge convention.
+The aligned case uses an empty table. -/
+def zeroChromaCols (ox oy w h : Nat) (y cb cr : Format) : Array Nat :=
+  if y.dx == 1 && y.dy == 1 && cb.dx == 2 && cr.dx == 2 &&
+      cb.dy == cr.dy && (cb.dy == 1 || cb.dy == 2) then
+    let dy := cb.dy
+    let offx := ox % 2
+    let offy := oy % dy
+    if offx == 0 && offy == 0 then #[] else
+      (Array.range h).map fun row =>
+        if row < offy then w else if (row - offy) % dy == 0 then offx else 0
+  else #[]
+
+/-- The three lazy sRGB views borrow the same three sources and five index arrays. -/
+def syccViews (off upb : Int64) (w h : Nat) (y cb cr : Channel)
+    (cbx cby crx cry zeroCols : Array Nat) (fmt : Format) : Channel × Channel × Channel :=
+  let channel (plane : SamplePlane) : Channel := { plane, format := fmt }
+  let pixel (i : Nat) :=
+    let x := i % w
+    let row := i / w
+    let chroma (c : Channel) (xs ys : Array Nat) :=
+      if x < zeroCols.getD row 0 then 0 else
+        ((c.plane.get? (ys.getD row 0 * c.plane.width + xs.getD x 0)).getD 0).toInt64
+    syccPixel off upb ((y.plane.get? i).getD 0).toInt64
+      (chroma cb cbx cby) (chroma cr crx cry)
+  (channel (.view w h fun i => (pixel i).1.toInt),
+   channel (.view w h fun i => (pixel i).2.1.toInt),
+   channel (.view w h fun i => (pixel i).2.2.toInt))
+
 /-- Converts sYCC channels (Y, Cb, Cr) to sRGB at the luma channel's resolution (T.800 Table
 I.10, OpenJPEG `color_sycc_to_rgb`). `ox`, `oy` are the image area origin `XOsiz`, `YOsiz`.
-Sub-sampled chroma is replicated (see the module doc). The luma depth `p` must be ≤ 31; the
+Sub-sampled chroma is replicated (see the module doc). The luma depth `p` must be ≤ 38; the
 outputs are unsigned `p`-bit channels with the luma's sub-sampling. -/
 def syccToRgb (L : Limits) (ox oy : Nat) (y cb cr : Channel) :
     Except Error (Channel × Channel × Channel) := do
   let p := y.format.depth
-  if p == 0 || p > 31 then throw (unsupported s!"sYCC: luma depth {p} not in 1..31")
+  if p == 0 || p > 38 then throw (unsupported s!"sYCC: luma depth {p} not in 1..38")
   let fs := [y.format, cb.format, cr.format]
   if fs.any (fun f => f.dx == 0 || f.dy == 0) then
     throw (malformed "sYCC: zero sub-sampling factor")
@@ -462,22 +541,18 @@ def syccToRgb (L : Limits) (ox oy : Nat) (y cb cr : Channel) :
   let cby := chromaIndex oy y.format.dy cb.format.dy cb.plane.height h
   let crx := chromaIndex ox y.format.dx cr.format.dx cr.plane.width w
   let cry := chromaIndex oy y.format.dy cr.format.dy cr.plane.height h
-  let zeroCols :=
-    if y.format.dx == 1 && y.format.dy == 1 && cb.format.dx == 2 && cr.format.dx == 2 &&
-        cb.format.dy == cr.format.dy && (cb.format.dy == 1 || cb.format.dy == 2) then
-      let dy := cb.format.dy
-      let offx := ox % 2
-      let offy := oy % dy
-      if offx == 0 && offy == 0 then #[] else
-        (Array.range h).map fun row =>
-          if row < offy then w else if (row - offy) % dy == 0 then offx else 0
-    else #[]
+  let zeroCols := zeroChromaCols ox oy w h y.format cb.format cr.format
   let off : Int64 := Int64.ofNat (2 ^ (p - 1))
   let upb : Int64 := Int64.ofNat (2 ^ p - 1)
-  let z := Plane.zero w h
-  let (r, g, b) := syccLoop off upb w y.plane cb.plane cr.plane cbx cby crx cry z z z 0 (w * h) zeroCols
   let fmt : Format := { y.format with signed := false }
-  return ({ plane := r, format := fmt }, { plane := g, format := fmt },
-          { plane := b, format := fmt })
+  let channel (plane : SamplePlane) : Channel := { plane, format := fmt }
+  if let (some yp, some cbp, some crp) := (y.plane.compact?, cb.plane.compact?, cr.plane.compact?) then
+    if p ≤ 31 then
+      let z := Plane.zero w h
+      let (r, g, b) := syccLoop off upb w yp cbp crp cbx cby crx cry z z z 0 (w * h) zeroCols
+      return (channel r, channel g, channel b)
+  -- Parsed 38-bit palette columns occupy at most five bytes including padding.
+  -- The chroma products and sums in syccPixel therefore fit Int64 on either path.
+  return syccViews off upb w h y cb cr cbx cby crx cry zeroCols fmt
 
 end JPEG2000.Color

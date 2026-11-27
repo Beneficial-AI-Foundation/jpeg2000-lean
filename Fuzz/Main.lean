@@ -133,7 +133,7 @@ def escapeCheck (L : Limits) (img : Image) : Option String := Id.run do
   let mut rbytes := 0
   let mut cells := 0
   for c in img.decoded.comps do
-    if c.plane.width != c.width || c.plane.height != c.height then
+    if c.samples.width != c.width || c.samples.height != c.height then
       return some "component plane geometry"
     rbytes := rbytes + c.width * c.height * Header.bytesPerSample c.depth
     cells := cells + c.width * c.height
@@ -199,7 +199,7 @@ def reversibleComp (h : Header.Header) (c : Nat) : Bool :=
 (kind, detail); kind is `agree`, `skip`, `disagree`, `opj-reject` or `opj-crash`. -/
 def opjDiff (tmp : System.FilePath) (L : Limits) (data : ByteArray) : IO (String × String) := do
   let some cs := codestreamOf data | return ("skip", "no codestream")
-  let d ← match JPEG2000.decodeCodestream L cs 0 with
+  let d ← match JPEG2000.decodeCodestreamNarrow L cs 0 with
     | .ok d => pure d
     | .error _ => return ("skip", "we reject the codestream")
   -- opj_decompress up-samples and colour-converts 3-component streams whose chroma is

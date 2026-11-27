@@ -44,10 +44,11 @@ the unsigned `d`-bit value `u` is scaled to `t` = 8 or 16 bits:
 * `Scaling.opj`: OpenJPEG's `opj_decompress -p tS` (`scale_component`): `u >> (d − t)` when
   `d > t`, `⌊u·(2^t − 1)/(2^d − 1)⌋` when `d < t`. The two differ by at most 1.
 
-The arithmetic is on `UInt64`: `u < 2^32` (planes are `Int32`, so the decoder refuses
-unsigned depths > 31 and signed depths > 32 — **supported depths are 1…31 unsigned, 1…32
-signed**, below Plan.md §1's 38; deeper components are `unsupported` upstream) and
-`2^t − 1 < 2^16`, so every product is `< 2^48`.
+The display scaler accepts native depths 1…38. Its unsigned input is below `2^38`,
+and its 8- or 16-bit multiplier is below `2^16`. The numerator, including the rounding
+term, fits in `UInt64`. Compact channels retain their four-byte buffers and fixed-width
+scaling kernel. Use `Channel.get?` for exact samples or `channel.plane.compact?` to borrow an
+existing `Bytes.Plane`. `Image.decodedNarrow?` exposes the original compact image records.
 
 16-bit output is **big-endian** (most significant byte first), the order of 16-bit samples
 in PDF image data (ISO 32000-2 §8.9.2). By default the alpha channel is **not** included
@@ -75,14 +76,28 @@ open JPEG2000.Bytes JPEG2000.Header
 /-- One image channel at the image's full resolution (`plane` is `width × height` of the
 image): samples as decoded (after palette / colour conversion), with depth and sign. -/
 structure Channel where
-  /-- Bit depth of the samples (1…32). -/
+  /-- Bit depth of the samples (1…38). -/
   depth : Nat
   /-- Samples are signed. -/
   signed : Bool
-  /-- The samples, row-major, `Int32` cells. -/
-  plane : Plane
+  /-- The samples, row-major, at native precision. -/
+  plane : Color.SamplePlane
 
 instance : Inhabited Channel := ⟨{ depth := 1, signed := false, plane := Plane.zero 0 0 }⟩
+
+/-- Read an exact channel sample after palette, colour conversion and replication. -/
+def Channel.get? (c : Channel) (i : Nat) : Option Int := c.plane.get? i
+
+/-- Borrow the component buffer for colour processing. Both storage kinds in a mixed-depth
+image use their actual plane dimensions. The wide view reads through the codestream accessor. -/
+def CodestreamComponent.samples : CodestreamComponent → Color.SamplePlane
+  | .compact c => .compact c.plane
+  | .native c => .native c
+
+/-- Borrowing a component for colour handling preserves every exact read, including bounds. -/
+theorem CodestreamComponent.samples_get? (c : CodestreamComponent) (i : Nat) :
+    c.samples.get? i = c.get? i := by
+  cases c <;> rfl
 
 /-- A soft mask selected by `/SMaskInData`. -/
 structure SoftMask where
@@ -127,7 +142,7 @@ structure Image where
   iccProfile : Option ByteArray := none
   /-- The codestream decode: header (with the JP2 boxes) and per-component planes on their
   own grids. -/
-  decoded : DecodedImage
+  decoded : CodestreamImage
 
 namespace Image
 
@@ -135,7 +150,20 @@ namespace Image
 def loc : Location := .at .color
 
 /-- The raw per-component planes, each on its own grid (for consumers that want them). -/
-def decodedComponents (img : Image) : Array DecodedComponent := img.decoded.comps
+def decodedComponents (img : Image) : Array CodestreamComponent := img.decoded.comps
+
+/-- Borrow the original `DecodedImage` representation when every raw component has
+four-byte storage. Only the component records are collected. -/
+def decodedNarrow? (img : Image) : Option DecodedImage := do
+  let comps ← img.decoded.comps.mapM fun c => do
+    match c with
+    | .compact d => return d
+    | .native _ =>
+      let plane ← c.samples.compact?
+      return { x0 := c.x0, y0 := c.y0, width := c.width, height := c.height,
+               dx := c.dx, dy := c.dy, depth := c.depth, signed := c.signed, plane }
+  return { header := img.decoded.header, reduce := img.decoded.reduce, comps,
+           saturatedBlocks := img.decoded.saturatedBlocks }
 
 /-! ## Up-sampling to the reference grid -/
 
@@ -153,22 +181,26 @@ def atFullRes (w h : Nat) (c : Color.Channel) : Bool :=
   c.format.dx == 1 && c.format.dy == 1 && c.plane.width == w && c.plane.height == h
 
 /-- The channel on the `w × h` image area with origin `(ox, oy)` on the reference grid, by
-replication (see the module doc). Allocates a new plane unless `atFullRes`; the caller has
-checked the cells against `maxWorkSamples`. -/
-def upsample (ox oy w h : Nat) (c : Color.Channel) : Except Error Plane := do
+replication (see the module doc). Full-resolution channels share their source. Replication
+fills a compact plane or indexes the wide source through a view. The caller has checked
+the output cells against `maxWorkSamples`. -/
+def upsample (ox oy w h : Nat) (c : Color.Channel) : Except Error Color.SamplePlane := do
   if atFullRes w h c then return c.plane
   let p := c.plane
   if w * h > 0 && p.width * p.height == 0 then
     throw (.unsupported loc "a component has no samples inside the image area")
   let ix := Color.chromaIndex ox 1 c.format.dx p.width w
   let iy := Color.chromaIndex oy 1 c.format.dy p.height h
-  return upLoop p w ix iy (Plane.zero w h) 0 (w * h)
+  match p.compact? with
+  | some src => return .compact (upLoop src w ix iy (Plane.zero w h) 0 (w * h))
+  | none =>
+    return .view w h fun i => (p.get? (iy.getD (i / w) 0 * p.width + ix.getD (i % w) 0)).getD 0
 
 /-! ## Colour -/
 
 /-- OpenJPEG's (`opj_decompress`) test for a three-component image to be sYCC: component 0
 has `XRsiz = YRsiz` and component 1 is horizontally sub-sampled. -/
-def looksSycc (comps : Array DecodedComponent) : Bool :=
+def looksSycc (comps : Array CodestreamComponent) : Bool :=
   match comps[0]?, comps[1]? with
   | some c0, some c1 => comps.size == 3 && c0.dx == c0.dy && c1.dx != 1
   | _, _ => false
@@ -205,7 +237,7 @@ def decode (L : Limits) (data : ByteArray) (opts : DecodeOptions := {}) :
   let hdr? := d.header.container.bind (·.header)
   let info ← Color.resolve L data hdr? siz.components
   let comps : Array Color.Channel := d.comps.map fun c =>
-    { plane := c.plane, format := { depth := c.depth, signed := c.signed, dx := c.dx, dy := c.dy } }
+    { plane := c.samples, format := { depth := c.depth, signed := c.signed, dx := c.dx, dy := c.dy } }
   -- palette and channel layout
   let (mapping, layout) :=
     if opts.applyPalette || info.mapping.palette.isNone then (info.mapping, info.layout)
@@ -295,7 +327,7 @@ structure Scaler where
   /-- Denominator `2^d − 1` (≥ 1). -/
   den : UInt64
 
-/-- The scaler of a channel of depth `d` (1…32) and sign `s` to `t` bits. -/
+/-- The scaler of a channel of depth `d` (1…38) and sign `s` to `t` bits. -/
 def Scaler.make (mode : Scaling) (d : Nat) (s : Bool) (t : Nat) : Scaler :=
   let den := max 1 (2 ^ d - 1)
   { off := if s then Int64.ofNat (2 ^ (d - 1)) else 0
@@ -307,27 +339,81 @@ def Scaler.make (mode : Scaling) (d : Nat) (s : Bool) (t : Nat) : Scaler :=
     half := if mode == .linear then (den / 2).toUInt64 else 0
     den := den.toUInt64 }
 
-/-- Scales one sample: offset, clamp to `[0, 2^d − 1]`, then `scaleNat`. -/
-@[inline] def Scaler.apply (s : Scaler) (v : Int32) : UInt64 :=
-  let x := v.toInt64 + s.off
-  let u : UInt64 := if x < 0 then 0 else if x > s.maxIn then s.maxIn.toUInt64 else x.toUInt64
+@[inline] private def Scaler.scaleUnsigned (s : Scaler) (u : UInt64) : UInt64 :=
   if s.ident then u
   else if s.down then u >>> s.shift
   else (u * s.mul + s.half) / s.den
 
-/-- Appends pixel `i` of every channel (1 byte, or 2 bytes big-endian, per sample). -/
-def pushPixel (wide : Bool) (i : Nat) (out : ByteArray) : List (Plane × Scaler) → ByteArray
+/-- Scales a narrow component sample after adding its signed offset and clamping. -/
+@[inline] def Scaler.apply (s : Scaler) (v : Int32) : UInt64 :=
+  let x := v.toInt64 + s.off
+  let u := if x < 0 then 0 else if x > s.maxIn then s.maxIn.toUInt64 else x.toUInt64
+  s.scaleUnsigned u
+
+/-- Scales an exact native component sample, including 38-bit signed or unsigned values.
+Offset and clamp precede conversion to the unsigned fixed-width display kernel. -/
+@[inline] def Scaler.applyNative (s : Scaler) (v : Int) : UInt64 :=
+  let u := min s.maxIn.toInt.toNat (v + s.off.toInt).toNat
+  s.scaleUnsigned u.toUInt64
+
+private theorem scaleUnsigned_make (mode : Scaling) {d t u : Nat} (s : Bool)
+    (hd : 1 ≤ d) (hd' : d ≤ 38) (ht : t ≤ 16) (hu : u ≤ 2^d - 1) :
+    ((Scaler.make mode d s t).scaleUnsigned u.toUInt64).toNat = scaleNat mode d t u := by
+  have h1 := Nat.pow_le_pow_right (by decide : 0 < 2) hd
+  have h38 := Nat.pow_le_pow_right (by decide : 0 < 2) hd'
+  have h16 := Nat.pow_le_pow_right (by decide : 0 < 2) ht
+  have den : max 1 (2^d - 1) = 2^d - 1 := Nat.max_eq_right (by omega)
+  have mul : u * (2^t - 1) ≤ (2^38) * (2^16) :=
+    Nat.mul_le_mul (by omega) (by omega)
+  have hu64 : u < 2^64 := by omega
+  have hd64 : 2^d - 1 < 2^64 := by omega
+  have ht64 : 2^t - 1 < 2^64 := by omega
+  have hh64 : (2^d - 1) / 2 < 2^64 := by omega
+  have hm64 : u * (2^t - 1) < 2^64 := by omega
+  have ha64 : u * (2^t - 1) + (2^d - 1) / 2 < 2^64 := by omega
+  have hs64 : d - t < 64 := by omega
+  have hs' : d - t < 2^64 := by omega
+  cases mode <;> by_cases he : d = t <;> by_cases hdown : t < d <;>
+    simp [Scaler.make, Scaler.scaleUnsigned, scaleNat, he, hdown, den, UInt64.toNat_add,
+      UInt64.toNat_mul, UInt64.toNat_shiftRight, Nat.shiftRight_eq_div_pow,
+      Nat.mod_eq_of_lt hu64, Nat.mod_eq_of_lt hd64, Nat.mod_eq_of_lt ht64,
+      Nat.mod_eq_of_lt hh64, Nat.mod_eq_of_lt hm64, Nat.mod_eq_of_lt ha64,
+      Nat.mod_eq_of_lt hs64, Nat.mod_eq_of_lt hs']
+
+/-- For every admitted component depth through 38 bits and output depth up to 16,
+native display scaling equals clamping and the mathematical scaling formula. -/
+theorem Scaler.applyNative_make_eq (mode : Scaling) {d t : Nat} (s : Bool) (v : Int)
+    (hd : 1 ≤ d) (hd' : d ≤ 38) (ht : t ≤ 16) :
+    ((Scaler.make mode d s t).applyNative v).toNat =
+      scaleNat mode d t (min (2^d - 1) (v + (if s then (2 : Int)^(d - 1) else 0)).toNat) := by
+  have h1 := Nat.pow_le_pow_right (by decide : 0 < 2) hd
+  have h38 := Nat.pow_le_pow_right (by decide : 0 < 2) hd'
+  have hpow := Nat.pow_le_pow_right (by decide : 0 < 2) (show d - 1 ≤ 38 by omega)
+  have den : max 1 (2^d - 1) = 2^d - 1 := Nat.max_eq_right (by omega)
+  have cast (x : Nat) (hx : x ≤ 2^38) : (Int64.ofNat x).toInt = x := by
+    change (Int64.ofInt (x : Int)).toInt = _
+    exact Int64.toInt_ofInt_of_le (by omega) (by omega)
+  have hoff : (Scaler.make mode d s t).off.toInt = (if s then (2 : Int)^(d - 1) else 0) := by
+    cases s <;> simp [Scaler.make, cast _ hpow]
+  have hmax : (Scaler.make mode d s t).maxIn.toInt.toNat = 2^d - 1 := by
+    simp [Scaler.make, den, cast _ (show 2^d - 1 ≤ 2^38 by omega)]
+  simp only [Scaler.applyNative, hmax, hoff]
+  exact scaleUnsigned_make mode s hd hd' ht (Nat.min_le_left ..)
+
+/-- Appends pixel `i` of each channel, using the selected sample-reading kernel. -/
+@[specialize] def pushPixel {P : Type} (sample : P → Scaler → Nat → UInt64)
+    (wide : Bool) (i : Nat) (out : ByteArray) : List (P × Scaler) → ByteArray
   | [] => out
   | (p, s) :: rest =>
-    let u := s.apply ((p.get? i).getD 0)
+    let u := sample p s i
     let out := if wide then (out.push (u >>> 8).toUInt8).push u.toUInt8 else out.push u.toUInt8
-    pushPixel wide i out rest
+    pushPixel sample wide i out rest
 
-/-- Appends pixels `i = i₀ …` (fuel `k`). -/
-def interleaveLoop (wide : Bool) (cs : List (Plane × Scaler)) (out : ByteArray) (i : Nat) :
-    Nat → ByteArray
+/-- Appends pixels starting at `i`. The compact and native kernels specialize this loop. -/
+@[specialize] def interleaveLoop {P : Type} (sample : P → Scaler → Nat → UInt64)
+    (wide : Bool) (cs : List (P × Scaler)) (out : ByteArray) (i : Nat) : Nat → ByteArray
   | 0 => out
-  | k + 1 => interleaveLoop wide cs (pushPixel wide i out cs) (i + 1) k
+  | k + 1 => interleaveLoop sample wide cs (pushPixel sample wide i out cs) (i + 1) k
 
 /-- Interleaves `width × height` channels into one buffer of 8-bit (`wide = false`) or
 16-bit big-endian (`wide = true`) samples, pixel by pixel, channels in the given order, each
@@ -343,7 +429,11 @@ def interleave (L : Limits) (width height : Nat) (chs : Array Channel) (wide : B
   L.check Image.loc .decodedBytes size
   let t := if wide then 16 else 8
   let cs := chs.toList.map fun c => (c.plane, Scaler.make mode c.depth c.signed t)
-  return interleaveLoop wide cs (ByteArray.emptyWithCapacity size) 0 n
+  let out := ByteArray.emptyWithCapacity size
+  if h : cs.all (fun c => c.1.compact?.isSome) then
+    let planes := cs.attach.map fun ⟨c, hc⟩ => (c.1.compact?.get (List.all_eq_true.mp h c hc), c.2)
+    return interleaveLoop (fun p s i => s.apply ((p.get? i).getD 0)) wide planes out 0 n
+  return interleaveLoop (fun p s i => s.applyNative ((p.get? i).getD 0)) wide cs out 0 n
 
 namespace Image
 

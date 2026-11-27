@@ -89,7 +89,7 @@ def rawSamples (chs : Array Channel) (n bits : Nat) : ByteArray := Id.run do
   let mut out := ByteArray.emptyWithCapacity (n * chs.size * (if wide then 2 else 1))
   for i in [0:n] do
     for c in chs do
-      let v := (((c.plane.get? i).getD 0).toInt % (2 ^ bits : Int)).toNat
+      let v := ((c.get? i).getD 0 % (2 ^ bits : Int)).toNat
       if wide then
         out := (out.push (v / 256).toUInt8).push (v % 256).toUInt8
       else

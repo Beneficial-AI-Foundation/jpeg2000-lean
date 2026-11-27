@@ -1,17 +1,24 @@
 import Spec.RoundTrip.Tier1
-import Spec.RoundTrip.Tier2Bits
+import Spec.RoundTrip.Spec
+import Spec.RoundTrip.Native
 
 /-!
-# C10: `decode (encode img) = img` for the lossless reference encoder (in progress)
+# C10: `decode (encode img) = img` for the lossless reference encoder (proved)
 
 Plan.md §4 (C10), §5.3. Task 7.3. The round trip is assembled from per-stage layers under
 `Spec/RoundTrip/`:
 
 * **Layer 1 (proved)** — Tier-1, plain mode, T.800 Annex D + C1:
   `Spec.RoundTrip.decodeValues_encodeCodeBlock` (`Spec/RoundTrip/Tier1.lean`).
-* **Layer 2 (partly proved)** — Tier-2 packet headers, T.800 B.10: the bit writer against the
-  spec's un-stuffing and header alignment (`finish_spec`) and the header fields
-  (`field_natBits`, `numPasses_passBits`, `commaCode_replicate`) in
-  `Spec/RoundTrip/Tier2Bits.lean`. The packet-level round trip, the main-header round trip,
-  the composed spec-level C10 and the fast-decoder C10 (via C9) are not yet proved.
+* **Layers 2–3 (proved)** — `Spec.RoundTrip.reversible_tile_roundtrip` parses the
+  encoded header and recovers every packet block from the actual codestream under
+  the three numerical bounds in `ImageBudget` (T.800 Annexes A and B).
+* **Layer 4 (proved)** — `Spec.RoundTrip.encode_spec_roundtrip` recovers the input image
+  of every successful reversible encoding at full resolution. The equality includes
+  dimensions, component depths, signedness and every row-major sample. The theorem
+  `spec_roundtrip` specifies sufficient limits and `spec_roundtrip_default` covers the
+  default policy under five measured budgets.
+* **Layer 5 (proved)** — `encode_native_roundtrip` recovers the complete encoder image
+  through checked public sample reads. `native_roundtrip` gives sufficient computed
+  limits, and `native_roundtrip_default` specializes to the default budgets.
 -/

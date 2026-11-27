@@ -86,7 +86,7 @@ def read_pgx(path):
     else:
         sign, depth = "+", int(rest[0])
     w, h = int(rest[1]), int(rest[2])
-    bps = 1 if depth <= 8 else 2 if depth <= 16 else 4
+    bps = 1 if depth <= 8 else 2 if depth <= 16 else 4 if depth <= 32 else 8
     data = b[nl + 1:]
     if len(data) != w * h * bps:
         raise ValueError("PGX size mismatch in %s" % path)

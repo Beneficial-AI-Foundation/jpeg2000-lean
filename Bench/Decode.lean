@@ -193,7 +193,7 @@ def onePass (L : Limits) (data : ByteArray) :
   | .ok d =>
     let t1 ← IO.monoNanosNow
     -- keep the result observable
-    let sz := d.comps.foldl (fun a c => a + c.plane.width) 0
+    let sz := d.comps.foldl (fun a c => a + c.width) 0
     let t1 := if sz == 0xFFFFFFFFFF then 0 else t1
     let t2 ← IO.monoNanosNow
     match decode L data with

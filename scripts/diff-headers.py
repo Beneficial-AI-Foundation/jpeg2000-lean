@@ -5,8 +5,8 @@ Run from the repository root, after `lake build header-dump`:
 
     python3 -I scripts/diff-headers.py [--only TEXT ...] [--root DIR] [--context N]
 
-For every corpus file with a codestream role (conformance-stream, jp2, benchmark; see
-corpus/manifest.json and docs/corpus.md) this runs `opj_dump -i <file>` and
+For every fetched conformance-stream, jp2 and benchmark file and every PDF-extracted
+codestream (see corpus/manifest.json and docs/corpus.md) this runs `opj_dump -i <file>` and
 `.lake/build/bin/header-dump <file>`, normalises both outputs, and compares them line by
 line.  It prints one line per file (OK, DIFF with the first differing lines, or FAIL when
 either tool fails) and a summary `N/M files identical`.  Exit status: 0 when every file is
@@ -111,9 +111,9 @@ def selected_files(root, only):
     with open(MANIFEST, encoding="utf-8") as f:
         manifest = json.load(f)
     seen = []
-    for entry in manifest["files"]:
-        if not set(entry.get("roles", ())) & set(CODESTREAM_ROLES):
-            continue
+    fetched = [entry for entry in manifest["files"]
+               if any(role in CODESTREAM_ROLES for role in entry["roles"])]
+    for entry in fetched + manifest["pdf_jpx"]:
         rel = entry["path"]
         parts = rel.split("/")
         if rel.startswith("/") or any(p in ("", ".", "..") for p in parts):

@@ -1,6 +1,7 @@
 import JPEG2000.Image
 import Encode.Encode
 import Tests.Pgx
+import Tests.SpecDecode
 
 /-!
 # Tests of the consumer API `JPEG2000.decode` (task 6.2)
@@ -8,7 +9,7 @@ import Tests.Pgx
 Plan.md §1 ("What we build": output planes + interleaved 8/16-bit buffer), §8.1 (JP2
 conformance), §9 (`/SMaskInData`).
 
-* **Scaling** (`scaleNat`, `Scaler.apply`): edges at 1, 8, 12, 16, 32 bits, signed and
+* **Scaling** (`scaleNat`, `Scaler.apply`): edges at 1, 8, 12, 16, 32 and 38 bits, signed and
   unsigned, both modes; `Scaler.apply` agrees with `scaleNat` on sweeps.
 * **Interleaving**: 8-bit and 16-bit big-endian layout, alpha last, size checks.
 * **Up-sampling**: replication on the reference grid, even and odd origins.
@@ -44,8 +45,8 @@ def mkPlane (w h : Nat) (vs : List Int) : Plane :=
   (vs.zipIdx.foldl (fun p (v, i) => (p.set? i (Int32.ofInt v)).getD p) (Plane.zero w h))
 
 /-- A plane's values, row-major. -/
-def vals (p : Plane) : List Int :=
-  (List.range (p.width * p.height)).map fun i => ((p.get? i).getD 0).toInt
+def vals (p : Color.SamplePlane) : List Int :=
+  (List.range (p.width * p.height)).map fun i => (p.get? i).getD 0
 
 /-- Bytes as a list of naturals. -/
 def bytes (b : ByteArray) : List Nat := b.toList.map (·.toNat)
@@ -99,6 +100,22 @@ def scalingTests : IO Nat := do
             if sc mode d false t v != scaleNat mode d t v then bad := bad + 1
             if v > top || scaleNat mode d t v > 2 ^ t - 1 then bad := bad + 1
   f := f + (← expect s!"apply = scaleNat ({bad} mismatches)" (bad == 0))
+  -- A 38-bit unsigned midpoint is the DC-shifted value of a zero coefficient.
+  let mut wideErrors := 0
+  for d in [31:39] do
+    let top : Nat := 2 ^ d - 1
+    for signed in [false, true] do
+      let offset : Int := if signed then 2 ^ (d - 1) else 0
+      for mode in [Scaling.linear, .opj] do
+        for t in [8, 16] do
+          let scaler := Scaler.make mode d signed t
+          for u in [0, 1, top / 2, top / 2 + 1, top - 1, top] do
+            if (scaler.applyNative ((u : Int) - offset)).toNat != scaleNat mode d t u then
+              wideErrors := wideErrors + 1
+          if scaler.applyNative (-(2^100)) != 0 ||
+              (scaler.applyNative (2^100)).toNat != 2^t - 1 then
+            wideErrors := wideErrors + 1
+  f := f + (← expect s!"wide native scaling ({wideErrors} mismatches)" (wideErrors == 0))
   return f
 
 /-! ## Interleaving, up-sampling, soft mask -/
@@ -179,14 +196,17 @@ def be (n v : Nat) : List UInt8 :=
 def box (t : String) (body : List UInt8) : List UInt8 :=
   be 4 (8 + body.length) ++ t.toList.map (·.toNat.toUInt8) ++ body
 
-/-- A JP2 file around a codestream: `ihdr`, an enumerated `colr`, and extra `jp2h` boxes. -/
-def jp2 (w h nc bpc : Nat) (enumCs : Nat) (extra : List UInt8) (cs : ByteArray) : ByteArray :=
+/-- Wrap a codestream with explicit JP2 colour and component header boxes. -/
+def jp2WithColour (w h nc bpc : Nat) (extra : List UInt8) (cs : ByteArray) : ByteArray :=
   let sig := box "jP  " [0x0D, 0x0A, 0x87, 0x0A]
   let ftyp := box "ftyp" (be 4 0x6A703220 ++ be 4 0 ++ be 4 0x6A703220)
   let ihdr := box "ihdr" (be 4 h ++ be 4 w ++ be 2 nc ++ [bpc.toUInt8, 7, 0, 0])
-  let colr := box "colr" ([1, 0, 0] ++ be 4 enumCs)
-  let jp2h := box "jp2h" (ihdr ++ colr ++ extra)
+  let jp2h := box "jp2h" (ihdr ++ extra)
   ByteArray.mk (sig ++ ftyp ++ jp2h ++ box "jp2c" cs.toList).toArray
+
+/-- Wrap a codestream with an enumerated JP2 colour space. -/
+def jp2 (w h nc bpc enumCs : Nat) (extra : List UInt8) (cs : ByteArray) : ByteArray :=
+  jp2WithColour w h nc bpc (box "colr" ([1, 0, 0] ++ be 4 enumCs) ++ extra) cs
 
 /-- A `cdef` box from `(Cn, Typ, Asoc)` triples. -/
 def cdef (ds : List (Nat × Nat × Nat)) : List UInt8 :=
@@ -222,7 +242,8 @@ def endToEndTests : IO Nat := do
     | .ok img =>
       f := f + (← expect "raw: unknown space, 1 channel, size"
         (img.space == .unknown && img.channels.size == 1 && img.width == w && img.height == h
-          && img.alpha.isNone && img.iccProfile.isNone && img.decodedComponents.size == 1))
+          && img.alpha.isNone && img.iccProfile.isNone && img.decodedComponents.size == 1
+          && img.decodedNarrow?.isSome))
       f := f + (← expect "raw: interleaved8 = samples"
         ((img.interleaved8 {}).toOption.map bytes == some ((ramp 23 256).map Int.toNat)))
     -- the same in a JP2 container, greyscale
@@ -297,6 +318,132 @@ def endToEndTests : IO Nat := do
       ((decode {} cs { reduce := 1 }).toOption.map (fun i => (i.width, i.height)) == some (4, 3)))
   return f
 
+private def wideMidpoints : Except Error Bool := do
+  for signed in [false, true] do
+    let raw ← SpecDecode.wideZero signed
+    for data in [raw, jp2 1 1 1 (37 + if signed then 128 else 0) 17 [] raw] do
+      let img ← decode {} data
+      let c := img.channels.getD 0 default
+      if img.decodedNarrow?.isSome || img.channels.size != 1 || c.depth != 38 || c.signed != signed ||
+          c.get? 0 != some (if signed then 0 else 2^37) || c.get? 1 != none then return false
+      for mode in [Scaling.linear, .opj] do
+        if bytes (← img.interleaved8 {} (mode := mode)) != [128] ||
+            bytes (← img.interleaved16 {} (mode := mode)) != [128, 0] then return false
+  return true
+
+private def mixedDisplay : Except Error Bool := do
+  let raw ← SpecDecode.twoTiles
+  let profile : List UInt8 := List.replicate 16 0 ++ [0x32, 0x43, 0x4c, 0x52] -- 2CLR
+  let bpcc := box "bpcc" [37, 135, 165]
+  let icc := box "colr" ([2, 0, 0] ++ profile)
+  let file := jp2WithColour 8 2 3 255 (bpcc ++ icc ++ cdef [(0, 0, 2), (1, 2, 0), (2, 0, 1)]) raw
+  for r in [0, 1] do
+    let (w, h) := (8 / 2^r, 2 / 2^r)
+    let L := {Limits.default with maxDecodedBytes := w*h*17, maxWorkSamples := w*h*3}
+    for boxed in [false, true] do
+      let data := if boxed then file else raw
+      let img ← decode L data { reduce := r }
+      if img.width != w || img.height != h || img.decoded.reduce != r || !img.other.isEmpty ||
+          img.channels.size != (if boxed then 2 else 3) || img.alpha.isSome != boxed ||
+          img.premultiplied != boxed || (img.smaskInData 1).isSome != boxed then return false
+      if boxed then
+        let .icc _ := img.space | return false
+        if img.iccProfile != some ⟨profile.toArray⟩ then return false
+      else if img.space != .unknown || img.iccProfile.isSome then return false
+      let indices := if boxed then [2, 0, 1] else [0, 1, 2]
+      let target := img.outChannels true
+      let value (i k : Nat) : Int :=
+        let left := i % w < w / 2
+        match k with
+        | 0 => if left then 2^37 else 2^37 + 1
+        | 1 => if left then 2 else -3
+        | _ => if left then -5 else 7
+      for (k, n) in indices.zipIdx do
+        let c := target.getD n default
+        if c.depth != (if k == 1 then 8 else 38) || c.signed != (k != 0) ||
+            c.get? (w*h) != none then return false
+        for i in [:w*h] do
+          if c.get? i != some (value i k) || (img.decoded.comps.getD k default).get? i != c.get? i then
+            return false
+      for mode in [Scaling.linear, .opj] do
+        for withAlpha in [false, true] do
+          let order := if boxed && !withAlpha then indices.take 2 else indices
+          for t in [8, 16] do
+            let want := (List.range (w*h)).flatMap fun i => order.flatMap fun k =>
+              let d := if k == 1 then 8 else 38
+              let u := (value i k + (if k == 0 then 0 else (2:Int)^(d-1))).toNat
+              be (t/8) (scaleNat mode d t u)
+            let buf ← if t == 8 then img.interleaved8 L withAlpha mode else img.interleaved16 L withAlpha mode
+            if buf.toList != want then return false
+  return true
+
+private def wideColour : Except Error Bool := do
+  let raw ← SpecDecode.wideZero false
+  -- A single stored sample spans two reference-grid columns at an odd origin.
+  let h ← Header.parse {} raw
+  let siz := { h.siz with
+    xosiz := 1, xsiz := 3, xtsiz := 3
+    components := h.siz.components.map fun c => {c with dx := 2}}
+  let segment := fun s => Encode.Marker.segment Marker.Code.SIZ (Encode.Marker.serializeSIZ s)
+  let sub := raw.extract 0 2 ++ segment siz ++ raw.extract (2 + (segment h.siz).size) raw.size
+  let img ← decode {} sub
+  let c := img.channels.getD 0 default
+  if img.x0 != 1 || img.width != 2 || (img.decoded.comps.getD 0 default).width != 1 ||
+      [c.get? 0, c.get? 1, c.get? 2] != [some (2^37), some (2^37), none] then return false
+  -- An index above Int32 selects the last row. Exercise both extrema and neutral chroma.
+  let mid := 2^37
+  let last := 2^38 - 1
+  let pclr := box "pclr" (be 2 2 ++ [3, 37, 37, 37] ++ List.replicate 15 0 ++
+    be 5 last ++ be 5 mid ++ be 5 mid)
+  let cmap := box "cmap" [0,0,1,0, 0,0,1,1, 0,0,1,2]
+  let file := jp2 1 1 1 37 18 (pclr ++ cmap) raw
+  let mapped ← decode {} file {convertSycc := false}
+  if mapped.channels.map (·.get? 0) != #[some (last:Int), some (mid:Int), some (mid:Int)] then return false
+  let rgb ← decode {} file
+  if rgb.space != .sRGB || rgb.channels.map (·.get? 0) != Array.replicate 3 (some (last:Int)) ||
+      bytes (← rgb.interleaved16 {}) != List.replicate 6 255 then return false
+  let signed := box "pclr" (be 2 2 ++ [1, 165] ++ be 5 0 ++ be 5 mid)
+  let signedFile := jp2 1 1 1 37 17 (signed ++ box "cmap" [0,0,1,0]) raw
+  let lo ← decode {} signedFile
+  return (lo.channels.getD 0 default).get? 0 == some (-(mid:Int)) &&
+    bytes (← lo.interleaved8 {}) == [0] && bytes (← lo.interleaved16 {}) == [0,0]
+
+/-- Four direct mappings replicate one 2×2 native plane to the 4×4 reference
+grid. Display admission charges all four channels before selecting RGB. -/
+private def displayLimits : Except Error Bool := do
+  let cs ← Encode.encode { levels := 0, mct := false }
+    { width := 2, height := 2, comps := #[comp 8 false [5, 9, 11, 15]] }
+  let h ← Header.parse {} cs
+  let siz := { h.siz with
+    xsiz := 4, ysiz := 4, xtsiz := 4, ytsiz := 4,
+    components := h.siz.components.map fun c => { c with dx := 2, dy := 2 } }
+  let sizMarker := Encode.Marker.pack (Encode.Marker.be16 Marker.Code.SOC) ++
+    Encode.Marker.segment Marker.Code.SIZ (Encode.Marker.serializeSIZ siz)
+  let palette := box "pclr" (be 2 1 ++ [1, 7, 0])
+  let cmap := box "cmap" ((List.replicate 4 [0, 0, 0, 0]).flatten)
+  let file := jp2 4 4 1 7 16 (palette ++ cmap) (sizMarker ++ cs.extract sizMarker.size cs.size)
+  let tight := { Limits.default with maxWorkSamples := 63, maxDecodedBytes := 63 }
+  let .error work := decode tight file | return false
+  let .error bytes := decode { tight with maxWorkSamples := 64 } file | return false
+  let img ← decode { tight with maxWorkSamples := 64, maxDecodedBytes := 64 } file
+  let .error byte8 := img.interleaved8 { maxDecodedBytes := 47 } | return false
+  let .error byte16 := img.interleaved16 { maxDecodedBytes := 95 } | return false
+  return work == .limitExceeded Image.loc .workSamples 64 63 &&
+    bytes == .limitExceeded Image.loc .decodedBytes 64 63 &&
+    byte8 == .limitExceeded Image.loc .decodedBytes 48 47 &&
+    byte16 == .limitExceeded Image.loc .decodedBytes 96 95
+
+/-- Public native and display samples, independent byte limits and replication-work admission. -/
+def nativeTests : IO Nat := do
+  let mut failures := 0
+  for (name, result) in [("38-bit raw and JP2 midpoints", wideMidpoints),
+      ("mixed tiles, ICC and alpha", mixedDisplay), ("wide palette, sYCC and replication", wideColour),
+      ("display limits before and after RGB selection", displayLimits)] do
+    match result with
+    | .ok ok => failures := failures + (← expect name ok)
+    | .error e => failures := failures + (← expect s!"{name}: {e}" false)
+  return failures
+
 /-! ## JP2 conformance (`file1…9.jp2` against `jp2_N.tif`) -/
 
 /-- Files whose reference TIFF is presumably colour-managed through the file's restricted
@@ -366,6 +513,6 @@ def conformanceTests : IO Nat := do
 /-- Runs every test; returns the number of failures. -/
 def run : IO Nat := do
   return (← scalingTests) + (← interleaveTests) + (← upsampleTests) + (← endToEndTests)
-    + (← conformanceTests)
+    + (← nativeTests) + (← conformanceTests)
 
 end JPEG2000.Tests.Image

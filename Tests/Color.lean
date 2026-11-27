@@ -56,8 +56,8 @@ def mkPlane (w h : Nat) (vs : List Int) : Plane :=
   (vs.zipIdx.foldl (fun p (v, i) => (p.set? i (Int32.ofInt v)).getD p) (Plane.zero w h))
 
 /-- A plane's values, row-major. -/
-def vals (p : Plane) : List Int :=
-  (List.range (p.width * p.height)).map fun i => ((p.get? i).getD 0).toInt
+def vals (p : SamplePlane) : List Int :=
+  (List.range (p.width * p.height)).map fun i => (p.get? i).getD 0
 
 /-- An unsigned 8-bit channel. -/
 def ch8 (w h : Nat) (vs : List Int) (dx dy : Nat := 1) : Channel :=
@@ -88,8 +88,8 @@ def paletteTests : IO Nat := do
     (mapped.toOption.map (·.toList.map fun c => (c.format.depth, c.format.signed, vals c.plane))
       == some [(4, false, [15, 191, 255]), (4, true, [7, -8, 3])]))
   f := f + (← expect "12-bit unsigned palette: full stored word" (entryValue 11 0xEF34 == 0xEF34))
-  f := f + (← expect "31-bit unsigned palette: stored value must fit the sample plane"
-    (isUnsupported (checkPalette { ne := 1, npc := 1, bits := #[30], entries := #[0x80000000] })))
+  f := f + (← expect "31-bit unsigned palette: padding retained"
+    ((checkPalette { ne := 1, npc := 1, bits := #[30], entries := #[0x80000000] }).toOption.isSome))
   let r2 := applyPalette {} pal #[⟨1, 0, 0⟩, ⟨0, 1, 0⟩] #[idx, other]
   f := f + (← expect "palette: direct + palette"
     ((ok? r2).map (·.toList.map (vals ·.plane)) == some [[5, 6, 7, 8], [10, 10, 30, 40]]))
@@ -100,8 +100,8 @@ def paletteTests : IO Nat := do
   f := f + (← expect "cmap: empty" (isMalformed (applyPalette {} pal #[] #[idx])))
   f := f + (← expect "cmap: channel count over maxComponents"
     (isLimit (applyPalette Limits.strict pal (Array.replicate 5 ⟨0, 1, 0⟩) #[idx])))
-  f := f + (← expect "pclr: 32-bit unsigned column unsupported"
-    (isUnsupported (applyPalette {} { pal with bits := #[31, 0x87] } #[⟨0, 1, 0⟩] #[idx])))
+  f := f + (← expect "pclr: 32-bit unsigned column accepted"
+    ((applyPalette {} { pal with bits := #[31, 0x87] } #[⟨0, 1, 0⟩] #[idx]).toOption.isSome))
   f := f + (← expect "pclr: 32-bit signed column ok"
     ((ok? (applyPalette {} { pal with bits := #[7, 0x9F] } #[⟨0, 1, 1⟩] #[idx])).isSome))
   f := f + (← expect "pclr: inconsistent entry table"
@@ -300,8 +300,8 @@ def syccTests : IO Nat := do
     [0, 0, 0, 0, 90, 90, 110, 110, 90, 90, 110, 110])
   f := f + (← checkEdge 1 1 2 [90, 110, 140, 160]
     [0, 0, 0, 0, 0, 90, 90, 110, 90, 90, 90, 110, 0, 140, 140, 160])
-  f := f + (← expect "sYCC: depth 32 unsupported"
-    (isUnsupported (syccToRgb {} 0 0 { ch8 1 1 [0] with format := { depth := 32, signed := false } }
+  f := f + (← expect "sYCC: depth above 38 unsupported"
+    (isUnsupported (syccToRgb {} 0 0 { ch8 1 1 [0] with format := { depth := 39, signed := false } }
       (ch8 1 1 [0]) (ch8 1 1 [0]))))
   f := f + (← expect "sYCC: empty chroma" (isMalformed (syccToRgb {} 0 0 (ch8 1 1 [0])
     (ch8 0 0 []) (ch8 1 1 [0]))))

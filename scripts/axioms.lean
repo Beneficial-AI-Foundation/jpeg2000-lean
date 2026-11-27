@@ -751,6 +751,7 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.DWTPlane.fast_core
 #print axioms JPEG2000.Spec.DWTPlane.idwt53Fast_spec
 #print axioms JPEG2000.Spec.DWTPlane.clamp32_int32
+#print axioms JPEG2000.Spec.DWTPlane.idwt53Fast_bandsEq
 #print axioms JPEG2000.Spec.DWTPlane.dwt53PlaneEquiv
 #print axioms JPEG2000.Spec.DWTPlane.bandsClose_agree
 #print axioms JPEG2000.Spec.DWTPlane.idwt97Fast_spec
@@ -758,6 +759,7 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.DWTPlane.clampR_lip
 #print axioms JPEG2000.Spec.DWTPlane.clampR_int32
 #print axioms JPEG2000.Spec.DWTPlane.roundRat_err
+#print axioms JPEG2000.Spec.DWTPlane.idwt97Fast_err
 #print axioms JPEG2000.Spec.DWTPlane.dwt97PlaneErr
 #print axioms JPEG2000.Spec.DWTPlane.rmax_l
 #print axioms JPEG2000.Spec.DWTPlane.rmax_r
@@ -1014,6 +1016,20 @@ end AxiomsSelfCheck
 -- Phase 7, task 7.4: S2/S3 (Spec/Resources.lean); the decoder definitions themselves
 #print axioms JPEG2000.decode
 #print axioms JPEG2000.decodeCodestream
+#print axioms JPEG2000.decodeCodestreamNarrow
+#print axioms JPEG2000.Spec.CodestreamDispatch.compact_read
+#print axioms JPEG2000.Spec.CodestreamDispatch.native_dispatch
+#print axioms JPEG2000.Spec.CodestreamDispatch.native_geometry
+#print axioms JPEG2000.Spec.CodestreamDispatch.native_read
+#print axioms JPEG2000.Spec.WideAssembly.blockSt_raster
+#print axioms JPEG2000.Spec.WideAssembly.decodeBlock_eq
+#print axioms JPEG2000.Spec.WideAssembly.tileComp_eq_finish
+#print axioms JPEG2000.Spec.WideAssembly.tileComp_equiv
+#print axioms JPEG2000.Spec.WideAssembly.tileComp_sound
+#print axioms JPEG2000.Spec.WideAssembly.bandGrid53_eq
+#print axioms JPEG2000.Spec.WideAssembly.bandGrid97_close
+#print axioms JPEG2000.Spec.WideAssembly.parsed_component
+#print axioms JPEG2000.Spec.WideAssembly.parsed_component_ok
 #print axioms JPEG2000.Spec.Resources.checkGeometry_limitOnly
 #print axioms JPEG2000.Spec.Resources.checkGeometry_ok_iff
 #print axioms JPEG2000.Spec.Resources.addTile_within
@@ -1049,7 +1065,9 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.Resources.decodeTile_work
 #print axioms JPEG2000.Spec.Resources.reconstructTileComp_work
 #print axioms JPEG2000.Spec.Resources.decode_total
+#print axioms JPEG2000.Spec.Resources.array_foldl_sum
 #print axioms JPEG2000.Spec.Resources.decodeCodestream_resources
+#print axioms JPEG2000.Spec.NativeResources.decodeCodestream_resources
 #print axioms JPEG2000.Spec.Resources.decode_resources
 #print axioms JPEG2000.Spec.Resources.decode_size
 
@@ -1246,3 +1264,696 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.RoundTrip.initPrecincts_shape
 #print axioms JPEG2000.Spec.RoundTrip.initPrecincts_geometry
 #print axioms JPEG2000.Spec.RoundTrip.ReversibleTilePackets.precReady
+
+-- Phase 7, task 7.3f5a: disjoint precinct spans and packet index injectivity
+#print axioms JPEG2000.Spec.RoundTrip.initPrecincts_spans_disjoint
+#print axioms JPEG2000.Spec.RoundTrip.initPrecincts_precIdx_injective
+
+-- Phase 7, task 7.3f5d: end-to-end Tier-2 wrapper under explicit admissions
+#print axioms JPEG2000.Spec.RoundTrip.decodeTile_encodeDetailed
+
+-- Phase 7, task 7.3f5b: PacketBlocks
+#print axioms JPEG2000.Spec.RoundTrip.encodeComp_packetBlock
+#print axioms JPEG2000.Spec.RoundTrip.encodeComp_blockRecords
+#print axioms JPEG2000.Spec.RoundTrip.encodeComp_blockOK
+#print axioms JPEG2000.Spec.RoundTrip.ReversibleTilePackets.packetBlock
+#print axioms JPEG2000.Spec.RoundTrip.ReversibleTilePackets.blockOK
+#print axioms JPEG2000.Spec.RoundTrip.ReversibleTilePackets.componentRecords
+#print axioms JPEG2000.Spec.RoundTrip.encodeComp_passes
+#print axioms JPEG2000.Spec.RoundTrip.ReversibleTilePackets.packetPasses
+
+-- Phase 7, task 7.3f5c: InitAdmission
+#print axioms JPEG2000.Spec.RoundTrip.tagTree_create_of_le
+#print axioms JPEG2000.Spec.RoundTrip.initPrecincts_of_encCounts
+#print axioms JPEG2000.Spec.RoundTrip.initPrecincts_of_headerFits
+
+-- Phase 7, task 7.3f5e1: CodewordBudget
+#print axioms JPEG2000.Spec.RoundTrip.included_size_le_packet
+#print axioms JPEG2000.Spec.RoundTrip.ReversibleTilePackets.packet_size_le_tile
+#print axioms JPEG2000.Spec.RoundTrip.PacketBlockCall.planes_le_37
+#print axioms JPEG2000.Spec.RoundTrip.encodeDetailed_packetBlockOK
+
+-- Phase 7, task 7.3f5e2: ImageBudget
+#print axioms JPEG2000.Spec.RoundTrip.imageArea_of_check
+#print axioms JPEG2000.Spec.RoundTrip.imageCodeBlocks_eq_encCounts
+#print axioms JPEG2000.Spec.RoundTrip.precincts_le_default_of_check
+#print axioms JPEG2000.Spec.RoundTrip.headerFits_default_iff
+#print axioms JPEG2000.Spec.RoundTrip.ImageBudget.headerFits
+#print axioms JPEG2000.Spec.RoundTrip.ImageBudget.packetPasses
+#print axioms JPEG2000.Spec.RoundTrip.imageBudget_iff
+
+-- Phase 7, task 7.3f5e3: Link
+#print axioms JPEG2000.Spec.RoundTrip.reversible_tile_roundtrip
+
+-- Phase 7, task 7.3d2: DisplayReconstruction
+#print axioms JPEG2000.Spec.RoundTrip.check_component_samples
+#print axioms JPEG2000.Spec.RoundTrip.reversibleRows_size
+#print axioms JPEG2000.Spec.RoundTrip.mctSpec_reversibleRows
+#print axioms JPEG2000.Spec.RoundTrip.dcSpec_shifted
+#print axioms JPEG2000.Spec.RoundTrip.display_reconstruction
+
+-- Phase 7, task 7.3d1: BlockReconstruction
+#print axioms JPEG2000.Spec.RoundTrip.DecodedEncoderBands.reconstructBlock
+#print axioms JPEG2000.Spec.RoundTrip.DecodedEncoderTile.reconstructBlock
+
+-- Phase 7, task 7.3d4a: TilePlacement
+#print axioms JPEG2000.Spec.RoundTrip.blitRow_samples
+#print axioms JPEG2000.Spec.RoundTrip.blitRows_samples
+#print axioms JPEG2000.Spec.RoundTrip.blit_fullTile
+#print axioms JPEG2000.Spec.RoundTrip.place_fullTile
+#print axioms JPEG2000.Spec.RoundTrip.place_encTile
+#print axioms JPEG2000.Spec.RoundTrip.outputCells_encSIZ
+#print axioms JPEG2000.Spec.RoundTrip.outputBytes_encSIZ
+#print axioms JPEG2000.Spec.RoundTrip.place_encTile_of_limits
+
+-- Phase 7, task 7.3d3b: SubbandInverse
+#print axioms JPEG2000.Spec.RoundTrip.reversibleBand_eq
+#print axioms JPEG2000.Spec.RoundTrip.reversibleBand_sample
+#print axioms JPEG2000.Spec.RoundTrip.idwt_reversibleRow
+
+-- Phase 7, task 7.3d3a: BandCoverage
+#print axioms JPEG2000.Spec.RoundTrip.sample_raster
+#print axioms JPEG2000.Spec.RoundTrip.BandBlockAt.indices
+#print axioms JPEG2000.Spec.RoundTrip.BandBlockAt.unique
+#print axioms JPEG2000.Spec.RoundTrip.encBandCoverage
+#print axioms JPEG2000.Spec.RoundTrip.encBandCoverage_of_headerFits
+#print axioms JPEG2000.Spec.RoundTrip.blockCoeffs_sample
+
+-- Phase 7, task 7.3d3c: CollectedBlocks
+#print axioms JPEG2000.Spec.RoundTrip.blockCoeffs_at
+#print axioms JPEG2000.Spec.RoundTrip.DecodedEncoderTile.packetBlockAt
+#print axioms JPEG2000.Spec.RoundTrip.DecodedEncoderTile.blockAtGeometry
+#print axioms JPEG2000.Spec.RoundTrip.DecodedEncoderTile.tileComp_collected
+#print axioms JPEG2000.Spec.RoundTrip.DecodedEncoderTile.bandGrid53_collected
+
+-- Phase 7, task 7.3d3d: WaveletReconstruction
+#print axioms JPEG2000.Spec.RoundTrip.DecodedEncoderTile.tileComp_reversibleRow
+#print axioms JPEG2000.Spec.RoundTrip.encodeDetailed_waveletReconstruction
+
+-- Phase 7, task 7.3d4b2: SingleTile
+#print axioms JPEG2000.Spec.RoundTrip.decode_encTile
+#print axioms JPEG2000.Spec.RoundTrip.spec_roundtrip_of_tile
+
+-- Phase 7, task 7.3d5: reversible display for every component count
+#print axioms JPEG2000.Spec.RoundTrip.reversibleRows_size_all_components
+#print axioms JPEG2000.Spec.RoundTrip.mctSpec_reversibleRows_all_components
+#print axioms JPEG2000.Spec.RoundTrip.display_reconstruction_all_components
+
+-- Phase 7, task 7.1j1: exact wide native sample planes
+#print axioms JPEG2000.Bytes.WidePlane.size_eq
+#print axioms JPEG2000.Bytes.WidePlane.get_range
+#print axioms JPEG2000.Bytes.WidePlane.get_zero
+#print axioms JPEG2000.Bytes.WidePlane.get_set
+#print axioms JPEG2000.Spec.WidePlane.zeroChecked_spec
+#print axioms JPEG2000.Spec.WidePlane.zeroChecked_layout
+#print axioms JPEG2000.Spec.WidePlane.get?_eq_none_iff
+#print axioms JPEG2000.Spec.WidePlane.set?_layout
+#print axioms JPEG2000.Spec.WidePlane.set?_spec
+
+-- Phase 7, task 7.1i1: wide plain Tier-1 equivalence
+#print axioms JPEG2000.Spec.Tier1Wide.cellOf_value
+#print axioms JPEG2000.Spec.Tier1Wide.runPasses_equiv
+#print axioms JPEG2000.Spec.Tier1Wide.decodeCodeBlockSegs_equiv
+#print axioms JPEG2000.Spec.Tier1Wide.decodeCodeBlock_equiv
+#print axioms JPEG2000.Spec.Tier1Wide.codedPlanes_le_of_header
+
+-- Phase 7, task 7.3d6b: resource limits for reference encodings
+#print axioms JPEG2000.Spec.RoundTrip.reversible_tile_roundtrip_with_limits
+#print axioms JPEG2000.Spec.RoundTrip.encoderLimits_eq_default_iff
+#print axioms JPEG2000.Spec.RoundTrip.headerFits_encoderLimits
+#print axioms JPEG2000.Spec.RoundTrip.reversible_tile_roundtrip_encoderLimits
+#print axioms JPEG2000.Spec.RoundTrip.output_admitted_encoderLimits
+#print axioms JPEG2000.Spec.RoundTrip.spec_roundtrip_with_limits_of_tile
+
+-- Phase 7, task 7.3d4b1: component loops and tile display
+#print axioms JPEG2000.Spec.RoundTrip.decodeTile_reconstructedEncoderTile
+
+-- Phase 7, task 7.3d6a: full spec block and row recovery
+#print axioms JPEG2000.Spec.RoundTrip.DecodedEncoderTile.reconstructsComponentBlocks
+#print axioms JPEG2000.Spec.RoundTrip.ComponentPlanes31.reconstructsComponentBlocks
+#print axioms JPEG2000.Spec.RoundTrip.ReconstructsComponentBlocks.tileComp_collected
+#print axioms JPEG2000.Spec.RoundTrip.ReconstructsComponentBlocks.bandGrid53_collected
+#print axioms JPEG2000.Spec.RoundTrip.DecodedEncoderTile.tileComp_reversibleRow_of_encodeDetailed
+#print axioms JPEG2000.Spec.RoundTrip.encodeDetailed_waveletReconstruction_full
+
+-- Phase 7, task 7.1i2a: wide style-aware passes
+#print axioms JPEG2000.Spec.Tier1Wide.Modes.mqDecision_equiv
+#print axioms JPEG2000.Spec.Tier1Wide.Modes.rawDecision_equiv
+#print axioms JPEG2000.Spec.Tier1Wide.Modes.passBody_equiv
+#print axioms JPEG2000.Spec.Tier1Wide.Modes.segSymbol_equiv
+#print axioms JPEG2000.Spec.Tier1Wide.Modes.runPass_equiv
+#print axioms JPEG2000.Spec.Tier1Wide.Segments.decodeCodeBlockSegs_equiv
+#print axioms JPEG2000.Spec.Tier1Wide.Segments.decodeRanges_equiv
+
+-- Phase 7, tasks 7.3d4b3 and 7.3d6c: spec-level image round trip
+#print axioms JPEG2000.Spec.RoundTrip.assembled_image
+#print axioms JPEG2000.Spec.RoundTrip.decodeTile_reconstructedEncoderTile_lossless
+#print axioms JPEG2000.Spec.RoundTrip.spec_roundtrip_lossless_with_limits
+#print axioms JPEG2000.Spec.RoundTrip.encoderImageOfNative_eq
+#print axioms JPEG2000.Spec.RoundTrip.native_roundtrip_of_c9
+#print axioms JPEG2000.Spec.RoundTrip.encode_native_roundtrip_of_c9
+#print axioms JPEG2000.Spec.RoundTrip.spec_roundtrip_with_limits
+#print axioms JPEG2000.Spec.RoundTrip.spec_roundtrip
+#print axioms JPEG2000.Spec.RoundTrip.spec_roundtrip_default
+#print axioms JPEG2000.Spec.RoundTrip.encode_spec_roundtrip
+
+-- Phase 7, task 7.1j2a: wide sample reconstruction and placement
+#print axioms JPEG2000.WideOutput.destIndex_lt
+#print axioms JPEG2000.Spec.WideOutput.sample_rev
+#print axioms JPEG2000.Spec.WideOutput.sample_irrev
+#print axioms JPEG2000.Spec.WideOutput.roundFix_eq_roundHalf
+#print axioms JPEG2000.Spec.WideOutput.sample_recovers
+#print axioms JPEG2000.Spec.WideOutput.blit_succeeds
+#print axioms JPEG2000.Spec.WideOutput.blit_spec
+#print axioms JPEG2000.Spec.WideQuant.zeroChecked_eq
+#print axioms JPEG2000.Spec.WideQuant.unshift_eq
+#print axioms JPEG2000.Spec.WideQuant.prepare_zero
+#print axioms JPEG2000.Spec.WideQuant.reversible_eq
+#print axioms JPEG2000.Spec.WideQuant.reversible_midpoint
+#print axioms JPEG2000.Spec.WideQuant.irreversible_eq
+#print axioms JPEG2000.Spec.WideQuant.irreversible_error
+#print axioms JPEG2000.Spec.WideQuant.reduced_band
+#print axioms JPEG2000.Spec.WideQuant.blockOffset_eq
+#print axioms JPEG2000.Spec.WideQuant.dequantBlock_succeeds
+#print axioms JPEG2000.Spec.WideQuant.dequantBlock_read
+#print axioms JPEG2000.Spec.WideQuant.dequantBlock_sample
+#print axioms JPEG2000.Spec.WideReversible.idwt53_spec
+#print axioms JPEG2000.Spec.WideReversible.idwt53_of_bandsEq
+#print axioms JPEG2000.Spec.WideReversible.rctInverse_spec
+#print axioms JPEG2000.Spec.WideReversible.reconstruct_rgb
+#print axioms JPEG2000.Spec.WideICT.ictInverse_ok
+#print axioms JPEG2000.Spec.WideICT.ictInverse_fixed_error
+#print axioms JPEG2000.Spec.WideICT.ictInverse_error
+#print axioms JPEG2000.Spec.WideICT.ictInverse_c8
+#print axioms JPEG2000.Spec.WideDWT97.product_err
+#print axioms JPEG2000.Spec.WideDWT97.idwt97_spec
+#print axioms JPEG2000.Spec.WideDWT97.level_work
+#print axioms JPEG2000.Spec.WideDWT97.idwt97_of_bandsClose
+#print axioms JPEG2000.Spec.NativeOutput.allocOutput_spec
+#print axioms JPEG2000.Spec.NativeOutput.writeComponent_badGeometry
+#print axioms JPEG2000.Spec.NativeOutput.writeComponent_spec
+#print axioms JPEG2000.Spec.NativeOutput.writeComponent_succeeds
+#print axioms JPEG2000.Spec.NativeOutput.disjoint_writes
+#print axioms JPEG2000.Spec.NativeOutput.writeTile_spec
+#print axioms JPEG2000.Spec.NativeOutput.allocOutput_succeeds
+#print axioms JPEG2000.Spec.NativeOutput.backing_size
+#print axioms JPEG2000.Spec.NativeOutput.allocOutput_bounds
+#print axioms JPEG2000.Spec.NativeOutput.writeComponent_roundHalf
+#print axioms JPEG2000.Spec.NativeOutput.writeComponent_recovers
+#print axioms JPEG2000.Spec.NativeOutput.writeTile_succeeds
+#print axioms JPEG2000.Spec.NativeSample.placed_sample
+#print axioms JPEG2000.Spec.NativeSample.writeTile_sample
+
+-- Phase 7, task 7.1j3a: exact scaling through 38 bits
+#print axioms JPEG2000.Scaler.applyNative_make_eq
+
+#print axioms JPEG2000.Spec.HeaderWF.readArray_inv
+#print axioms JPEG2000.Spec.HeaderWF.parseMainHeader_fields
+#print axioms JPEG2000.Spec.HeaderWF.parseTileParts_fields
+#print axioms JPEG2000.Spec.HeaderWF.mem_extract
+#print axioms JPEG2000.Spec.HeaderWF.overrides_inv
+#print axioms JPEG2000.Spec.HeaderWF.getD_none
+#print axioms JPEG2000.Spec.HeaderWF.getD_getD
+#print axioms JPEG2000.Spec.HeaderWF.arrayMapM_mem
+#print axioms JPEG2000.Spec.HeaderWF.list_foldl_inv
+#print axioms JPEG2000.Spec.HeaderWF.geom_params
+#print axioms JPEG2000.Spec.WideHeaderBounds.parsed_component_bounds
+#print axioms JPEG2000.Spec.WideHeaderBounds.ComponentBounds.block_planes
+#print axioms JPEG2000.Spec.WideHeaderBounds.parsed_component
+#print axioms JPEG2000.Spec.WideHeaderBounds.absent_component
+
+#print axioms JPEG2000.CodestreamComponent.samples_get?
+#print axioms JPEG2000.Spec.Resources.public_limitExceeded_of_output
+#print axioms JPEG2000.Spec.Resources.publicCodestream_resources
+
+#print axioms JPEG2000.Spec.ReversibleDispatch.mallat_read
+#print axioms JPEG2000.Spec.ReversibleDispatch.wideBands
+#print axioms JPEG2000.Spec.ReversibleDispatch.tileComp_sound
+#print axioms JPEG2000.Spec.ReversibleDispatch.tileComp_equiv
+#print axioms JPEG2000.Spec.ReversibleDispatch.parsed_component_ok
+#print axioms JPEG2000.Spec.ReversibleDispatch.parsed_component
+#print axioms JPEG2000.Spec.ReversibleDispatch.colour_spec
+#print axioms JPEG2000.Spec.ReversibleDispatch.colour_cells
+#print axioms JPEG2000.Spec.ReversibleDispatch.colour_mctSpec
+#print axioms JPEG2000.Spec.IrreversibleDispatch.compactBands_ok
+#print axioms JPEG2000.Spec.IrreversibleDispatch.source_fixed
+#print axioms JPEG2000.Spec.IrreversibleDispatch.component_c8
+#print axioms JPEG2000.Spec.IrreversibleDispatch.ict_c8
+#print axioms JPEG2000.Spec.IrreversibleDispatch.sources_c8
+#print axioms JPEG2000.Spec.IrreversibleDispatch.tile_c8
+#print axioms JPEG2000.Spec.IrreversibleDispatch.parsed_tile_c8
+
+#print axioms JPEG2000.Spec.NativeTraversal.decode_of_stages
+
+#print axioms JPEG2000.Spec.NativePlacement.parsed_depth
+#print axioms JPEG2000.Spec.NativePlacement.allocation
+#print axioms JPEG2000.Spec.NativePlacement.guarded_allocation
+#print axioms JPEG2000.Spec.NativePlacement.blit_reads
+#print axioms JPEG2000.Spec.NativePlacement.tile_grid
+#print axioms JPEG2000.Spec.NativePlacement.tile_reduction
+#print axioms JPEG2000.Spec.NativePlacement.place_components
+#print axioms JPEG2000.Spec.NativePlacement.source_dcSpec
+#print axioms JPEG2000.Spec.NativePlacement.placement
+#print axioms JPEG2000.Spec.NativePlacement.placement_sim
+#print axioms JPEG2000.Spec.NativePlacement.finalize
+#print axioms JPEG2000.Spec.NativeComposition.of_tiles
+
+#print axioms JPEG2000.Spec.IrreversibleDispatch.ict_sources
+#print axioms JPEG2000.Spec.TileDispatch.component_equiv
+#print axioms JPEG2000.Spec.TileDispatch.ComponentRel.centered
+#print axioms JPEG2000.Spec.TileDispatch.parsed_component
+#print axioms JPEG2000.Spec.TileDispatch.components_equiv
+#print axioms JPEG2000.Spec.TileDispatch.parsed_tile
+#print axioms JPEG2000.Spec.C9.c9_narrow
+#print axioms JPEG2000.Spec.RoundTrip.native_roundtrip
+#print axioms JPEG2000.Spec.RoundTrip.native_roundtrip_default
+#print axioms JPEG2000.Spec.RoundTrip.encode_native_roundtrip
+#print axioms JPEG2000.Spec.RoundTrip.image_roundtrip
+#print axioms JPEG2000.Spec.RoundTrip.encode_image_roundtrip
+
+#print axioms JPEG2000.Spec.ColorResources.interleave_resources
+#print axioms JPEG2000.Spec.ColorResources.interleave_loop
+#print axioms JPEG2000.Spec.ColorResources.channel_map_size
+#print axioms JPEG2000.Spec.ColorResources.resolved_layout_size
+#print axioms JPEG2000.Spec.ColorResources.applyMapping_resources
+#print axioms JPEG2000.Spec.ColorResources.mapping_backing
+#print axioms JPEG2000.Spec.ColorResources.retained_palette
+#print axioms JPEG2000.Spec.ColorResources.plane_domain
+#print axioms JPEG2000.Spec.ColorResources.upsample_resources
+#print axioms JPEG2000.Spec.ColorResources.sycc_indices_size
+#print axioms JPEG2000.Spec.ColorResources.sycc_resources
+#print axioms JPEG2000.Spec.ColorResources.replication_resources
+#print axioms JPEG2000.Spec.ColorResources.decode_resources
+#print axioms JPEG2000.Spec.ColorResources.image_native_spec
+
+#print axioms JPEG2000.Spec.NativeResources.centeredTile_limitExceeded
+#print axioms JPEG2000.Spec.NativeResources.centeredTile_work
+
+#print axioms JPEG2000.Spec.Resources.PacketTraversal.inspectPrevious_any
+#print axioms JPEG2000.Spec.Resources.PacketTraversal.visits_tests_le_charge
+#print axioms JPEG2000.Spec.Resources.PacketTraversal.forPackets_schedule
+#print axioms JPEG2000.Spec.Resources.PacketTraversal.schedule_charge
+#print axioms JPEG2000.Spec.Resources.PacketTraversal.decodePacket_contributions
+#print axioms JPEG2000.Spec.Resources.PacketTraversal.packetStep_passes
+#print axioms JPEG2000.Spec.Resources.PacketTraversal.walk_prefix
+#print axioms JPEG2000.Spec.Resources.PacketTraversal.walk_outcome
+#print axioms JPEG2000.Spec.Resources.PacketTraversal.measureStream_erase
+#print axioms JPEG2000.Spec.Resources.PacketTraversal.measureStream_bounds
+#print axioms JPEG2000.Spec.Resources.PacketTraversal.measureStream_read
+#print axioms JPEG2000.Spec.Resources.PacketTraversal.measureTiles_erase
+#print axioms JPEG2000.Spec.Resources.PacketTraversal.trace_visit
+#print axioms JPEG2000.Spec.Resources.PacketTraversal.trace_bounds
+#print axioms JPEG2000.Spec.Resources.PacketTraversal.measureTiles_finish
+#print axioms JPEG2000.Spec.Resources.PacketTraversal.measureGrid_trace
+#print axioms JPEG2000.Spec.Resources.PacketTraversal.measureTiles_bounds
+#print axioms JPEG2000.Spec.Resources.PublicPacketWork.decode_packet_work
+
+#print axioms JPEG2000.Spec.Resources.WideArithmetic.magnitude_bits
+#print axioms JPEG2000.Spec.Resources.WideArithmetic.quant_operands
+#print axioms JPEG2000.Spec.Resources.WideArithmetic.pass53_operands
+#print axioms JPEG2000.Spec.Resources.WideArithmetic.lift53
+#print axioms JPEG2000.Spec.Resources.WideArithmetic.synthesis53
+#print axioms JPEG2000.Spec.Resources.WideArithmetic.product_operands
+#print axioms JPEG2000.Spec.Resources.WideArithmetic.step97_operands
+#print axioms JPEG2000.Spec.Resources.WideArithmetic.passes97
+#print axioms JPEG2000.Spec.Resources.WideArithmetic.synthesis97
+#print axioms JPEG2000.Spec.Resources.WideArithmetic.idwt53_bounds
+#print axioms JPEG2000.Spec.Resources.WideArithmetic.idwt97_bounds
+#print axioms JPEG2000.Spec.Resources.WideArithmetic.rct_operands
+#print axioms JPEG2000.Spec.Resources.WideArithmetic.rct_bounds
+#print axioms JPEG2000.Spec.Resources.WideArithmetic.ict_operands
+#print axioms JPEG2000.Spec.Resources.WideArithmetic.ict_bounds
+#print axioms JPEG2000.Spec.Resources.WideArithmetic.tile_coefficients
+#print axioms JPEG2000.Spec.Resources.WideArithmetic.parsed_quant
+#print axioms JPEG2000.Spec.Resources.WideArithmetic.coefficient_width
+#print axioms JPEG2000.Spec.Resources.WideArithmetic.rct_view
+#print axioms JPEG2000.Spec.Resources.WideArithmetic.parsed_spatial
+#print axioms JPEG2000.Spec.Resources.WideArithmetic.promoted_ict
+#print axioms JPEG2000.Spec.Resources.WideArithmetic.dispatched_rct
+#print axioms JPEG2000.Spec.Resources.WideArithmetic.dispatched_ict
+#print axioms JPEG2000.Spec.Resources.WideArithmetic.parsed_tile
+
+#print axioms JPEG2000.Spec.Resources.HeaderWork.insertionSort_perm
+#print axioms JPEG2000.Spec.Resources.HeaderWork.readSegment_extent
+#print axioms JPEG2000.Spec.Resources.HeaderWork.segmentLoop_fuel
+#print axioms JPEG2000.Spec.Resources.HeaderWork.tileHeaderLoop_fuel
+#print axioms JPEG2000.Spec.Resources.HeaderWork.readTilePart_step
+#print axioms JPEG2000.Spec.Resources.HeaderWork.tilePartLoop_fuel
+#print axioms JPEG2000.Spec.Resources.HeaderWork.readBox_extent
+#print axioms JPEG2000.Spec.Resources.HeaderWork.boxLoops_fuel
+#print axioms JPEG2000.Spec.Resources.HeaderWork.parse_input_excess
+#print axioms JPEG2000.Spec.Resources.HeaderWork.gatherBytes_size
+#print axioms JPEG2000.Spec.Resources.HeaderWork.tier1Input_storage
+#print axioms JPEG2000.Spec.Resources.HeaderWork.headerGather_storage
+#print axioms JPEG2000.Spec.Resources.HeaderWork.segmentLoop_storage
+#print axioms JPEG2000.Spec.Resources.HeaderWork.tileHeaderLoop_storage
+#print axioms JPEG2000.Spec.Resources.HeaderWork.precinct_geometry
+#print axioms JPEG2000.Spec.Resources.HeaderWork.precinct_storage
+#print axioms JPEG2000.Spec.Resources.HeaderWork.takeRanges_account
+#print axioms JPEG2000.Spec.Resources.HeaderWork.ppmLength_copy
+#print axioms JPEG2000.Spec.Resources.HeaderWork.ppmChunks_account
+#print axioms JPEG2000.Spec.Resources.HeaderWork.headerStreamAt_storage
+#print axioms JPEG2000.Spec.Resources.HeaderWork.initPrecincts_storage
+#print axioms JPEG2000.Spec.Resources.HeaderWork.parse_storage
+#print axioms JPEG2000.Spec.Resources.HeaderWork.layout_budget
+#print axioms JPEG2000.Spec.Resources.HeaderWork.parse_ppm
+#print axioms JPEG2000.Spec.Resources.HeaderWork.parse_tile_storage
+#print axioms JPEG2000.Spec.Resources.HeaderWork.parsed_headerStream
+#print axioms JPEG2000.Spec.Resources.HeaderWork.gather_copy_charge
+#print axioms JPEG2000.Spec.Resources.HeaderWork.tier1Input_copy_charge
+#print axioms JPEG2000.Spec.Resources.HeaderWork.tileData_copy_charge
+#print axioms JPEG2000.Spec.Resources.HeaderWork.palette_table
+#print axioms JPEG2000.Spec.Resources.HeaderWork.jp2h_depth_excess
+#print axioms JPEG2000.Spec.Resources.HeaderWork.checkWork_visits
+#print axioms JPEG2000.Spec.Resources.HeaderWork.ppmChunks_fuel
+
+#print axioms JPEG2000.Spec.Resources.Tier1Work.wide_value
+#print axioms JPEG2000.Spec.Resources.Tier1Work.compact_value
+#print axioms JPEG2000.Spec.Resources.Tier1Work.compact_buffers
+#print axioms JPEG2000.Spec.Resources.Tier1Work.wide_area
+#print axioms JPEG2000.Spec.Resources.Tier1Work.call_work
+#print axioms JPEG2000.Spec.Resources.Tier1Work.refusal_work
+#print axioms JPEG2000.Spec.Resources.Tier1Work.bad_range_work
+#print axioms JPEG2000.Spec.Resources.Tier1Work.compact_preflight
+#print axioms JPEG2000.Spec.Resources.Tier1Work.wide_preflight
+#print axioms JPEG2000.Spec.Resources.Tier1Work.preflight_work
+#print axioms JPEG2000.Spec.Resources.Tier1Work.preflight_ok
+#print axioms JPEG2000.Spec.Resources.Tier1Work.preflight_domains
+#print axioms JPEG2000.Spec.Resources.Tier1Work.compact_plain_prefix
+#print axioms JPEG2000.Spec.Resources.Tier1Work.plain_work
+#print axioms JPEG2000.Spec.Resources.Tier1Work.wide_work
+#print axioms JPEG2000.Spec.Resources.Tier1Work.compact_work
+#print axioms JPEG2000.Spec.Resources.Tier1Work.fast_work
+#print axioms JPEG2000.Spec.Resources.Tier1Work.Reads.decisions_le
+#print axioms JPEG2000.Spec.Resources.Tier1Work.Reads.work_le
+#print axioms JPEG2000.Spec.Resources.Tier1Work.Reads.operations_le
+#print axioms JPEG2000.Spec.Resources.Tier1Work.schedule_counts
+#print axioms JPEG2000.Spec.Resources.Tier1Work.plain_schedule
+#print axioms JPEG2000.Spec.Resources.Tier1Work.wide_schedule
+#print axioms JPEG2000.Spec.Resources.Tier1Work.compact_plain_schedule
+#print axioms JPEG2000.Spec.Resources.Tier1Work.compact_schedule
+#print axioms JPEG2000.Spec.Resources.Tier1Work.clamp_shape
+#print axioms JPEG2000.Spec.Resources.Tier1Work.stripe_domains
+#print axioms JPEG2000.Spec.Resources.Tier1Work.column_budget
+#print axioms JPEG2000.Spec.Resources.Tier1Work.wide_storage
+#print axioms JPEG2000.Spec.Resources.Tier1Work.compact_storage
+#print axioms JPEG2000.Spec.Resources.Tier1Work.wide_cells
+#print axioms JPEG2000.Spec.Resources.Tier1Work.parsed_cells
+#print axioms JPEG2000.Spec.Resources.Tier1Work.compact_cells
+#print axioms JPEG2000.Spec.Resources.Tier1Work.parsed_compact_cells
+#print axioms JPEG2000.Spec.Resources.Tier1Work.parsed_call_work
+#print axioms JPEG2000.Spec.Resources.Tier1Work.plainPassReads
+#print axioms JPEG2000.Spec.Resources.Tier1Work.widePassReads
+#print axioms JPEG2000.Spec.Resources.Tier1Work.compactPlainReads
+#print axioms JPEG2000.Spec.Resources.Tier1Work.compactModeReads
+#print axioms JPEG2000.Spec.Resources.parsed_tile_signed_width
+#print axioms JPEG2000.Spec.Resources.centeredTile_signed_width
+#print axioms JPEG2000.Spec.Resources.PublicPacketWork.admission_error
+#print axioms JPEG2000.Spec.Resources.PublicPacketWork.admission_excess
+
+#print axioms JPEG2000.Spec.Resources.HeaderWork.measuredSort_work
+#print axioms JPEG2000.Spec.Resources.HeaderWork.sortUnique_work
+
+-- Task 7.4c2s1, coefficient assembly and precision fallback.
+#print axioms JPEG2000.Spec.Resources.AssemblyCost.walk_value
+#print axioms JPEG2000.Spec.Resources.AssemblyCost.walk_bound
+#print axioms JPEG2000.Spec.Resources.AssemblyCost.origin_levels
+#print axioms JPEG2000.Spec.Resources.AssemblyCost.compact_placement
+#print axioms JPEG2000.Spec.Resources.AssemblyCost.wide_place
+#print axioms JPEG2000.Spec.Resources.AssemblyCost.reversible_work
+#print axioms JPEG2000.Spec.Resources.AssemblyCost.irreversible_work
+#print axioms JPEG2000.Spec.Resources.AssemblyCost.parsed_component_work
+#print axioms JPEG2000.Spec.Resources.AssemblyCost.native_budget
+#print axioms JPEG2000.Spec.Resources.AssemblyCost.block_storage
+#print axioms JPEG2000.Spec.Resources.AssemblyCost.mallat_width
+#print axioms JPEG2000.Spec.Resources.AssemblyCost.packed_storage
+#print axioms JPEG2000.Spec.Resources.AssemblyCost.wide_storage
+#print axioms JPEG2000.Spec.Resources.AssemblyCost.native_plane_cells
+#print axioms JPEG2000.Spec.Resources.AssemblyCost.block_workspace
+#print axioms JPEG2000.Spec.Resources.AssemblyCost.block_ceiling
+#print axioms JPEG2000.Spec.Resources.AssemblyCost.topology_split
+#print axioms JPEG2000.Spec.Resources.AssemblyCost.topology_budget
+#print axioms JPEG2000.Spec.Resources.AssemblyCost.component_budget
+
+-- Task 7.4c2s3, native tile colour and output placement.
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.colourFits_work
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.view_reads
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.packRows_work
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.fill_work
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.map1_work
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.map3_work
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.blitRows_work
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.blitCells_work
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.tabulate_work
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.compactICT_work
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.ict_work
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.rct_work
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.sources_work
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.preColour_work
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.tile_work
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.writeComponent_work
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.writeTile_work
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.centeredTile_placement
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.centeredTile_reads
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.native_tile_work
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.placement_read_domain
+
+-- Signed-magnitude byte payloads of retained native component data.
+#print axioms JPEG2000.Spec.Resources.component_signed_width
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.component_backing_bytes
+#print axioms JPEG2000.Spec.Resources.TileColorPlacement.centeredTile_backing_bytes
+
+-- Task 7.4c1h, progression setup and packet callback prefixes.
+#print axioms JPEG2000.Spec.Resources.PacketSortWork.sort_work
+#print axioms JPEG2000.Spec.Resources.ProgressionFields.parsed_limits
+#print axioms JPEG2000.Spec.Resources.PacketLocalWork.takePieces_extent
+#print axioms JPEG2000.Spec.Resources.PacketLocalWork.addPieces_storage
+#print axioms JPEG2000.Spec.Resources.PacketLocalWork.body_range_bytes
+#print axioms JPEG2000.Spec.Resources.PacketLocalWork.packet_prefix_storage
+#print axioms JPEG2000.Spec.Resources.PacketLocalWork.packet_work
+#print axioms JPEG2000.Spec.Resources.PacketLocalWork.stream_attempt
+#print axioms JPEG2000.Spec.Resources.PacketLocalWork.decode_attempts
+#print axioms JPEG2000.Spec.Resources.PacketLocalWork.positionTable_work
+#print axioms JPEG2000.Spec.Resources.PacketLocalWork.progression_work
+#print axioms JPEG2000.Spec.Resources.PacketLocalWork.table_limit
+#print axioms JPEG2000.Spec.Resources.PacketLocalWork.parsed_setup
+#print axioms JPEG2000.Spec.Resources.PacketLocalWork.preflight_work
+#print axioms JPEG2000.Spec.Resources.PacketLocalWork.completed_store
+
+-- Native colour and placement charges across the public packet traversal.
+#print axioms JPEG2000.Spec.Resources.PacketTraversal.placementFromHeader_work
+#print axioms JPEG2000.Spec.Resources.PublicPacketWork.decode_placement_work
+
+-- Task 7.4c2s2, checked inverse-wavelet visits, allocations and operand widths.
+#print axioms JPEG2000.Spec.Resources.WaveletCost.compact_work
+#print axioms JPEG2000.Spec.Resources.WaveletCost.operands53
+#print axioms JPEG2000.Spec.Resources.WaveletCost.operands97
+#print axioms JPEG2000.Spec.Resources.WaveletCost.lines_shape
+#print axioms JPEG2000.Spec.Resources.WaveletCost.wide53_work
+#print axioms JPEG2000.Spec.Resources.WaveletCost.wide97_work
+#print axioms JPEG2000.Spec.Resources.WaveletCost.compact_allocation
+#print axioms JPEG2000.Spec.Resources.WaveletCost.retry53_work
+#print axioms JPEG2000.Spec.Resources.WaveletCost.retry97_work
+
+-- JP2 channel metadata and alpha selection.
+#print axioms JPEG2000.Spec.ColorResources.channelSort_work
+#print axioms JPEG2000.Spec.ColorResources.alpha_work
+#print axioms JPEG2000.Spec.ColorResources.cdef_work
+#print axioms JPEG2000.Spec.ColorResources.associations_work
+#print axioms JPEG2000.Spec.ColorResources.layout_work
+#print axioms JPEG2000.Spec.ColorResources.retained_cdef
+#print axioms JPEG2000.Spec.ColorResources.resolve_layout_work
+#print axioms JPEG2000.Spec.ColorResources.decode_layout_error
+#print axioms JPEG2000.Spec.ColorResources.image_layout_work
+
+-- Header and packet geometry on the actual public decoding prefix.
+#print axioms JPEG2000.Spec.Resources.GeometryInit.parsed_init_work
+#print axioms JPEG2000.Spec.Resources.GeometryInit.init_index_rows
+#print axioms JPEG2000.Spec.Resources.GeometryInit.decoded_store_geometry
+#print axioms JPEG2000.Spec.Resources.GeometryInit.parse_geometry_work
+#print axioms JPEG2000.Spec.Resources.GeometryInit.decode_geometry_work
+#print axioms JPEG2000.Spec.Resources.GeometryInit.image_geometry_work
+#print axioms JPEG2000.Spec.Resources.ReconstructionCost.prefix_work
+#print axioms JPEG2000.Spec.Resources.ReconstructionCost.packed_entry
+#print axioms JPEG2000.Spec.Resources.ReconstructionCost.block_operands
+#print axioms JPEG2000.Spec.Resources.ReconstructionCost.wave_operands
+#print axioms JPEG2000.Spec.Resources.ReconstructionCost.colour_operands
+#print axioms JPEG2000.Spec.Resources.ReconstructionCost.prefix_backing
+#print axioms JPEG2000.Spec.Resources.ReconstructionCost.block_workspace
+#print axioms JPEG2000.Spec.Resources.ReconstructionCost.tile_work
+#print axioms JPEG2000.Spec.Resources.ReconstructionCost.decode_work
+#print axioms JPEG2000.Spec.Resources.ReconstructionCost.placement_operands
+#print axioms JPEG2000.Spec.Resources.ReconstructionCost.mallat_prefix
+#print axioms JPEG2000.Spec.Resources.ReconstructionCost.live_workspace
+#print axioms JPEG2000.Spec.Resources.ReconstructionCost.promoted_operands
+#print axioms JPEG2000.Spec.Resources.ReconstructionCost.block_payload
+#print axioms JPEG2000.Spec.Resources.SegmentHistory.translate_visits
+#print axioms JPEG2000.Spec.Resources.SegmentHistory.completed_history
+#print axioms JPEG2000.Spec.Resources.SegmentHistory.store_bounds
+#print axioms JPEG2000.Spec.Resources.SegmentHistory.selected_store_bounds
+#print axioms JPEG2000.Spec.Resources.SegmentHistory.tile_copies
+#print axioms JPEG2000.Spec.Resources.SegmentHistory.tile_assembly_work
+#print axioms JPEG2000.Spec.Resources.SegmentHistory.packet_body_erase
+#print axioms JPEG2000.Spec.Resources.SegmentHistory.packet_prefix_counts
+#print axioms JPEG2000.Spec.Resources.SegmentHistory.selected_block_input
+#print axioms JPEG2000.Spec.Resources.SegmentHistory.translation_history
+#print axioms JPEG2000.Spec.Resources.SegmentHistory.tile_translation_work
+#print axioms JPEG2000.Spec.Resources.SegmentHistory.present_mem
+#print axioms JPEG2000.Spec.Resources.ReconstructionCost.public_work
+#print axioms JPEG2000.Spec.Resources.HeaderPayload.arrayReads_work
+#print axioms JPEG2000.Spec.Resources.HeaderPayload.varintReads_work
+#print axioms JPEG2000.Spec.Resources.HeaderPayload.rank_work
+#print axioms JPEG2000.Spec.Resources.HeaderPayload.pointerSorts_work
+#print axioms JPEG2000.Spec.Resources.HeaderPayload.tileSorts_work
+#print axioms JPEG2000.Spec.Resources.HeaderPayload.rank_table
+#print axioms JPEG2000.Spec.Resources.HeaderPayload.parse_work
+#print axioms JPEG2000.Spec.Resources.HeaderPayload.sort_calls
+#print axioms JPEG2000.Spec.Resources.HeaderPayload.chunks_work
+#print axioms JPEG2000.Spec.Resources.HeaderPayload.selection_work
+#print axioms JPEG2000.Spec.Resources.HeaderPayload.decode_header_work
+#print axioms JPEG2000.Spec.ColorResources.MappingPrefix.retained_counts
+#print axioms JPEG2000.Spec.ColorResources.MappingPrefix.scan_le
+#print axioms JPEG2000.Spec.ColorResources.MappingPrefix.resolver_work
+#print axioms JPEG2000.Spec.ColorResources.MappingPrefix.resolve_prefix_work
+#print axioms JPEG2000.Spec.ColorResources.MappingPrefix.mapping_work
+#print axioms JPEG2000.Spec.ColorResources.MappingPrefix.native_mapping_work
+#print axioms JPEG2000.Spec.ColorResources.MappingPrefix.native_mapping_success
+#print axioms JPEG2000.Spec.ColorResources.MappingPrefix.image_mapping_work
+#print axioms JPEG2000.Spec.ColorResources.MappingPrefix.decode_mapping_error
+#print axioms JPEG2000.Spec.ColorResources.reduce_sides
+#print axioms JPEG2000.Spec.ColorResources.raw_sides
+#print axioms JPEG2000.Spec.ColorResources.mapped_sides
+#print axioms JPEG2000.Spec.ColorResources.DisplayPrefix.read_value
+#print axioms JPEG2000.Spec.ColorResources.DisplayPrefix.channel_reads
+#print axioms JPEG2000.Spec.ColorResources.DisplayPrefix.channel_precision
+#print axioms JPEG2000.Spec.ColorResources.DisplayPrefix.mapped_precision
+#print axioms JPEG2000.Spec.ColorResources.DiagnosticImage.display_refusal
+#print axioms JPEG2000.Spec.ColorResources.DiagnosticImage.image_diagnostics
+#print axioms JPEG2000.Spec.ColorResources.DiagnosticImage.compose_native
+#print axioms JPEG2000.Spec.ColorResources.DiagnosticImage.interleaver_diagnostics
+#print axioms JPEG2000.Spec.ColorResources.DisplayPrefix.display_work
+#print axioms JPEG2000.Spec.ColorResources.DisplayPrefix.interleaving_work
+#print axioms JPEG2000.Spec.ColorResources.DisplayPrefix.public_interleaving_work
+#print axioms JPEG2000.Spec.ColorResources.DisplayPrefix.selected_reads
+#print axioms JPEG2000.Spec.Resources.HeaderPayload.rank_storage
+#print axioms JPEG2000.Spec.Resources.NativeCost.allocation_work
+#print axioms JPEG2000.Spec.Resources.NativeCost.entry_storage
+#print axioms JPEG2000.Spec.Resources.NativeCost.packetMeter_result
+#print axioms JPEG2000.Spec.Resources.NativeCost.visited_storage
+#print axioms JPEG2000.Spec.Resources.NativeCost.destination_storage
+#print axioms JPEG2000.Spec.Resources.NativeCost.attempted_storage
+#print axioms JPEG2000.Spec.Resources.NativeCost.reconstruction_storage
+#print axioms JPEG2000.Spec.Resources.NativeCost.decode_work
+#print axioms JPEG2000.Spec.Resources.PacketLocalWork.partial_body_store
+#print axioms JPEG2000.Spec.Resources.PacketLocalWork.completed_iteration
+#print axioms JPEG2000.Spec.Resources.PacketTraversal.prefix_destination
+#print axioms JPEG2000.Spec.Resources.SegmentHistory.iteration_translation
+#print axioms JPEG2000.Spec.Resources.SegmentHistory.raw_store_slots
+#print axioms JPEG2000.Spec.Resources.DiagnosticCost.radix_cost
+#print axioms JPEG2000.Spec.Resources.DiagnosticCost.Text.storage_le_work
+#print axioms JPEG2000.Spec.Resources.DiagnosticCost.Text.bounds
+#print axioms JPEG2000.Spec.Resources.DiagnosticCost.public_admission
+#print axioms JPEG2000.Spec.Resources.DiagnosticCost.built_cost
+#print axioms JPEG2000.Spec.Resources.DiagnosticCost.Text.Within.raiseCap
+#print axioms JPEG2000.Spec.Resources.DiagnosticCost.Trace.raiseCap_events
+#print axioms JPEG2000.Spec.Resources.DiagnosticCost.trace_cost
+#print axioms JPEG2000.Spec.Resources.DiagnosticCost.trace_storage
+#print axioms JPEG2000.Spec.Resources.DiagnosticCost.trace_retained
+#print axioms JPEG2000.Spec.Resources.DiagnosticCost.reduction_storage
+#print axioms JPEG2000.Spec.Resources.DiagnosticCost.render_limit_cost
+#print axioms JPEG2000.Spec.Resources.DiagnosticCost.caller_render_unbounded
+#print axioms JPEG2000.Spec.Resources.DiagnosticCost.public_siz
+#print axioms JPEG2000.Spec.Resources.DiagnosticCost.public_signature
+#print axioms JPEG2000.Spec.Resources.DiagnosticCost.public_ppm_mismatch
+#print axioms JPEG2000.Spec.Resources.DiagnosticCost.public_sop
+#print axioms JPEG2000.Spec.Resources.DiagnosticCost.public_sot
+#print axioms JPEG2000.Spec.Resources.DiagnosticCost.public_tile_marker
+#print axioms JPEG2000.Spec.Resources.DiagnosticCost.public_layout
+#print axioms JPEG2000.Spec.Resources.DiagnosticCost.public_resolve
+#print axioms JPEG2000.Spec.Resources.DiagnosticCost.public_resolve_limit
+#print axioms JPEG2000.Spec.Resources.DiagnosticCost.interleave_error
+#print axioms JPEG2000.Spec.Resources.DiagnosticCost.public_interleavers
+#print axioms JPEG2000.Spec.Resources.DiagnosticCost.external_interleavers_unbounded
+#print axioms JPEG2000.Spec.Resources.DiagnosticCost.public_pick
+#print axioms JPEG2000.Spec.Resources.DiagnosticMarkerOrigin.main_location
+#print axioms JPEG2000.Spec.Resources.DiagnosticMarker.marker_digits
+#print axioms JPEG2000.Spec.Resources.DiagnosticMarker.main_source
+#print axioms JPEG2000.Spec.Resources.DiagnosticMarker.range_source
+#print axioms JPEG2000.Spec.Resources.DiagnosticMarker.inRange_location
+#print axioms JPEG2000.Spec.Resources.DiagnosticMarker.public_main
+#print axioms JPEG2000.Spec.Resources.DiagnosticMarker.public_cost
+#print axioms JPEG2000.Spec.Resources.DiagnosticMarker.public_throughMain
+#print axioms JPEG2000.Spec.Resources.DiagnosticMarker.throughMain_events
+#print axioms JPEG2000.Spec.Resources.DiagnosticBox.file_bounds
+#print axioms JPEG2000.Spec.Resources.DiagnosticBox.raw_eq
+#print axioms JPEG2000.Spec.Resources.DiagnosticBox.public_box
+#print axioms JPEG2000.Spec.Resources.DiagnosticBox.public_admission_excess
+#print axioms JPEG2000.Spec.Resources.DiagnosticBox.public_raw
+#print axioms JPEG2000.Spec.Resources.DiagnosticBox.signature_replacement
+#print axioms JPEG2000.Spec.Resources.DiagnosticPointers.sort_events
+#print axioms JPEG2000.Spec.Resources.DiagnosticPointers.main_ranges
+#print axioms JPEG2000.Spec.Resources.DiagnosticPointers.public_cost
+#print axioms JPEG2000.Spec.Resources.DiagnosticPointers.public_refusal
+#print axioms JPEG2000.Spec.Resources.DiagnosticTileMarkers.plt_bounds
+#print axioms JPEG2000.Spec.Resources.DiagnosticTileMarkers.ppt_range
+#print axioms JPEG2000.Spec.Resources.DiagnosticTileMarkers.header_continuation
+#print axioms JPEG2000.Spec.Resources.DiagnosticTileMarkers.read_count
+#print axioms JPEG2000.Spec.Resources.DiagnosticTileMarkers.main_count
+#print axioms JPEG2000.Spec.Resources.DiagnosticTileMarkers.prefix_fields
+#print axioms JPEG2000.Spec.Resources.DiagnosticTileMarkers.public_header
+#print axioms JPEG2000.Spec.Resources.DiagnosticTilePart.tileParts_payload
+#print axioms JPEG2000.Spec.Resources.DiagnosticTilePart.public_cost
+#print axioms JPEG2000.Spec.Resources.DiagnosticTilePart.public_refusal
+#print axioms JPEG2000.Spec.Resources.DiagnosticCoding.tile_positions
+#print axioms JPEG2000.Spec.Resources.DiagnosticCoding.merge_refusal
+#print axioms JPEG2000.Spec.Resources.DiagnosticCoding.repeated_overrides
+#print axioms JPEG2000.Spec.Resources.DiagnosticCoding.public_digits
+#print axioms JPEG2000.Spec.Resources.DiagnosticCoding.public_cost
+#print axioms JPEG2000.Spec.Resources.DiagnosticCoding.main_refusal
+#print axioms JPEG2000.Spec.Resources.DiagnosticCoding.short_quantization_refusal
+#print axioms JPEG2000.Spec.Resources.DiagnosticCoding.inherited_quantization_refusal
+#print axioms JPEG2000.Spec.Resources.DiagnosticGeometry.component_counts
+#print axioms JPEG2000.Spec.Resources.DiagnosticGeometry.reached_totals
+#print axioms JPEG2000.Spec.Resources.DiagnosticGeometry.geometry_refusal
+#print axioms JPEG2000.Spec.Resources.DiagnosticGeometry.work_refusal
+#print axioms JPEG2000.Spec.Resources.DiagnosticGeometry.work_cost
+#print axioms JPEG2000.Spec.Resources.DiagnosticHeader.public_placement
+#print axioms JPEG2000.Spec.Resources.DiagnosticHeader.public_events
+#print axioms JPEG2000.Spec.Resources.DiagnosticHeader.public_cost
+#print axioms JPEG2000.Spec.Resources.DiagnosticHeader.public_refusal
+#print axioms JPEG2000.Spec.Resources.DiagnosticReconstruction.public_bounds
+#print axioms JPEG2000.Spec.Resources.DiagnosticPacketRanges.parsed_ranges
+#print axioms JPEG2000.Spec.Resources.DiagnosticPacket.public_callback
+#print axioms JPEG2000.Spec.Resources.DiagnosticPacket.admission_free
+#print axioms JPEG2000.Spec.Resources.DiagnosticPacket.storage_le_charge
+#print axioms JPEG2000.Spec.Resources.DiagnosticPacket.decode_work
+#print axioms JPEG2000.Spec.Resources.DiagnosticPacket.header_work
+#print axioms JPEG2000.Spec.Resources.DiagnosticPacket.public_tile_refusal
+#print axioms JPEG2000.Spec.Resources.DiagnosticPacket.visit_records
+#print axioms JPEG2000.Spec.Resources.DiagnosticPacket.public_rank_refusal
+#print axioms JPEG2000.Spec.Resources.DiagnosticPacket.ppm_mismatch
+#print axioms JPEG2000.Spec.Resources.DiagnosticPacket.packed_refusal
+#print axioms JPEG2000.Spec.Resources.DiagnosticCodeBlock.reader_messages
+#print axioms JPEG2000.Spec.Resources.DiagnosticCodeBlock.reader_calls
+#print axioms JPEG2000.Spec.Resources.DiagnosticCodeBlock.public_readers
+#print axioms JPEG2000.Spec.Resources.DiagnosticComponent.tile_eq
+#print axioms JPEG2000.Spec.Resources.DiagnosticComponent.messages
+#print axioms JPEG2000.Spec.Resources.DiagnosticComponent.public_components
+#print axioms JPEG2000.Spec.Resources.DiagnosticColour.source_geometry
+#print axioms JPEG2000.Spec.Resources.DiagnosticColour.messages
+#print axioms JPEG2000.Spec.Resources.DiagnosticColour.public_colour
+#print axioms JPEG2000.Spec.Resources.DiagnosticOutput.proposed
+#print axioms JPEG2000.Spec.Resources.DiagnosticOutput.destinationRow
+#print axioms JPEG2000.Spec.Resources.DiagnosticOutput.allocation_refusal
+#print axioms JPEG2000.Spec.Resources.DiagnosticOutput.public_allocation
+#print axioms JPEG2000.Spec.Resources.DiagnosticOutput.public_writes
+#print axioms JPEG2000.Spec.Resources.DiagnosticNative.native_events
+#print axioms JPEG2000.Spec.Resources.DiagnosticNative.native_bounds
+
+-- Phase 7, task 7.4c4f. Complete public work, storage and allocation limits.
+#print axioms JPEG2000.Spec.Resources.PublicAPI.trace_stages
+#print axioms JPEG2000.Spec.Resources.PublicAPI.reduction_refusal
+#print axioms JPEG2000.Spec.Resources.PublicAPI.decode_resources
+#print axioms JPEG2000.Spec.Resources.PublicAPI.allocation_limits
+#print axioms JPEG2000.Spec.Resources.PublicAPI.codestream_resources
+#print axioms JPEG2000.Spec.Resources.PublicAPI.interleaved_resources

@@ -27,8 +27,8 @@ stage that has one, composed in the order of the fast decoder `JPEG2000.decodeCo
 ## Shape: shared pipeline skeletons
 
 The composition is written as three **skeletons** — `codestreamWith`, `tileWith`,
-`tileCompWith` — which are the fast decoder's own control flow (`decodeCodestream`,
-`Assemble.decodeTile`, `Assemble.reconstructTileComp`, copied verbatim) with every stage
+`tileCompWith` — which share the compact decoder's control flow (`decodeCodestreamNarrow`,
+`Assemble.decodeTile`, `Assemble.reconstructTileComp`) with every stage
 call turned into a parameter. Instantiated with the fast stages they are *definitionally*
 the fast decoder (`Spec.Equiv.*_eq_with`, proved by `rfl`). `Spec.decode` instantiates
 `codestreamWith` and `tileWith` with the spec stages; its tile-component reconstruction
@@ -139,7 +139,7 @@ def tileWith {α β P D R T : Type} (mk : Nat → Array (Rect × β) → Nat →
     out := out.push (Assemble.reduceRect tc.rect reduce, pl)
   return mk t out sat
 
-/-- **The codestream** (`decodeCodestream` with its stages as parameters): `tier2` decodes
+/-- **The codestream** (`decodeCodestreamNarrow` with its stages as parameters): `tier2` decodes
 the packets of a present tile (given its header stream and the passes counted so far),
 `decTile` reconstructs a tile, `place` copies it into the component stores (initialised by
 `conv` from the fast decoder's zero planes, of which only the sizes are used by the spec),

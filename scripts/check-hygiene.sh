@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# Proof-hygiene guard (Plan.md section 3 rule 1, section 4 S1/S4; task 0.3). The CI gate.
+# Proof-hygiene guard (Plan.md section 3 rule 1, section 4 S1/S2/S4; task 0.3). The CI gate.
 #   scripts/check-hygiene.sh [--root DIR] [--no-axioms]
 # --root DIR   scan DIR instead of the repository (for testing the guard itself)
-# --no-axioms  skip the `#print axioms` check (it needs the libraries built in the repository)
+# --no-axioms  run the source scan only (the Lean audits require built libraries)
 # Step 1: python3 -I scripts/hygiene.py scan  (forbidden constructs, theorem listing)
 # Step 2: lake env lean scripts/axioms.lean | hygiene.py axioms  (only standard axioms)
+# Step 3: lake env lean scripts/closure.lean  (public runtime declaration closures)
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -30,6 +31,7 @@ if [ "$axioms" = 1 ]; then
     echo "scripts/axioms.lean: failed to elaborate" >&2
     status=1
   fi
+  (cd "$root" && lake env lean scripts/closure.lean) || status=1
 fi
 
 if [ "$status" = 0 ]; then

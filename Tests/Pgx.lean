@@ -9,8 +9,9 @@ MSE per component, exact).
 
 PGX: `PG <ML|LM> [+|-]<depth> <width> <height>` + newline (possibly CRLF; the sign may be fused
 with the depth, separated by a space, or absent = unsigned; `-` = signed), then samples of 1
-(depth <= 8), 2 (<= 16) or 4 bytes; signed samples are sign-extended from the storage width
-(as OpenJPEG does).  ML = big-endian, LM = little-endian.
+(depth <= 8), 2 (<= 16) or 4 bytes (<= 32). The project uses 8-byte cells for native
+33–38-bit output. Signed samples are sign-extended from the storage width.
+ML = big-endian, LM = little-endian.
 -/
 
 namespace JPEG2000.Tests.Pgx
@@ -32,7 +33,8 @@ structure PgxImage where
   deriving Repr, BEq, Inhabited
 
 /-- Storage bytes per sample for a bit depth. -/
-def bytesPer (depth : Nat) : Nat := if depth ≤ 8 then 1 else if depth ≤ 16 then 2 else 4
+def bytesPer (depth : Nat) : Nat :=
+  if depth ≤ 8 then 1 else if depth ≤ 16 then 2 else if depth ≤ 32 then 4 else 8
 
 private def isWs (c : Char) : Bool := c == ' ' || c == '\t' || c == '\r'
 
@@ -60,7 +62,7 @@ def parse (d : ByteArray) : Except String PgxImage := do
   if rest.size ≠ 2 then throw s!"bad header: {hdr}"
   let some w := rest[0]!.toNat? | throw s!"bad width: {hdr}"
   let some h := rest[1]!.toNat? | throw s!"bad height: {hdr}"
-  if depth == 0 || depth > 32 then throw "bad depth"
+  if depth == 0 || depth > 38 then throw "bad depth"
   let bps := bytesPer depth
   let signed := sgn == "-"
   let n := w * h

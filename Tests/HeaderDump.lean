@@ -1,4 +1,5 @@
 import JPEG2000.Header
+import Std.Data.HashMap
 
 /-!
 # `header-dump`: the merged header in `opj_dump -i` form (task 1.7)
@@ -22,11 +23,9 @@ codestream offset).
 * `Codestream index from main header`: start (codestream offset) and end (first `SOT`) of the
   main header, and the marker list with `len = Lxxx + 2`. OpenJPEG does not index the
   parameterless markers `0xFF30–0xFF3F`, so they are left out here too;
-* `Tile index`: OpenJPEG 2.5.3 builds it only from `TLM` segments, so it is printed only
-  when the main header has a `TLM`; tiles and their tile-parts come from our own tile-part
-  parse (`SOT` offset, end of the tile-part), not from the `TLM` lengths. `end_header` is
-  our real end of the tile-part header (the `SOD` data offset); OpenJPEG always prints 0
-  there, and the diff script masks that field.
+* `Tile index`: the `TLM` segments declare the tile-part counts and lengths. Offsets start
+  at the end of the main header. A matching physical tile-part supplies its `SOD` data
+  offset for `end_header`. OpenJPEG 2.5.3 prints zero there and the differential masks it.
 
 On a parse error it prints `header-dump: <file>: <error>` to stderr and exits with 1.
 -/
@@ -65,19 +64,31 @@ def compLines (i : Nat) (p : CompParams) : List String :=
 /-- Whether OpenJPEG lists a marker in its index (not the parameterless `0xFF30–0xFF3F`). -/
 def indexed (m : MarkerPos) : Bool := !(0xFF30 ≤ m.code && m.code ≤ 0xFF3F)
 
-/-- The `Tile index` block (only when the main header has a `TLM`, as OpenJPEG). -/
-def tileIndexLines (h : Header) : List String :=
-  if h.tlm.isEmpty then []
-  else
-    let tiles := (List.range (numTiles h.siz)).flatMap fun t =>
-      let parts := match h.tiles.find? (·.index = t) with
-        | some tp => tp.tile.parts.toList
-        | none => []
-      s!"\t\t nb of tile-part in tile [{t}]={parts.length}" ::
-        (parts.zipIdx.map fun (p, i) =>
-          s!"\t\t\t tile-part[{i}]: star_pos={p.pos}, end_header={p.data.offset}, " ++
-          s!"end_pos={p.data.offset + p.data.length}.")
-    ["\t Tile index: {"] ++ tiles ++ ["\t }"]
+/-- The tile index declared by TLM (A.7.1). A table must cover every tile. -/
+def tileIndexLines (h : Header) : List String := Id.run do
+  if h.tlm.isEmpty then return []
+  let mut parts : Array (Array (Nat × Nat)) := Array.replicate (numTiles h.siz) #[]
+  let mut start := h.main.endPos
+  let mut ordinal := 0
+  for segment in h.tlm do
+    for entry in segment.entries do
+      let tile := (entry.tile.map UInt16.toNat).getD ordinal
+      if tile ≥ parts.size then return []
+      let stop := start + entry.length.toNat
+      parts := parts.modify tile (·.push (start, stop))
+      start := stop
+      ordinal := ordinal + 1
+  if parts.any Array.isEmpty then return []
+  let mut sod : Std.HashMap (Nat × Nat) Nat := ∅
+  for tile in h.tiles do
+    for part in tile.tile.parts do
+      sod := sod.insert (tile.index, part.pos) part.data.offset
+  let tiles := parts.toList.zipIdx.flatMap fun (ranges, tile) =>
+    s!"\t\t nb of tile-part in tile [{tile}]={ranges.size}" ::
+      (ranges.toList.zipIdx.map fun ((start, stop), i) =>
+        let headerEnd := sod.getD (tile, start) 0
+        s!"\t\t\t tile-part[{i}]: star_pos={start}, end_header={headerEnd}, end_pos={stop}.")
+  return ["\t Tile index: {"] ++ tiles ++ ["\t }"]
 
 /-- The whole dump, line by line. -/
 def dumpLines (h : Header) : List String :=

@@ -213,8 +213,12 @@ def tnsotTests : IO Nat := do
   f := f + (← expect "correction detected on a later-completing tile applies to all"
     (tnsots (parse (h4 ++ tp 0 0 2 [] [] ++ parts 1 2 3 ++ tp 0 1 2 [] [] ++ tp 0 2 2 [] [] ++
       eoc)) == some [(0, 3, 3), (1, 3, 3)]))
-  f := f + (← expectKind "correction on: a tile with exactly TNsot parts is short" "malformed"
-    (parse (h4 ++ parts 0 2 3 ++ parts 1 2 2 ++ eoc)))
+  let beforeShortTile := h4 ++ parts 0 2 3
+  let corrected := parse (beforeShortTile ++ parts 1 2 2 ++ eoc)
+  f := f + (← expect "TNsot correction reports the short tile at its first SOT" (match corrected with
+    | .error e => e == .malformed (.atOffset .marker beforeShortTile.length)
+        "tile 1: 2 tile-parts, TNsot = 2 (corrected to 3)"
+    | .ok _ => false))
   f := f + (← expectKind "first completed tile exact: later TPsot = TNsot rejected" "malformed"
     (parse (h4 ++ parts 0 2 2 ++ parts 1 2 3 ++ eoc)))
   f := f + (← expect "correction on: TNsot = 0 tiles unaffected"
