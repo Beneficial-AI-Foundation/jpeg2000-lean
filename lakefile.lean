@@ -36,3 +36,16 @@ lean_lib Tests where
 /-- The test runner: `lake exe tests`. -/
 lean_exe tests where
   root := `Tests.Main
+
+/-- Benchmarks: every module under `Bench/` (not a default target). -/
+lean_lib Bench where
+  globs := #[.submodules `Bench]
+
+/-- MQ decoder throughput benchmark (task 2.6): `lake exe bench-mq`. -/
+lean_exe «bench-mq» where
+  root := `Bench.MQ
+
+/-- Header dump in `opj_dump -i` form (task 1.7): `lake exe header-dump <file>`, compared
+with OpenJPEG by `scripts/diff-headers.py`. Not a default target. -/
+lean_exe «header-dump» where
+  root := `Tests.HeaderDump

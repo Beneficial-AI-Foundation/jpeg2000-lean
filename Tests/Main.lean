@@ -3,6 +3,20 @@ import Spec
 import Encode
 import Tests.Basic
 import Tests.Bytes
+import Tests.Box
+import Tests.Marker
+import Tests.MQSpec
+import Tests.TilePart
+import Tests.MarkerRoundTrip
+import Tests.MQEnc
+import Tests.MQ
+import Tests.Header
+import Tests.Tier1Context
+import Tests.TilePartRoundTrip
+import Tests.Tier1Spec
+import Tests.TagTree
+import Tests.Geometry
+import Tests.MQRoundTrip
 
 /-!
 # Test runner
@@ -25,7 +39,21 @@ structure Suite where
 def suites : List Suite :=
   [ { name := "smoke", run := return 0 },
     { name := "basic", run := JPEG2000.Tests.Basic.run },
-    { name := "bytes", run := JPEG2000.Tests.Bytes.run } ]
+    { name := "bytes", run := JPEG2000.Tests.Bytes.run },
+    { name := "box", run := JPEG2000.Tests.Box.run },
+    { name := "marker", run := JPEG2000.Tests.Marker.run },
+    { name := "mqspec", run := JPEG2000.Tests.MQSpec.run },
+    { name := "tilepart", run := JPEG2000.Tests.TilePart.run },
+    { name := "marker-roundtrip", run := JPEG2000.Tests.MarkerRoundTrip.run },
+    { name := "mqenc", run := JPEG2000.Tests.MQEnc.run },
+    { name := "mq", run := JPEG2000.Tests.MQ.run },
+    { name := "header", run := JPEG2000.Tests.Header.run },
+    { name := "mq-roundtrip", run := JPEG2000.Tests.MQRoundTrip.run },
+    { name := "tier1ctx", run := JPEG2000.Tests.Tier1Context.run },
+    { name := "tilepart-roundtrip", run := JPEG2000.Tests.TilePartRoundTrip.run },
+    { name := "tier1spec", run := JPEG2000.Tests.Tier1Spec.run },
+    { name := "tagtree", run := JPEG2000.Tests.TagTree.run },
+    { name := "geometry", run := JPEG2000.Tests.Geometry.run } ]
 
 end JPEG2000.Tests
 

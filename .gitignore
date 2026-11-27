@@ -1,6 +1,6 @@
 # Lake build output
 .lake/
 # Downloaded corpus files (only corpus/manifest.json is committed)
-corpus/files/
+corpus/files
 .claude/worktrees/
 __pycache__/
