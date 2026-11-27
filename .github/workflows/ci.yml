@@ -91,6 +91,29 @@ jobs:
         if: runner.os == 'Linux'
         run: python3 -I scripts/diff-headers.py
 
+      # Per-code-block differential against an instrumented OpenJPEG (task 4.6b): Tier-2
+      # segments (M4) and Tier-1 coefficients (M3) on every T.803 stream and conformance JP2.
+      # Linux only; the instrumented decoder is built from a pinned, hash-verified tarball.
+      # actions/cache v4.2.0
+      - name: Cache instrumented OpenJPEG
+        if: runner.os == 'Linux'
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57
+        with:
+          path: .lake/opj-instrumented
+          key: opj-instrumented-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/build-opj-instrumented.sh', 'scripts/opj-instrument.patch') }}
+
+      - name: Build instrumented OpenJPEG
+        if: runner.os == 'Linux'
+        run: scripts/build-opj-instrumented.sh
+
+      - name: Build segment-dump
+        if: runner.os == 'Linux'
+        run: lake build segment-dump
+
+      - name: Segment and coefficient differential (OpenJPEG dump vs segment-dump)
+        if: runner.os == 'Linux'
+        run: python3 -I scripts/diff-segments.py
+
       - name: Proof hygiene guard
         run: scripts/check-hygiene.sh
 

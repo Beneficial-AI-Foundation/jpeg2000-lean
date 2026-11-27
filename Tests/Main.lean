@@ -16,6 +16,16 @@ import Tests.TilePartRoundTrip
 import Tests.Tier1Spec
 import Tests.TagTree
 import Tests.Geometry
+import Tests.Tier1Fast
+import Tests.Tier1Enc
+import Tests.Progression
+import Tests.Packet
+import Tests.DWT53
+import Tests.Tier2Headers
+import Tests.Quant
+import Tests.DWT97
+import Tests.MCT
+import Tests.Color
 import Tests.MQRoundTrip
 
 /-!
@@ -53,7 +63,17 @@ def suites : List Suite :=
     { name := "tilepart-roundtrip", run := JPEG2000.Tests.TilePartRoundTrip.run },
     { name := "tier1spec", run := JPEG2000.Tests.Tier1Spec.run },
     { name := "tagtree", run := JPEG2000.Tests.TagTree.run },
-    { name := "geometry", run := JPEG2000.Tests.Geometry.run } ]
+    { name := "geometry", run := JPEG2000.Tests.Geometry.run },
+    { name := "tier1fast", run := JPEG2000.Tests.Tier1Fast.run },
+    { name := "tier1enc", run := JPEG2000.Tests.Tier1Enc.run },
+    { name := "progression", run := JPEG2000.Tests.Progression.run },
+    { name := "packet", run := JPEG2000.Tests.Packet.run },
+    { name := "dwt53", run := JPEG2000.Tests.DWT53.run },
+    { name := "tier2headers", run := JPEG2000.Tests.Tier2Headers.run },
+    { name := "quant", run := JPEG2000.Tests.Quant.run },
+    { name := "dwt97", run := JPEG2000.Tests.DWT97.run },
+    { name := "mct", run := JPEG2000.Tests.MCT.run },
+    { name := "color", run := JPEG2000.Tests.Color.run } ]
 
 end JPEG2000.Tests
 

@@ -8,6 +8,17 @@ import JPEG2000.MQ
 import JPEG2000.Header
 import JPEG2000.TagTree
 import JPEG2000.Tier2.Geometry
+import JPEG2000.Tier1.Tables
+import JPEG2000.Tier1.Decode
+import JPEG2000.Tier1.Modes
+import JPEG2000.Progression
+import JPEG2000.Tier2.Packet
+import JPEG2000.DWT53
+import JPEG2000.Tier2.Headers
+import JPEG2000.Quant
+import JPEG2000.DWT97
+import JPEG2000.MCT
+import JPEG2000.Color
 
 /-!
 # jpeg2000-lean
