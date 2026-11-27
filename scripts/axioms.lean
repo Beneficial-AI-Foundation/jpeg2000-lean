@@ -557,3 +557,45 @@ end AxiomsSelfCheck
 #print axioms JPEG2000.Spec.MCT.reconRev_unsigned
 #print axioms JPEG2000.Spec.MCT.reconRev_signed
 #print axioms JPEG2000.Spec.MCT.roundFix_err
+
+-- Phase 6, task 6.2: consumer image API (JPEG2000/Image.lean)
+#print axioms JPEG2000.scaleNat_linear_le
+
+-- Phase 7, task 7.1a: Spec.decode, C9 composition (Spec/Equiv.lean)
+#print axioms JPEG2000.Spec.Equiv.ERel.bind
+#print axioms JPEG2000.Spec.Equiv.ERel.bind_same
+#print axioms JPEG2000.Spec.Equiv.ok_bind
+#print axioms JPEG2000.Spec.Equiv.ERel.pure
+#print axioms JPEG2000.Spec.Equiv.ERel.and_left
+#print axioms JPEG2000.Spec.Equiv.ERel.mono
+#print axioms JPEG2000.Spec.Equiv.ERel.forIn_list
+#print axioms JPEG2000.Spec.Equiv.ERel.forIn_range
+#print axioms JPEG2000.Spec.Equiv.ERel.forIn_range'_idx
+#print axioms JPEG2000.Spec.Equiv.ERel.forIn_range_idx
+#print axioms JPEG2000.Spec.Equiv.reconstructTileComp_eq_with
+#print axioms JPEG2000.Spec.Equiv.decodeTile_eq_with
+#print axioms JPEG2000.Spec.Equiv.decodeCodestream_eq_with
+#print axioms JPEG2000.Spec.Equiv.fin_rel
+#print axioms JPEG2000.Spec.Equiv.tileComp_rel
+#print axioms JPEG2000.Spec.Equiv.ArrRel.push
+#print axioms JPEG2000.Spec.Equiv.ArrRel.set
+#print axioms JPEG2000.Spec.Equiv.ArrRel.mono
+#print axioms JPEG2000.Spec.Equiv.CellsRel.mono
+#print axioms JPEG2000.Spec.Equiv.CellsRel.zero
+#print axioms JPEG2000.Spec.Equiv.pre_post
+#print axioms JPEG2000.Spec.Equiv.rct_cell
+#print axioms JPEG2000.Spec.Equiv.ict_cell
+#print axioms JPEG2000.Spec.Equiv.mct_step
+#print axioms JPEG2000.Spec.Equiv.irrev_sample
+#print axioms JPEG2000.Spec.Equiv.dc_step
+#print axioms JPEG2000.Spec.Equiv.tile_rel
+#print axioms JPEG2000.Spec.Equiv.PlaneArr.weaken
+#print axioms JPEG2000.Spec.Equiv.SameDims.trans
+#print axioms JPEG2000.Spec.Equiv.SameDims.refl
+#print axioms JPEG2000.Spec.Equiv.ArrRel.setv
+#print axioms JPEG2000.Spec.Equiv.ERel.throw_bind
+#print axioms JPEG2000.Spec.Equiv.placeEquiv
+#print axioms JPEG2000.Spec.Equiv.tail_rel
+#print axioms JPEG2000.Spec.Equiv.final_rel
+#print axioms JPEG2000.Spec.Equiv.c9_of_stages
+#print axioms JPEG2000.Spec.Equiv.tier2Equiv_placeholder

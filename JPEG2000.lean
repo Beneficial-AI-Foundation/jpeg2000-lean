@@ -19,6 +19,9 @@ import JPEG2000.Quant
 import JPEG2000.DWT97
 import JPEG2000.MCT
 import JPEG2000.Color
+import JPEG2000.Assemble
+import JPEG2000.Decode
+import JPEG2000.Image
 
 /-!
 # jpeg2000-lean

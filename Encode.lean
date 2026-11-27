@@ -2,6 +2,8 @@ import Encode.MQ
 import Encode.Marker
 import Encode.TilePart
 import Encode.Tier1
+import Encode.Tier2
+import Encode.Encode
 
 /-!
 # Reference encoder
