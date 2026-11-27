@@ -15,7 +15,9 @@ Plan.md §5.2 "Tier-2", §8; T.800 B.9, B.10.1–B.10.8, A.8.1–A.8.2, D.4, D.6
    packets (plain, with `SOP`, with `EPH`), every pass-count codeword 1–164, `Lblock`
    increments, `0xFF` stuffing inside a header and at its end, `SOP`/`EPH` errors, a body
    running past the data (`truncated`), multi-layer bypass segments split and continued
-   across layers (a segment of two non-adjacent ranges).
+   across layers (a segment of two non-adjacent ranges); the plain-mode 109-pass segment cap
+   (task 4.9: 150 passes → two length fields and segments `[109, 41]`; 100 + 20 passes over
+   two layers → `[109, 11]`) and `maxPassesPerCodeBlock` on the running total (task 4.8).
 3. **Random round trips**: a reference packet encoder (spec tag-tree encoder
    `Spec.TagTree.queryEnc`/`exactEnc`, pieces from `Spec.Tier1.segmentPasses`, minimal
    `Lblock` growth, B.10.1 stuffing with the trailing `0x00` after a final `0xFF`) writes
@@ -323,6 +325,71 @@ def handBypass : IO Nat := do
     let hz := packBits ([true, true, false, false, false, true] ++ passBits 1 ++ [false] ++ natBits 0 3)
     f := f + (← expect "zbp above Mb rejected"
       ((err? (decodePacket Limits.default false false 0 0 st true (rd hz) (rd hz))).isSome))
+  return f
+
+/-- Plain mode (style 0), one LL code-block (`Mb = 31`): the 109-pass segment cap (task 4.9,
+OpenJPEG `opj_t2_init_seg`). (a) 150 passes in one packet: two pieces `[109, 41]`, length
+fields of `3 + ⌊log₂ 109⌋ = 9` and `3 + ⌊log₂ 41⌋ = 8` bits, two segments. (b) 100 passes,
+then 20: the second packet's pieces are `[9, 11]`, the first continuing segment 0 → segments
+`[109, 11]`. (c) task 4.8: `maxPassesPerCodeBlock` is checked on the running total (150
+accepted with bound 150, `limitExceeded` with 149; in (b) the second packet with 119). -/
+def handPlainCap : IO Nat := do
+  let mut f := 0
+  f := f + (← expect "cap: segmentPasses plain 150 = [109, 41]"
+    (segmentPasses 0 150 0 == [109, 41] &&
+      Spec.Tier1.segmentPasses Spec.Tier1.Mode.plain 150 0 == [109, 41]))
+  f := f + (← expect "cap: segmentPasses plain 20 from 100 = [9, 11]"
+    (segmentPasses 0 20 100 == [9, 11]))
+  f := f + (← expect "cap: segmentPasses plain 300 = [109, 109, 82]"
+    (segmentPasses 16 300 0 == [109, 109, 82]))
+  f := f + (← expect "cap: plain 109 = one segment" (segmentPasses 0 109 0 == [109]))
+  f := f + (← expect "cap: not with termall / bypass"
+    (segmentPasses 4 3 107 == [1, 1, 1] && (segmentPasses 1 120 0).length > 2))
+  -- (a) incl 1, zbp 0 (`1`), 150 passes, Lblock+0, lengths 5 (9 bits), 3 (8 bits)
+  let ha := packBits ([true, true, true] ++ passBits 150 ++ [false] ++ natBits 5 9 ++ natBits 3 8)
+  let ba : List UInt8 := [1, 2, 3, 4, 5, 6, 7, 8]
+  let bsa := ha ++ ba
+  let lim (n : Nat) : Limits := { Limits.default with maxPassesPerCodeBlock := n }
+  match PrecState.init (lim 150) (mkParams 0 30) 0 (mkPrecinct 0 [(1, 1)]) with
+  | .error e => f := f + (← expect s!"cap: state {e}" false)
+  | .ok st =>
+    match decodePacket (lim 150) false false 0 0 st true (rd bsa) (rd bsa) with
+    | .error e => f := f + (← expect s!"cap (a): {e}" false)
+    | .ok (st, _, _, r) =>
+      let cb := blockOf st 0 0
+      let data := ByteArray.mk bsa.toArray
+      f := f + (← expect "cap (a): 150 passes, segments [109, 41]" (cb.numPasses == 150 &&
+        cb.segments.toList.map (·.passes) == [109, 41] && r.pos == bsa.length))
+      f := f + (← expect "cap (a): segment bytes" (cb.segments.toList.map (fun s => (s.bytes data).toList) ==
+        [[1, 2, 3, 4, 5], [6, 7, 8]]))
+    f := f + (← expect "cap (a): 150 passes > maxPassesPerCodeBlock 149 is limitExceeded"
+      ((err? (decodePacket (lim 149) false false 0 0 st true (rd bsa) (rd bsa))).any Error.isLimit))
+  -- (b) layer 0: 100 passes, length 4 (9 bits); layer 1: included bit, 20 passes, Lblock+0,
+  -- pieces 9 (6 bits) and 11 (6 bits), lengths 2 and 3
+  let h0 := packBits ([true, true, true] ++ passBits 100 ++ [false] ++ natBits 4 9)
+  let h1 := packBits ([true, true] ++ passBits 20 ++ [false] ++ natBits 2 6 ++ natBits 3 6)
+  let b0 : List UInt8 := [0x10, 0x11, 0x12, 0x13]
+  let b1 : List UInt8 := [0x20, 0x21, 0x30, 0x31, 0x32]
+  let bsb := h0 ++ b0 ++ h1 ++ b1
+  match mkState 0 30 0 [(1, 1)] with
+  | .error e => f := f + (← expect s!"cap (b): state {e}" false)
+  | .ok st =>
+    match decodeSeq false false 2 st (rd bsb) with
+    | .error e => f := f + (← expect s!"cap (b): {e}" false)
+    | .ok (st', _, r) =>
+      let cb := blockOf st' 0 0
+      let data := ByteArray.mk bsb.toArray
+      f := f + (← expect "cap (b): segments [109, 11]" (cb.numPasses == 120 &&
+        cb.segments.toList.map (·.passes) == [109, 11] && r.pos == bsb.length))
+      f := f + (← expect "cap (b): segment bytes" (cb.segments.toList.map (fun s => (s.bytes data).toList) ==
+        [b0 ++ [0x20, 0x21], [0x30, 0x31, 0x32]]))
+    -- the second packet brings the code-block to 120 passes > 119
+    let r2 : Except Error Unit := do
+      let (st1, _, _, r1) ← decodePacket (lim 119) false false 0 0 st true (rd bsb) (rd bsb)
+      let _ ← decodePacket (lim 119) false false 1 1 st1 true r1 r1
+      return ()
+    f := f + (← expect "cap (b): running total 120 > 119 is limitExceeded"
+      ((err? r2).any Error.isLimit))
   return f
 
 /-! ## 3. Random round trips -/
@@ -683,6 +750,7 @@ def run : IO Nat := do
   f := f + (← handCodewords)
   f := f + (← handStuffing)
   f := f + (← handBypass)
+  f := f + (← handPlainCap)
   f := f + (← randomTrips)
   f := f + (← corpus)
   return f

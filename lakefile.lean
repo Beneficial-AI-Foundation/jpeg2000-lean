@@ -45,6 +45,11 @@ lean_lib Bench where
 lean_exe «bench-mq» where
   root := `Bench.MQ
 
+/-- Decoder benchmark with per-stage timing (task 8.1): `lake exe bench`
+(see `scripts/bench.sh`). Not a default target. -/
+lean_exe bench where
+  root := `Bench.Decode
+
 /-- Header dump in `opj_dump -i` form (task 1.7): `lake exe header-dump <file>`, compared
 with OpenJPEG by `scripts/diff-headers.py`. Not a default target. -/
 lean_exe «header-dump» where
@@ -60,3 +65,18 @@ lean_exe «segment-dump» where
 decodes at the class-0 and class-1 thresholds: `lake exe conformance`. Not a default target. -/
 lean_exe conformance where
   root := `Tests.ConformanceMain
+
+/-- Decoded planes as PGX files (task 6.3b): `lake exe image-dump <file> <outprefix>` writes
+the raw codestream components and the `JPEG2000.decode` image channels, compared with
+`opj_decompress` by `scripts/diff-images.py`. Not a default target. -/
+lean_exe «image-dump» where
+  root := `Tests.ImageDump
+
+/-- Fuzz library: every module under `Fuzz/` (not a default target). -/
+lean_lib Fuzz where
+  globs := #[.submodules `Fuzz]
+
+/-- Mutation fuzzer for `JPEG2000.decode` (task 9.1): `lake exe fuzz` (see `scripts/fuzz.sh`).
+Not a default target. -/
+lean_exe fuzz where
+  root := `Fuzz.Main

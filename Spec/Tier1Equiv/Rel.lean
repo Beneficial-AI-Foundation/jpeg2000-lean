@@ -32,7 +32,7 @@ open JPEG2000.Spec.Tier1 (Coeff Geom DecState Orientation NeighbourSign)
 /-- The spec geometry of a plain-mode block (vertically causal formation off). -/
 def sgeom (w h : Nat) (b : Band) : Geom := { width := w, height := h, orient := orientOf b }
 
-/-- The fast geometry, as `JPEG2000.Tier1.decodeCodeBlock` builds it. -/
+/-- The fast geometry, as `JPEG2000.Tier1.decodeCodeBlockExact` builds it. -/
 def fgeo (w h : Nat) (b : Band) : Tier1.Geo :=
   { w, h, st := w + 2, zc := Tier1.zcFor b, hzc := Tier1.zcFor_size b }
 

@@ -1,6 +1,7 @@
 import JPEG2000.Decode
 import Tests.Pgx
 import Tests.Decode
+import Tests.JP2
 
 /-!
 # T.803 conformance runner (task 5.6b)
@@ -29,8 +30,12 @@ reported separately.
 Additionally every class-1 entry whose component uses the reversible 5/3 transform in every
 tile must be bit-exact (peak 0), regardless of the threshold.
 
-The nine `jp2_N.tif` references need colour composition (palette, sYCC, `-p 8S -force-rgb`),
-which belongs to the consumer API (task 6.2); they are reported as skipped.
+The nine `jp2_N.tif` references (task 6.3a) are checked by `Tests.JP2.check`:
+`JPEG2000.decode` + 8-bit RGB rendering, and for the `colr` METH 2 files (file5/7/8) the
+embedded ICC profile applied in the harness through lcms2 (`scripts/icc-apply.py`, `tificc`)
+as OpenJPEG + colour management does; per-channel peak/MSE against the entry's thresholds.
+They gate the exit code; an ICC file is skipped (with the reason) only when `tificc` is
+missing.
 
 `lake exe conformance` runs everything and exits nonzero on any class-1 failure (the M5
 criterion; with `--gate-class0` also on class-0 failures); `run` (registered in
@@ -61,6 +66,8 @@ structure Outcome where
   reversible : Bool := false
   /-- Explanation (error, mismatch or skip reason). -/
   note : String := ""
+  /-- The JP2 TIFF result (per-channel metrics), for TIFF entries. -/
+  jp2 : Option JPEG2000.Tests.JP2.Result := none
 
 /-- `n / d` rendered with `k` decimals, rounded down (`d > 0`; `0` when `d = 0`). -/
 def fmtFrac (n d : Nat) (k : Nat := 3) : String :=
@@ -120,9 +127,14 @@ def judge (e : RefEntry) (dec : Except Error DecodedImage) : IO Outcome := do
         else if !exactOk then "reversible component not bit-exact" else ""
       return { entry := e, pass := within && exactOk, metrics := some m, reversible := rev, note }
 
-/-- Why the JP2 TIFF references are skipped. -/
+/-- Why an entry that is neither a profile-0/1 codestream nor a TIFF is skipped. -/
 def skipNote : String :=
-  "JP2 TIFF reference: needs colour composition (task 6.2, -p 8S -force-rgb)"
+  "not a profile-0/1 codestream or JP2 TIFF reference"
+
+/-- The outcome of a JP2 TIFF entry (`Tests.JP2.check`, default `.linear` scaling). -/
+def judgeTiff (e : RefEntry) : IO Outcome := do
+  let r ← JPEG2000.Tests.JP2.check e
+  return { entry := e, skipped := r.skipped, pass := r.pass, note := r.note, jp2 := some r }
 
 /-- Evaluates the entries (in order), decoding each `(stream, reduce)` pair once. -/
 def evaluate (es : Array RefEntry) : IO (Array Outcome) := do
@@ -130,7 +142,9 @@ def evaluate (es : Array RefEntry) : IO (Array Outcome) := do
   -- skipped entries
   for h : i in [0:es.size] do
     let e := es[i]
-    if !isCodestreamEntry e then
+    if e.isTiff then
+      out := out.set! i (some (← judgeTiff e))
+    else if !isCodestreamEntry e then
       let o : Outcome := { entry := e, skipped := true, note := skipNote }
       out := out.set! i (some o)
   -- distinct (stream, reduce) keys in first-occurrence order
@@ -149,6 +163,9 @@ def evaluate (es : Array RefEntry) : IO (Array Outcome) := do
 
 /-- One report line. -/
 def line (o : Outcome) : String :=
+  match o.jp2 with
+  | some r => JPEG2000.Tests.JP2.line r
+  | none =>
   let e := o.entry
   let tag := if o.skipped then "SKIP" else if o.pass then "PASS" else "FAIL"
   let cls := match e.cls with | some c => s!"class {c}" | none => "jp2"
@@ -179,11 +196,20 @@ def report (os : Array Outcome) (verbose : Bool := true) (gating : List Nat := [
   let exact := rev.filter fun o => match o.metrics with | some m => m.peak == 0 | none => false
   if !rev.isEmpty then
     IO.println s!"reversible (5/3) class-1 components bit-exact: {exact.size}/{rev.size}"
-  let skipped := os.filter (·.skipped)
+  -- the JP2 TIFF references (task 6.3a): always gating when compared
+  let jp2 := os.filter (·.entry.isTiff)
+  if !jp2.isEmpty then
+    for o in jp2 do
+      if verbose || !o.pass then IO.println (line o)
+    let n := (jp2.filter (·.pass)).size
+    let sk := (jp2.filter (·.skipped)).size
+    IO.println s!"jp2: {n}/{jp2.size} pass, {sk} skipped"
+    fails := fails + (jp2.filter fun o => !o.pass && !o.skipped).size
+  let skipped := os.filter fun o => o.skipped && !o.entry.isTiff
   for o in skipped do
     if verbose then IO.println (line o)
   if !skipped.isEmpty then
-    IO.println s!"skipped: {skipped.size} (JP2 TIFF references; colour composition is task 6.2)"
+    IO.println s!"skipped: {skipped.size}"
   return fails
 
 /-- Whether the corpus is present (run from the repository root). -/

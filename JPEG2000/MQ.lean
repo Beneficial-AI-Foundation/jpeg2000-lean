@@ -15,7 +15,7 @@ step-by-step simulation:
 * C.3.3 `RENORMD` (Figure C.18) — `renormLoop`/`renormd`, a do-while loop with fuel 16
   (`Spec.MQ.renormFuel`), iteration for iteration the spec's loop;
 * C.3.2 `DECODE` (Figure C.15) with `LPS_EXCHANGE` (C.16) and `MPS_EXCHANGE` (C.17) —
-  `decode`.
+  `step` (+ `renormS`, `RENORMD` on unboxed registers) and `decode`.
 
 ## Correspondence with `Spec.MQ` (for C2)
 
@@ -39,6 +39,18 @@ step-by-step simulation:
 Bounded reads: every byte read is guarded by `pos < stop ≤ data.size` (the proof is carried in
 `Dec`), so the compiled code has no other bounds checks. No `Nat` shift, power or product is
 evaluated on the hot path.
+
+## Allocation-free decisions (task 8.2a)
+
+`decode` returns `Bool × Dec` (the interface the Tier-1 proofs use), but it is an `@[inline]`
+wrapper around `step`, which stores the decision in the field `bit`: the pair is built and
+taken apart at each call site, so the compiler removes it. `step` folds the five paths of
+Figure C.15 into scalar selections and hands the registers to `renormS`, which runs
+`RENORMD` on local `UInt32`/`Nat` variables (a loop, no record traffic) and ends with the one
+record update of the decision; a uniquely owned `Dec` is updated in place on every path, so
+a decision allocates nothing. `renormStep`/`renormLoop`/`renormd` stay as the
+flowchart-shaped reference: `Spec.MQEquiv.renormS_eq` and `Spec.MQEquiv.step_eq_ref` prove
+`step` equal to the path-by-path form `Spec.MQEquiv.stepRef`, on which C2 is proved.
 -/
 
 namespace JPEG2000.MQ
@@ -128,6 +140,9 @@ structure Dec where
   ct : UInt32
   /-- Context states, `index <<< 1 ||| mps` per context. -/
   cx : ByteArray
+  /-- The last decoded decision (written by `step`, so that `decode` returns its decision
+  without allocating a pair; not part of the Annex C state). -/
+  bit : Bool := false
 
 namespace Dec
 
@@ -180,32 +195,62 @@ def renormLoop : Nat → Dec → Dec
 
 /-! ## DECODE (C.3.2, Figures C.15–C.17) -/
 
-/-- `DECODE` (Figure C.15): decode one decision in context `i`.
+/-- The end of `DECODE` on unboxed registers: `RENORMD` (`renormLoop`) run on `A = a`,
+`C = c`, `CT = ct`, `BP = pos` held in local variables, followed by the one record update of
+the decision: the registers, context `i` := `ns`, `bit` := the decision. With fuel `0` it is
+just the update. A uniquely owned `d` is updated in place (no allocation), and the loop
+never touches the record (`Spec.MQEquiv.renormS_eq` proves it equal to `renormLoop` on the
+updated record). -/
+def renormS (d : Dec) (i : Nat) (ns : UInt8) (bit : Bool) :
+    Nat → UInt32 → UInt32 → UInt32 → Nat → Dec
+  | 0, a, c, ct, pos => { d with a, c, ct, pos, cx := ctxSet d.cx i ns, bit }
+  | fuel + 1, a, c, ct, pos =>
+    let a := (a <<< 1) &&& 0xFFFF
+    if ct == 0 then
+      -- `BYTEIN` (Figure C.19) on the local registers, then `C <<= 1`, `CT −= 1`
+      let b0 := d.byteAt pos
+      let b1 := d.byteAt (pos + 1)
+      let c := if b0 == 0xFF then (if b1 > 0x8F then c + 0xFF00 else c + (b1 <<< 9))
+        else c + (b1 <<< 8)
+      let ct : UInt32 := if b0 == 0xFF && !(b1 > 0x8F) then 6 else 7
+      let pos := if b0 == 0xFF && b1 > 0x8F then pos else pos + 1
+      if a &&& 0x8000 != 0 then { d with a, c := c <<< 1, ct, pos, cx := ctxSet d.cx i ns, bit }
+      else renormS d i ns bit fuel a (c <<< 1) ct pos
+    else
+      -- `A <<= 1`; `C <<= 1`; `CT −= 1`; loop while `A AND 0x8000 = 0`
+      if a &&& 0x8000 != 0 then
+        { d with a, c := c <<< 1, ct := ct - 1, pos, cx := ctxSet d.cx i ns, bit }
+      else renormS d i ns bit fuel a (c <<< 1) (ct - 1) pos
+
+/-- `DECODE` (Figure C.15) in context `i`, the decision stored in `bit`.
 
 `A = A − Qe`; if `Chigh < Qe`: `LPS_EXCHANGE` (C.16) then `RENORMD`; else `Chigh −= Qe` and,
-if `A AND 0x8000 = 0`, `MPS_EXCHANGE` (C.17) then `RENORMD`, else `D = MPS(CX)`. -/
-def decode (d : Dec) (i : Nat) : Bool × Dec :=
+if `A AND 0x8000 = 0`, `MPS_EXCHANGE` (C.17) then `RENORMD`, else `D = MPS(CX)`.
+
+Written for the compiler: the five paths of the flowchart are folded into scalar selections
+(`lps` = the `Chigh < Qe` test, `fast` = the MPS path without renormalisation, `swap` = the
+conditional exchange takes the LPS transition), and `renormS` runs `RENORMD` (fuel 16, or
+0 on the `fast` path) on local registers and performs the single in-place record update. On
+the `fast` path the context byte is written back unchanged. `Spec.MQEquiv.step_eq_ref`
+proves it equal to the flowchart shape `Spec.MQEquiv.stepRef`. -/
+def step (d : Dec) (i : Nat) : Dec :=
   let s := ctxGet d.cx i
   let e := entry s
   let qe := e >>> 16
   let mps := s &&& 1 != 0
   let a := d.a - qe
-  if d.c >>> 16 < qe then
-    -- LPS_EXCHANGE
-    if a < qe then
-      (mps, renormd { d with a := qe, cx := ctxSet d.cx i (e >>> 8).toUInt8 })
-    else
-      (!mps, renormd { d with a := qe, cx := ctxSet d.cx i e.toUInt8 })
-  else
-    let c := d.c - (qe <<< 16)
-    if a &&& 0x8000 != 0 then
-      (mps, { d with a, c })
-    else if a < qe then
-      -- MPS_EXCHANGE, LPS branch
-      (!mps, renormd { d with a, c, cx := ctxSet d.cx i e.toUInt8 })
-    else
-      -- MPS_EXCHANGE, MPS branch
-      (mps, renormd { d with a, c, cx := ctxSet d.cx i (e >>> 8).toUInt8 })
+  let lps := d.c >>> 16 < qe
+  let fast := !lps && a &&& 0x8000 != 0
+  let swap := lps != (a < qe)
+  let ns : UInt8 := if fast then s else if swap then e.toUInt8 else (e >>> 8).toUInt8
+  renormS d i ns (if !fast && swap then !mps else mps) (if fast then 0 else 16)
+    (if lps then qe else a) (if lps then d.c else d.c - (qe <<< 16)) d.ct d.pos
+
+/-- `DECODE` (Figure C.15): decode one decision in context `i` (`step`, then read `bit`;
+inlined, so the pair is never built at run time). -/
+@[inline] def decode (d : Dec) (i : Nat) : Bool × Dec :=
+  let d := d.step i
+  (d.bit, d)
 
 /-- Decode one decision per context in `cxs`, in order. -/
 def decodeList (d : Dec) : List Nat → List Bool × Dec

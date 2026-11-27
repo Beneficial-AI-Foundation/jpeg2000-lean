@@ -4,3 +4,6 @@
 corpus/files
 .claude/worktrees/
 __pycache__/
+# Fuzz findings (task 9.1): only the README is committed
+Fuzz/findings/*
+!Fuzz/findings/README.md

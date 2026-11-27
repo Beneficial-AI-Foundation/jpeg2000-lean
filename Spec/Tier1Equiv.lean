@@ -6,10 +6,11 @@ import Spec.Tier1Equiv.Inv
 Plan.md §4 (C3: "the fast EBCOT decoder equals the spec decoder (Annex D, coefficient by
 coefficient, pass by pass)"), §5.1, §5.2 "Tier-1 / EBCOT"; T.800 Annex D, E.1.1.2. Task 3.6.
 
-`c3_plain`: for every buffer `data`, segment bounds `start ≤ stop ≤ data.size`, block size
+`c3_plain_exact` (task 5.8 renamed it; `c3_plain` in `Spec.Tier1Equiv.Clamp` is the same
+statement for the decoders that first drop passes beyond `3K − 2`): for every buffer `data`, segment bounds `start ≤ stop ≤ data.size`, block size
 `w × h`, band, `Mb`, zero bit-planes and pass count `n` with `K = Mb − zeroBitPlanes ≤ 31`
-whenever `n > 0`, the fast `JPEG2000.Tier1.decodeCodeBlock data start stop w h band Mb zbp n`
-and the spec `Spec.Tier1.decodeCodeBlock (CodeBlock.ofData w h (orientOf band) Mb zbp n
+whenever `n > 0`, the fast `JPEG2000.Tier1.decodeCodeBlockExact data start stop w h band Mb zbp n`
+and the spec `Spec.Tier1.decodeCodeBlockExact (CodeBlock.ofData w h (orientOf band) Mb zbp n
 (segment data start stop))` (plain mode, one codeword segment) either both fail with the same
 error, or both succeed and agree on every coefficient `(x, y)`: the fast `Int32` value is the
 spec `Coeff.value`, the fast `sig` is the spec `sig` and the fast `lsbPlane` (recomputed from
@@ -48,7 +49,7 @@ theorem coeffAt_replicate (g : Geom) (X Y : Int) :
 theorem fget_replicate (n k : Nat) : Tier1.fget (Array.replicate n 0) k = 0 := by
   unfold Tier1.fget; split <;> simp
 
-/-- The initial fast state (as `decodeCodeBlock` builds it) is related to the spec's initial
+/-- The initial fast state (as `decodeCodeBlockExact` builds it) is related to the spec's initial
 state on the segment `data[start, stop)`. -/
 theorem init_rel (data : ByteArray) (start stop w h : Nat) (b : Band) :
     Rel w h b start
@@ -281,20 +282,28 @@ theorem validate_eq (data : ByteArray) (start stop w h : Nat) (band : Band) (Mb 
     JPEG2000.Tier1.validate data start stop w h (Mb - zbp) n =
       (specBlock data start stop w h band Mb zbp n).validate := by
   have hn := specBlock_numPasses data start stop w h band Mb zbp n
-  have hseg : ((specBlock data start stop w h band Mb zbp n).segments.map (·.passes) !=
-      Spec.Tier1.segmentPasses (specBlock data start stop w h band Mb zbp n).mode
-        (specBlock data start stop w h band Mb zbp n).numPasses 0) = false := by
-    rw [hn, Spec.Tier1.segmentPasses_plain _ rfl rfl]
-    simp only [specBlock, CodeBlock.ofData, Spec.Tier1.Segment.single]
-    split <;> simp
-  rw [hn] at hseg
   unfold JPEG2000.Tier1.validate Spec.Tier1.CodeBlock.validate
   rw [hn]
   have h3 : ¬ (start > stop ∨ stop > data.size) := by omega
   have h4 : ¬ (n > 0 ∧ Mb - zbp > 31) := fun ⟨a, c⟩ => by have := hK a; omega
+  by_cases c2 : n > 0 ∧ n > 3 * (Mb - zbp) - 2
+  · simp only [h3, h4, Bool.false_eq_true, ↓reduceIte]
+    by_cases c1 : w > 1024 ∨ h > 1024 ∨ w * h > 4096 <;>
+      simp [c1, c2, specBlock, CodeBlock.ofData, CodeBlock.codedPlanes, JPEG2000.Tier1.tier1Loc,
+        Spec.Tier1.tier1Loc, bind, Except.bind, throw, throwThe, MonadExceptOf.throw]
+  -- within `3K − 2 ≤ 91` passes the 109-pass cap (task 4.9) does not split the segment
+  have h109 : 0 + n ≤ 109 := by
+    by_cases n0 : n = 0
+    · omega
+    · have := hK (by omega); omega
+  have hseg : ((specBlock data start stop w h band Mb zbp n).segments.map (·.passes) !=
+      Spec.Tier1.segmentPasses (specBlock data start stop w h band Mb zbp n).mode n 0) =
+        false := by
+    rw [Spec.Tier1.segmentPasses_plain _ rfl rfl _ _ h109]
+    simp only [specBlock, CodeBlock.ofData, Spec.Tier1.Segment.single]
+    split <;> simp
   simp only [hseg, h3, h4, Bool.false_eq_true, ↓reduceIte]
   by_cases c1 : w > 1024 ∨ h > 1024 ∨ w * h > 4096 <;>
-    by_cases c2 : n > 0 ∧ n > 3 * (Mb - zbp) - 2 <;>
     simp [c1, c2, specBlock, CodeBlock.ofData, CodeBlock.codedPlanes, JPEG2000.Tier1.tier1Loc,
       Spec.Tier1.tier1Loc]
 
@@ -314,7 +323,7 @@ theorem specBlock_coeffs (data : ByteArray) (start stop w h : Nat) (band : Band)
       (by simp [specBlock, CodeBlock.ofData, Spec.Tier1.Segment.single, n0])]
     rfl
 
-/-- **The successful case**: the fast output (as `decodeCodeBlock` builds it) agrees with the
+/-- **The successful case**: the fast output (as `decodeCodeBlockExact` builds it) agrees with the
 spec coefficients after `decodePasses`, coefficient by coefficient. -/
 theorem out_ok (data : ByteArray) (start stop w h : Nat) (band : Band) (Mb zbp n : Nat)
     (hK : 0 < n → Mb - zbp ≤ 31) (hnK : 0 < n → n ≤ 3 * (Mb - zbp) - 2) :
@@ -443,10 +452,10 @@ fail with the same error, or both succeed and agree, coefficient by coefficient,
 the significance and `lsbPlane` (the decoded bit count `Nb = Mb − lsbPlane` of E.1.1.2).
 Side conditions: the segment lies in the buffer and at most 31 bit-planes are coded when a
 pass is decoded (the fast decoder's two extra checks). -/
-theorem c3_plain (data : ByteArray) (start stop w h : Nat) (band : Band) (Mb zbp n : Nat)
+theorem c3_plain_exact (data : ByteArray) (start stop w h : Nat) (band : Band) (Mb zbp n : Nat)
     (hrange : start ≤ stop ∧ stop ≤ data.size) (hK : 0 < n → Mb - zbp ≤ 31) :
-    match JPEG2000.Tier1.decodeCodeBlock data start stop w h band Mb zbp n,
-      Spec.Tier1.decodeCodeBlock (specBlock data start stop w h band Mb zbp n) with
+    match JPEG2000.Tier1.decodeCodeBlockExact data start stop w h band Mb zbp n,
+      Spec.Tier1.decodeCodeBlockExact (specBlock data start stop w h band Mb zbp n) with
     | .error e1, .error e2 => e1 = e2
     | .ok o, .ok cs =>
       cs.size = w * h ∧ o.plane.width = w ∧ o.plane.height = h ∧
@@ -456,7 +465,7 @@ theorem c3_plain (data : ByteArray) (start stop w h : Nat) (band : Band) (Mb zbp
         o.lsbPlane x y = (cs.getD (y * w + x) {}).lsbPlane
     | _, _ => False := by
   have hv := validate_eq data start stop w h band Mb zbp n hrange hK
-  unfold JPEG2000.Tier1.decodeCodeBlock Spec.Tier1.decodeCodeBlock
+  unfold JPEG2000.Tier1.decodeCodeBlockExact Spec.Tier1.decodeCodeBlockExact
   dsimp only
   rw [hv]
   cases hval : (specBlock data start stop w h band Mb zbp n).validate with

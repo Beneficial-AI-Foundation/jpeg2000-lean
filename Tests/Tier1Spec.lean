@@ -736,11 +736,18 @@ def runUnits : IO Nat := do
   -- argument checks
   let base := CodeBlock.ofData 4 4 .LL 3 1 4 []
   f := f + (← expect "3K-2 passes accepted" ((err? (decodeCodeBlock base)).isNone))
-  f := f + (← expect "3K-1 passes rejected"
-    ((err? (decodeCodeBlock { base with segments := Segment.single 5 [] })).isSome))
-  f := f + (← expect "passes with K = 0 rejected"
-    ((err? (decodeCodeBlock { base with zeroBitPlanes := 3, segments := Segment.single 1 [] }))
+  f := f + (← expect "3K-1 passes rejected (exact)"
+    ((err? (decodeCodeBlockExact { base with segments := Segment.single 5 [] })).isSome))
+  f := f + (← expect "3K-1 passes: the extra pass dropped (task 5.8)"
+    ((ok? (decodeCodeBlock { base with segments := Segment.single 5 [] })).isSome &&
+      ok? (decodeCodeBlock { base with segments := Segment.single 5 [] }) ==
+        ok? (decodeCodeBlock base)))
+  f := f + (← expect "passes with K = 0 rejected (exact)"
+    ((err? (decodeCodeBlockExact { base with zeroBitPlanes := 3, segments := Segment.single 1 [] }))
       |>.isSome))
+  f := f + (← expect "passes with K = 0 dropped: zeros (task 5.8)"
+    ((ok? (decodeValues { base with zeroBitPlanes := 3, segments := Segment.single 1 [] })) ==
+      some (Array.replicate 16 0)))
   f := f + (← expect "K = 0, no passes: zeros"
     ((ok? (decodeValues { base with zeroBitPlanes := 5, segments := [] })) ==
       some (Array.replicate 16 0)))

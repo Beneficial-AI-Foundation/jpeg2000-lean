@@ -22,9 +22,10 @@ renderer needs, without any colour management of its own:
 * **Palette and component mapping** (I.5.3.4, I.5.3.5): `resolveMapping` validates `pclr`
   and `cmap` against the codestream's component count; `applyMapping` / `applyPalette` build
   the output channels. A palette index outside `0 … NE−1` is **clamped** (negative → 0, too
-  large → `NE − 1`), as `opj_jp2_apply_pclr`. Signed palette columns are sign-extended from
-  their depth (T.800 I.5.3.4; OpenJPEG does not sign-extend). Columns deeper than an `Int32`
-  plane holds (unsigned > 31 bits, signed > 32 bits) are `unsupported`.
+  large → `NE − 1`), as `opj_jp2_apply_pclr`. Unsigned entries keep all their stored bytes,
+  even when padding bits are set, as in OpenJPEG. Signed entries are sign-extended from their
+  declared depth (T.800 I.5.3.4). Depths and unsigned values exceeding the `Int32` plane's
+  range are `unsupported`.
 * **Channel definitions** (I.5.3.6): `channelLayout` validates `cdef` (every channel defined
   exactly once, indices and associations in range, as `opj_jp2_check_color`) and orders the
   colour channels by association, identifies the whole-image opacity channel (`Typ` 1, or 2
@@ -33,11 +34,11 @@ renderer needs, without any colour management of its own:
   arithmetic transcribing OpenJPEG's `sycc_to_rgb` (`R = Y + 1.402·Cr`, `G = Y − (0.344·Cb +
   0.714·Cr)`, `B = Y + 1.772·Cb`, products truncated toward zero, clamped to `[0, 2^p − 1]`,
   chroma offset `2^(p−1)` with `p` the luma depth). Sub-sampled chroma is upsampled by
-  replication on the reference grid (each luma sample takes the chroma sample whose grid cell
-  contains it), which equals OpenJPEG's `sycc422_to_rgb`/`sycc420_to_rgb` for even image
-  origins; for an odd origin OpenJPEG feeds raw 0 chroma to the first column/row while this
-  takes the nearest chroma sample, and any other sub-sampling (OpenJPEG: "CAN NOT CONVERT")
-  is converted the same way here.
+  replication on the reference grid. For 4:2:2 and 4:2:0 we follow OpenJPEG 2.5.3's edge
+  rules. An odd vertical origin in 4:2:0 gives the first row raw zero chroma. An odd
+  horizontal origin gives the first column raw zero chroma on every 4:2:2 row and on the
+  first row of each 4:2:0 pair (including a final unpaired row). The second row of each
+  pair uses the first stored chroma sample at the left edge.
 
 Bounds (Plan.md §3 rules 2 and 3): channel counts are checked against `maxComponents`, every
 new plane against `maxWorkSamples` (and their running total too) before allocation; every
@@ -151,6 +152,9 @@ def checkPalette (p : Palette) : Except Error Unit := do
     if (s && d > 32) || (!s && d > 31) then
       throw (unsupported s!"pclr: column depth {d} ({if s then "signed" else "unsigned"}) \
         does not fit a 32-bit sample")
+  for e in p.entries, i in [:p.entries.size] do
+    if e > 0x7fffffff && !(bitsDepth (p.bits.getD (i % p.npc) 0)).2 then
+      throw (unsupported "pclr: unsigned entry exceeds the Int32 sample range")
 
 /-- Validates one `cmap` entry against `nComps` components and the palette. -/
 def entrySource (nComps : Nat) (p : Palette) (e : CmapEntry) : Except Error Source := do
@@ -237,12 +241,13 @@ structure Channel where
   /-- Depth, sign and sub-sampling. -/
   format : Format
 
-/-- The value of palette entry `e` in a column with `B_i` = `bi`: the low `depth` bits,
-sign-extended for a signed column (T.800 I.5.3.4). -/
+/-- A parsed palette entry as an Int32 sample. Unsigned columns keep the stored bytes
+(OpenJPEG compatibility). Signed columns sign-extend the low `depth` bits (T.800 I.5.3.4). -/
 def entryValue (bi : UInt8) (e : UInt64) : Int32 :=
   let (d, s) := bitsDepth bi
+  if !s then e.toUInt32.toInt32 else
   let v := e.toNat % 2 ^ d
-  if s && v ≥ 2 ^ (d - 1) then Int32.ofInt (Int.ofNat v - Int.ofNat (2 ^ d))
+  if v ≥ 2 ^ (d - 1) then Int32.ofInt (Int.ofNat v - Int.ofNat (2 ^ d))
   else Int32.ofInt (Int.ofNat v)
 
 /-- Column `col` of a palette as a lookup table of `NE` sample values. -/
@@ -414,9 +419,12 @@ def chromaIndex (o dl dc wc n : Nat) : Array Nat :=
   let c0 := (o + dc - 1) / dc
   (List.range n).toArray.map fun i => min ((l0 + i) * dl / dc - c0) (wc - 1)
 
-/-- The three output planes, filled for `i = i₀ …` (fuel `k`). -/
+/-- The three output planes, filled for `i = i₀ …` (fuel `k`). The first
+`zeroCols[row]` pixels on a row use raw zero for both chroma samples. -/
 def syccLoop (off upb : Int64) (w : Nat) (y cb cr : Plane)
-    (cbx cby crx cry : Array Nat) (r g b : Plane) (i : Nat) : Nat → Plane × Plane × Plane
+    (cbx cby crx cry : Array Nat) (r g b : Plane) (i k : Nat) (zeroCols : Array Nat := #[]) :
+    Plane × Plane × Plane :=
+  match k with
   | 0 => (r, g, b)
   | k + 1 =>
     if hy : i < y.width * y.height then
@@ -425,11 +433,12 @@ def syccLoop (off upb : Int64) (w : Nat) (y cb cr : Plane)
       if hb : i < b.width * b.height then
         let x := i % w
         let row := i / w
-        let vcb := (cb.get? (cby.getD row 0 * cb.width + cbx.getD x 0)).getD 0
-        let vcr := (cr.get? (cry.getD row 0 * cr.width + crx.getD x 0)).getD 0
+        let (vcb, vcr) := if x < zeroCols.getD row 0 then (0, 0) else
+          ((cb.get? (cby.getD row 0 * cb.width + cbx.getD x 0)).getD 0,
+           (cr.get? (cry.getD row 0 * cr.width + crx.getD x 0)).getD 0)
         let (vr, vg, vb) := syccPixel off upb (y.get i hy).toInt64 vcb.toInt64 vcr.toInt64
         syccLoop off upb w y cb cr cbx cby crx cry
-          (r.set i vr.toInt32 hr) (g.set i vg.toInt32 hg) (b.set i vb.toInt32 hb) (i + 1) k
+          (r.set i vr.toInt32 hr) (g.set i vg.toInt32 hg) (b.set i vb.toInt32 hb) (i + 1) k zeroCols
       else (r, g, b) else (r, g, b) else (r, g, b)
     else (r, g, b)
 
@@ -453,10 +462,20 @@ def syccToRgb (L : Limits) (ox oy : Nat) (y cb cr : Channel) :
   let cby := chromaIndex oy y.format.dy cb.format.dy cb.plane.height h
   let crx := chromaIndex ox y.format.dx cr.format.dx cr.plane.width w
   let cry := chromaIndex oy y.format.dy cr.format.dy cr.plane.height h
+  let zeroCols :=
+    if y.format.dx == 1 && y.format.dy == 1 && cb.format.dx == 2 && cr.format.dx == 2 &&
+        cb.format.dy == cr.format.dy && (cb.format.dy == 1 || cb.format.dy == 2) then
+      let dy := cb.format.dy
+      let offx := ox % 2
+      let offy := oy % dy
+      if offx == 0 && offy == 0 then #[] else
+        (Array.range h).map fun row =>
+          if row < offy then w else if (row - offy) % dy == 0 then offx else 0
+    else #[]
   let off : Int64 := Int64.ofNat (2 ^ (p - 1))
   let upb : Int64 := Int64.ofNat (2 ^ p - 1)
   let z := Plane.zero w h
-  let (r, g, b) := syccLoop off upb w y.plane cb.plane cr.plane cbx cby crx cry z z z 0 (w * h)
+  let (r, g, b) := syccLoop off upb w y.plane cb.plane cr.plane cbx cby crx cry z z z 0 (w * h) zeroCols
   let fmt : Format := { y.format with signed := false }
   return ({ plane := r, format := fmt }, { plane := g, format := fmt },
           { plane := b, format := fmt })

@@ -167,3 +167,148 @@ The manifest was built once from the tree listing of the pinned commit
 repository; the threshold lists were parsed from that file, not retyped. Moving to a new
 commit means: new tree listing, re-download, re-hash, re-check thresholds against the then
 current OpenJPEG file, and update the commit fields here and in the manifest.
+
+## PDF-extracted JPX corpus (Plan §8.3, task 6.3b)
+
+The JPEG 2000 images this library exists for are the `JPXDecode` streams inside PDFs. This
+corpus is those streams, extracted from public PDFs.
+
+### Sources (scanned 2026-11-25)
+
+* **safe-pdf's corpus** (81 PDFs: 74 arXiv, 6 ntsb.gov, 1 uscis.gov): `pdfimages -list` and a
+  byte search for `JPXDecode` find **no JPX image** (8321 Flate/raw, 821 DCT, 31 CCITT). It
+  contributes nothing here.
+* **pdf.js** `test/pdfs/` at commit `98100629a8ab3c6625c82a5ab5b9a82457f415f3` (1105
+  committed PDFs, scanned in full): 16 contain `JPXDecode`; 15 are used. `issue3371.pdf` is
+  encrypted and refused by both qpdf and poppler ("Incorrect password"), so it is left out.
+  The 15 mix documents attached to bug reports or perf tests (`issue5475`, `issue5481`,
+  `issue5549`, `issue5567`, `issue12213`, `issue19326`, `issue19517`, `S2`, `perf_codecs_jpx`) and
+  hand-made edge cases (`jpx_numcomps`, `jpx_smaskindata`, `jpx_subsampling`,
+  `jp2k-resetprob`, `bug_jpx`, `red_stamp`). Linked (`.link`, not committed) PDFs were not
+  fetched: their hosts are arbitrary and CI could not reach them.
+* **pikepdf** `tests/resources/` at `0c3b58ff2f28769596037367fe7245e51b486bbe`:
+  `pike-jp2.pdf`, `pike-flate-jp2.pdf` (the same codestream behind `[/FlateDecode
+  /JPXDecode]`, exercising the filter chain).
+* **Apache PDFBox** `tools/src/test/resources/input/ImageIOUtil/` at
+  `28fe61f4ad64ea2c474de775113028b4cfea981e`: `JPXTestCMYK.pdf`, `JPXTestGrey.pdf`,
+  `JPXTestRGB.pdf`.
+* Searched without result: py-pdf/sample-files, pypdf, pdfminer.six, PyMuPDF, qpdf,
+  pdfplumber (no JPX PDFs); PDFium's test corpus is on `pdfium.googlesource.com`, which the
+  sandbox's network policy blocks (HTTP 403), so it was not considered.
+
+Licences (`sources.pdf-pdf.js`, `sources.pdf-pikepdf`, `sources.pdf-pdfbox` in the
+manifest): the repositories are Apache-2.0 / MPL-2.0 / Apache-2.0, but the pdf.js test PDFs
+are mostly bug-report attachments with no licence of their own. All are treated like the
+non-regression files: **fetch-only**, pinned by commit and SHA-256, never committed.
+
+### Manifest layout
+
+* The 20 source PDFs are ordinary `files` entries with role **`pdf-source`**, path
+  `pdf-sources/<repo>/<name>.pdf`, raw GitHub URL at the pinned commit, `sha256`, `size`,
+  `git_blob_sha1` (checked against the pdf.js tree listing when the manifest was built).
+  `scripts/fetch-corpus.py` downloads and verifies them like every other file, so CI gets
+  them (152 `files` entries in total now).
+* The extracted streams are the top-level list **`pdf_jpx`** (not in `files`: they have no
+  URL, and `fetch-corpus.py` would try to download them). Each entry: `path`
+  (`pdf-jpx/<pdf>-<obj>.jpx`), `sha256`, `size`, `roles: ["pdf-jpx"]`, `source_pdf` (the
+  `files` path), `object` `[num, gen]`, `filters` (the `/Filter` chain), `format` (`jp2` or
+  `j2k`), `pdf_image` (the image dictionary facts that matter for rendering: `Width`,
+  `Height`, `ColorSpace` with indirect objects resolved, `BitsPerComponent`,
+  `SMaskInData`, `Decode`, `Matte`, `Intent`, `SMask: present`), `codestream` (main-header
+  SIZ/COD summary), and where applicable `also_in` (the same bytes in another object/PDF),
+  `jp2_boxes.colr` (the JP2 colour specification for the CMYK comparison), `recorded_plane`
+  (one constant reference plane for the entry's SHA-256), `reduce`, and `note`.
+
+### Contents: 42 streams (8,464,640 bytes) from 19 PDFs
+
+46 `JPXDecode` streams, 42 distinct (4 duplicates recorded in `also_in`). 31 JP2 files, 11
+raw codestreams. 24 reversible 5/3, 18 irreversible 9/7. 1 to 5 components; 4, 8 and 16 bit;
+sub-sampled chroma (2x2, 2x1, odd origin); 1 to 12 tiles; `/SMaskInData` 1 and 2 with and
+without `/Matte`; `/ColorSpace` absent (JPX colour governs: `issue5475`, `issue5481`,
+`issue5549`, `perf_codecs_jpx`, `jpx_smaskindata-7`), Device{Gray,RGB,CMYK}, ICCBased,
+Indexed (over a 4-bit JP2 palette), DeviceN with 2 and 5 colorants. The largest,
+`issue19517-8.jpx`, is 12608 x 16806 x 4 (212 Mpx, a rendered map, one tile): under
+`Limits.default` our decoder decodes it at `reduce >= 1` and refuses full resolution
+(`workSamples` 847,560,192 > 2^28) since task 6.5 made the sample/byte budgets bound the
+reduced output grids; with raised limits it decodes at full resolution bit-identically to
+OpenJPEG (`Tests/LargeImage.lean`). Its manifest entry has `"reduce": 2`.
+
+### Extracting
+
+```
+python3 -I scripts/fetch-corpus.py      # fetches the source PDFs (and everything else)
+python3 -I scripts/extract-pdf-jpx.py   # extracts missing/wrong pdf-jpx files, verifies all
+python3 -I scripts/extract-pdf-jpx.py --check   # verify only
+python3 -I scripts/extract-pdf-jpx.py --scan    # print pdf_jpx entries for every JPX stream
+```
+
+Needs `qpdf` (11+, for `--json=2`); skips with a message without it or without the source
+PDFs. A stream is the object's raw data (`qpdf --show-object=N,G --raw-stream-data`:
+decrypted, still encoded) with the filters before `/JPXDecode` undone (only `/FlateDecode`
+without predictor occurs and is supported), i.e. exactly what a PDF reader hands its JPEG
+2000 decoder. Every result is checked against the manifest's size and SHA-256 before it is
+written; a second run extracts nothing. Cross-check when the list was built: 39 of the 42
+equal `pdfimages -jp2` output byte for byte; poppler crashes on `bug_jpx.pdf` and does not
+emit the two 1x1 images that no page draws (`issue19326-11`, `issue19517-13`).
+
+When rebuilding the list with `--scan`, carry over the hand-written `recorded_plane`,
+`jp2_boxes`, `reduce` and `note` fields for matching SHA-256 values.
+
+### Image differential (`scripts/diff-images.py`)
+
+Run `lake build image-dump` and `python3 -I scripts/diff-images.py --jp2 --verbose`.
+The differential verifies each file's SHA-256 and checks component count, dimensions,
+depth, sign and every sample. The **codestream** comparison uses raw components or the RGB
+channels when OpenJPEG infers sYCC. The **jp2** comparison uses the consumer channels from
+`JPEG2000.decode`, including palette, component mapping, channel definitions and colour
+conversion. The peak error limit per component is 0 for reversible coding and 1 for
+irreversible coding, with an additional 1 for sYCC conversion. Both decoders use the
+manifest's resolution reduction (`issue19517-8` uses 2). The default size limit is 40
+megapixels at the reduced resolution.
+
+With OpenJPEG 2.5.3, **42/42 PDF streams passed**, including every JP2 comparison.
+With `--jp2`, 51/51 files passed, with zero known deviations, failures, size skips or
+absent files. The differential delegates the ICC rendering of conformance files 5, 7 and
+8 to the TIFF suite. With lcms2 2.16 installed, `lake exe tests` passed all nine TIFF
+references, including those three.
+
+* `bug_jpx-15` is a bare codestream. Its manifest entry records the OpenJPEG reference
+  obtained with two empty tile-parts omitted. Only `image-dump` decodes the original.
+  Its raw output and consumer image each matched the single unsigned 8-bit 128×64
+  reference plane exactly, including all 8,192 zero samples. A wrong hash, decode error,
+  different plane format or nonzero sample fails the comparison.
+* `JPXTestCMYK-12` declares JP2 enumerated colour space 12. OpenJPEG writes four CMYK
+  channels to TIFF and renders three RGB channels for PGX. The harness compares all four
+  JP2 consumer colour channels to the TIFF. OpenJPEG's multiplicative CMYK formula uses
+  binary32 normalization and truncates to 8-bit RGB. A C compiler can fuse the multiply
+  and subtract during normalization. The harness selects a rounding mode using only the
+  OpenJPEG TIFF and PGX, requiring an exact match across all three RGB planes. On this
+  machine fused rounding matched. The harness applies that conversion to the consumer
+  channels and compares them directly to native OpenJPEG PGX at the irreversible limit of 1.
+
+  | Comparison | Peak by channel | MSE by channel |
+  |---|---|---|
+  | Bare codestream | 1, 1, 1, 1 | 0.0001, 0.0002, 0.0002, 0.0001 |
+  | JP2 consumer CMYK vs OpenJPEG TIFF | 1, 1, 1, 1 | 0.0001, 0.0002, 0.0002, 0.0001 |
+  | OpenJPEG TIFF rendered to RGB vs OpenJPEG PGX | 0, 0, 0 | 0, 0, 0 |
+  | JP2 consumer rendered to RGB vs native OpenJPEG PGX | 1, 1, 1 | 0.0003, 0.0003, 0.0003 |
+
+  A separate test simulated non-fused PGX from the same TIFF samples. Calibration selected
+  non-fused rounding exactly, and the direct consumer comparison failed at peaks 2, 2, 2.
+  Native results above were measured on AArch64.
+
+* `issue12213-16` has two comparisons. The bare codestream yields the 4-bit index plane.
+  The JP2 comparison applies the palette and compares the three channel planes before
+  display scaling. OpenJPEG writes unsigned PGX with declared depth 4 and full stored
+  palette bytes, including 191 and 255. Both comparisons are bit-exact. In the PDF the
+  image dictionary supplies its own `/Indexed` colour space.
+* `jpx_subsampling-11` and its even-origin control `jpx_subsampling-10` are bare
+  codestreams. The comparison uses RGB after OpenJPEG's inferred 4:2:0 sYCC conversion.
+  At origin (1, 1), row 0 takes raw zero Cb and Cr before the chroma offset is subtracted.
+  At column 0 the first row of each subsequent pair takes raw zero and the second row
+  takes the first stored chroma sample. The final unpaired row also starts with raw zero.
+  All three RGB planes are bit-exact for both origins. Ordinary component upsampling
+  still replicates the nearest edge sample.
+
+CI (Linux) runs the fetch, `extract-pdf-jpx.py` and `diff-images.py`; it fails on any
+deviation not recorded in the manifest.

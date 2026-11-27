@@ -292,9 +292,11 @@ def validation : IO Nat := do
     (parseCodestream Limits.strict (stream manyTiles (codA ++ q7) one)))
   f := f + (← expectKind "tile-components > maxCodeBlocks" "limit codeBlocks"
     (parseCodestream { D with maxCodeBlocks := 4095 } (stream manyTiles (codA ++ q7) one)))
-  f := f + (← expectKind "work samples" "limit workSamples"
+  -- Sample and byte budgets bound what is allocated, at the requested reduction (task 6.5):
+  -- the header parses; `Tests.LargeImage` checks the decoder's refusal.
+  f := f + (← expectKind "work samples: checked by the decoder, not the header" "ok"
     (parseCodestream { D with maxWorkSamples := 3 * 4096 - 1 } (stream s3 (codA ++ q7) one)))
-  f := f + (← expectKind "decoded bytes (16-bit samples count 2)" "limit decodedBytes"
+  f := f + (← expectKind "decoded bytes: checked by the decoder, not the header" "ok"
     (parseCodestream { D with maxDecodedBytes := 2 * 4096 - 1 }
       (stream (sizBody 64 64 0 0 64 64 0 0 [(15, 1, 1)]) (codA ++ q7) one)))
   -- 64×64, 2 levels, 2^4 blocks: r0 16×16 → 4·4 = 16 blocks... counted exactly
