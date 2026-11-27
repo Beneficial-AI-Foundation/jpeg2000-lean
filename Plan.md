@@ -263,6 +263,11 @@ Phases 2 (MQ) and 1 (headers) are independent and can run in parallel; phase 3 n
 phase 4 needs 1; phase 5 needs 3 and 4. Phase 8 can start on any stage once its equivalence
 theorem exists.
 
+**Current delivery order (2026-11-26).** M10 follows the verified M7 decoder.
+The remaining M8 performance work and M9 hardening campaign are deferred. Both
+keep their existing exit criteria. safe-pdf pins a packaging-only child of M7 while
+the other branches evolve independently.
+
 ---
 
 ## 8. Testing and evaluation
@@ -302,10 +307,29 @@ theorem exists.
   image dictionary, and returns pixels.
 * safe-pdf's `Limits` map onto this library's `Limits` (image area, total decoded bytes).
 * The decode runs inside safe-pdf's confined worker like every other render.
-* safe-pdf has **no Lake dependencies by rule**; adding this one needs a Decisions entry
-  there. This library therefore keeps the same toolchain (`leanprover/lean4:v4.36.0`) and
-  **no dependencies of its own** (no Mathlib, no Batteries), so the dependency adds nothing
-  transitive.
+* Record the decoder as safe-pdf's first Lake dependency in its Decisions ledger.
+  Both packages use `leanprover/lean4:v4.36.0`. The decoder has no transitive
+  Lake dependencies. The consumer selects `libraryOnly` to keep its own test
+  module namespace.
+
+### Integration checks
+
+1. Start from safe-pdf main. Pin the decoder by full Git revision, lock it with
+   Lake and record the dependency decision. Exercise the public API from the consumer.
+2. Route image XObjects, inline images and JPX mask streams through the pure
+   adapter in the existing worker. Validate the full image dictionary dimensions
+   against the codestream before using reduced output. Carry safe-pdf's image
+   area and byte budgets through decoding, interleaving and compositing.
+3. Test PDF-specified and embedded colour, palette indices, JPX sample precision,
+   embedded straight and premultiplied opacity, and external masks. In particular,
+   exercise Indexed colour before scaling indices and avoid applying opacity twice.
+4. Feed the existing pinned **source PDFs** to the safe-pdf worker. The 81 PDFs
+   surveyed in safe-pdf contained zero JPX images. The decoder corpus supplies
+   19 primary JPX-bearing PDFs plus a twentieth PDF recorded as a filter-chain
+   alias. All 20 are part of the worker check. Check each placement against the page reference at a fixed view
+   and tolerance, including masks or repeated streams with different dictionaries.
+   Record reference versions, fixture coverage and any mismatch. An extracted
+   stream comparison alone cannot establish M10.
 
 ---
 
